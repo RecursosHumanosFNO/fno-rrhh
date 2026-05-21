@@ -1,0 +1,133 @@
+import { clsx, type ClassValue } from 'clsx'
+import { twMerge } from 'tailwind-merge'
+import type { SolicitudTipo, SolicitudEstado, NovedadCategoria, TicketEstado, TicketTipo, EmpleadoEstado } from '@/types'
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+
+export function formatFecha(fecha: string): string {
+  if (!fecha) return '-'
+  const [year, month, day] = fecha.split('-')
+  return `${day}/${month}/${year}`
+}
+
+export function formatMes(mes: number, anio: number): string {
+  const meses = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+  ]
+  return `${meses[mes - 1]} ${anio}`
+}
+
+export function formatMonto(monto: number): string {
+  return new Intl.NumberFormat('es-AR', {
+    style: 'currency',
+    currency: 'ARS',
+    minimumFractionDigits: 0,
+  }).format(monto)
+}
+
+export function calcularAntiguedad(fechaIngreso: string): string {
+  const inicio = new Date(fechaIngreso)
+  const hoy = new Date()
+  const anios = hoy.getFullYear() - inicio.getFullYear()
+  const meses = hoy.getMonth() - inicio.getMonth()
+  const totalMeses = anios * 12 + meses
+  if (totalMeses < 12) return `${totalMeses} ${totalMeses === 1 ? 'mes' : 'meses'}`
+  const a = Math.floor(totalMeses / 12)
+  const m = totalMeses % 12
+  let str = `${a} ${a === 1 ? 'año' : 'años'}`
+  if (m > 0) str += ` y ${m} ${m === 1 ? 'mes' : 'meses'}`
+  return str
+}
+
+export function calcularEdad(fechaNacimiento: string): number {
+  const nac = new Date(fechaNacimiento)
+  const hoy = new Date()
+  let edad = hoy.getFullYear() - nac.getFullYear()
+  const m = hoy.getMonth() - nac.getMonth()
+  if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) edad--
+  return edad
+}
+
+export const SOLICITUD_TIPO_LABEL: Record<SolicitudTipo, string> = {
+  permiso_personal: 'Permiso Personal',
+  vacaciones: 'Vacaciones',
+  licencia_medica: 'Licencia Médica',
+  llegada_tarde: 'Llegada Tarde',
+  ausencia: 'Ausencia',
+  pedido_administrativo: 'Pedido Administrativo',
+}
+
+export const SOLICITUD_ESTADO_LABEL: Record<SolicitudEstado, string> = {
+  pendiente: 'Pendiente',
+  aprobado: 'Aprobado',
+  rechazado: 'Rechazado',
+}
+
+export const SOLICITUD_ESTADO_COLOR: Record<SolicitudEstado, string> = {
+  pendiente: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
+  aprobado: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
+  rechazado: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+}
+
+export const EMPLEADO_ESTADO_LABEL: Record<EmpleadoEstado, string> = {
+  activo: 'Activo',
+  inactivo: 'Inactivo',
+  licencia: 'En Licencia',
+  vacaciones: 'De Vacaciones',
+}
+
+export const EMPLEADO_ESTADO_COLOR: Record<EmpleadoEstado, string> = {
+  activo: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
+  inactivo: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+  licencia: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+  vacaciones: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+}
+
+export const NOVEDAD_CATEGORIA_LABEL: Record<NovedadCategoria, string> = {
+  comunicado: 'Comunicado',
+  novedad: 'Novedad',
+  alerta: 'Alerta',
+  evento: 'Evento',
+  cumpleanos: 'Cumpleaños',
+}
+
+export const NOVEDAD_CATEGORIA_COLOR: Record<NovedadCategoria, string> = {
+  comunicado: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+  novedad: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
+  alerta: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+  evento: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+  cumpleanos: 'bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300',
+}
+
+export const TICKET_ESTADO_LABEL: Record<TicketEstado, string> = {
+  abierto: 'Abierto',
+  en_proceso: 'En Proceso',
+  resuelto: 'Resuelto',
+  cerrado: 'Cerrado',
+}
+
+export const TICKET_ESTADO_COLOR: Record<TicketEstado, string> = {
+  abierto: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
+  en_proceso: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+  resuelto: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
+  cerrado: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+}
+
+export const TICKET_TIPO_LABEL: Record<TicketTipo, string> = {
+  certificado_laboral: 'Certificado Laboral',
+  consulta: 'Consulta General',
+  actualizacion_datos: 'Actualización de Datos',
+  reclamo: 'Reclamo',
+  otro: 'Otro',
+}
+
+export function getInitials(nombre: string, apellido: string): string {
+  return `${nombre.charAt(0)}${apellido.charAt(0)}`.toUpperCase()
+}
+
+export function diasRestantesVacaciones(diasTotales: number, diasUsados: number): number {
+  return Math.max(0, diasTotales - diasUsados)
+}

@@ -1,0 +1,120 @@
+export type UserRole = 'admin' | 'employee'
+
+export type EmpleadoEstado = 'activo' | 'inactivo' | 'licencia' | 'vacaciones'
+
+export type SolicitudEstado = 'pendiente' | 'aprobado' | 'rechazado'
+
+export type SolicitudTipo =
+  | 'permiso_personal'
+  | 'vacaciones'
+  | 'licencia_medica'
+  | 'llegada_tarde'
+  | 'ausencia'
+  | 'pedido_administrativo'
+
+export type NovedadCategoria = 'comunicado' | 'novedad' | 'alerta' | 'evento' | 'cumpleanos'
+
+export type TicketEstado = 'abierto' | 'en_proceso' | 'resuelto' | 'cerrado'
+
+export type TicketTipo =
+  | 'certificado_laboral'
+  | 'consulta'
+  | 'actualizacion_datos'
+  | 'reclamo'
+  | 'otro'
+
+export interface User {
+  id: string
+  email: string
+  password: string
+  role: UserRole
+  empleadoId: string
+}
+
+export interface Empleado {
+  id: string
+  nombre: string
+  apellido: string
+  dni: string
+  fechaNacimiento: string
+  email: string
+  telefono: string
+  direccion: string
+  contactoEmergencia: {
+    nombre: string
+    telefono: string
+    relacion: string
+  }
+  sector: string
+  cargo: string
+  fechaIngreso: string
+  tipoContrato: 'Planta Permanente' | 'Contrato' | 'Planta Provisional' | 'Pasantía'
+  jornada: 'Full Time' | 'Part Time' | 'Por Horas'
+  supervisor: string
+  estado: EmpleadoEstado
+  diasVacaciones: number
+  diasVacacionesUsados: number
+  foto?: string
+}
+
+export interface Recibo {
+  id: string
+  empleadoId: string
+  mes: number
+  anio: number
+  archivo: string
+  fechaSubida: string
+  monto: number
+}
+
+export interface Solicitud {
+  id: string
+  empleadoId: string
+  tipo: SolicitudTipo
+  fechaInicio: string
+  fechaFin?: string
+  descripcion: string
+  estado: SolicitudEstado
+  fechaCreacion: string
+  fechaResolucion?: string
+  comentarioAdmin?: string
+  adjunto?: string
+}
+
+export interface Novedad {
+  id: string
+  titulo: string
+  contenido: string
+  categoria: NovedadCategoria
+  fechaPublicacion: string
+  autor: string
+  importante: boolean
+  imagen?: string
+}
+
+export interface Evento {
+  id: string
+  titulo: string
+  fecha: string
+  tipo: 'cumpleanos' | 'evento' | 'vencimiento' | 'feriado'
+  descripcion?: string
+  empleadoId?: string
+}
+
+export interface Ticket {
+  id: string
+  empleadoId: string
+  tipo: TicketTipo
+  asunto: string
+  descripcion: string
+  estado: TicketEstado
+  fechaCreacion: string
+  fechaActualizacion: string
+  respuesta?: string
+}
+
+export interface AuthState {
+  user: User | null
+  empleado: Empleado | null
+  isAuthenticated: boolean
+}
