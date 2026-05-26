@@ -286,7 +286,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         email: reg.email, password: reg.password, sector: reg.sector,
         cargo: reg.cargo, telefono: reg.telefono || '',
         fecha_solicitud: newReg.fechaSolicitud,
-      }).then()
+      }).then(({ error }) => {
+        if (error) console.error('Supabase insert fno_pending error:', error)
+        else console.log('Supabase insert fno_pending OK')
+      })
     }
 
     // Email to admin
