@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Users, FileText, ClipboardList, Megaphone,
   BarChart3, User, HeadphonesIcon, ChevronLeft, ChevronRight,
-  LogOut, ExternalLink, Info, Building2,
+  LogOut, ExternalLink, Info, Building2, UserCheck,
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -31,10 +31,10 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const { pendingRegistrations, solicitudes } = useData()
 
   const isAdmin = user?.role === 'admin'
-  const pendingCount = pendingRegistrations.length + solicitudes.filter(s => s.estado === 'pendiente').length
 
   const adminLinks: NavLink[] = [
-    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, badge: pendingRegistrations.length },
+    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/dashboard/registros-pendientes', label: 'Accesos Pendientes', icon: UserCheck, badge: pendingRegistrations.length },
     { href: '/dashboard/empleados', label: 'Empleados', icon: Users },
     { href: '/dashboard/recibos', label: 'Recibos de Sueldo', icon: FileText },
     { href: '/dashboard/solicitudes', label: 'Solicitudes', icon: ClipboardList, badge: solicitudes.filter(s => s.estado === 'pendiente').length },
