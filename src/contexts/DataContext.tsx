@@ -115,7 +115,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           setUsers(mapped)
         }
 
-        if (pendingRes.data && pendingRes.data.length > 0) {
+        if (pendingRes.data) {
           const mapped: PendingRegistration[] = pendingRes.data.map((p: Record<string, string>) => ({
             id: p.id,
             nombre: p.nombre,
