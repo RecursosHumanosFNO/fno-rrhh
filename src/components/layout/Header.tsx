@@ -23,7 +23,8 @@ export default function Header({ onMenuToggle }: HeaderProps) {
   const searchRef = useRef<HTMLDivElement>(null)
 
   const isAdmin = user?.role === 'admin'
-  const unread = notifications.filter(n => !n.leida)
+  const visibleNotifications = notifications.filter(n => isAdmin || n.tipo !== 'registro')
+  const unread = visibleNotifications.filter(n => !n.leida)
 
   // Search results
   const searchResults = query.trim().length > 1 ? [
@@ -163,12 +164,12 @@ export default function Header({ onMenuToggle }: HeaderProps) {
                 )}
               </div>
               <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-72 overflow-y-auto">
-                {notifications.length === 0 ? (
+                {visibleNotifications.length === 0 ? (
                   <div className="py-8 text-center">
                     <Bell className="w-8 h-8 text-slate-300 mx-auto mb-2" />
                     <p className="text-sm text-slate-400">Sin notificaciones</p>
                   </div>
-                ) : notifications.slice(0, 10).map(n => (
+                ) : visibleNotifications.slice(0, 10).map(n => (
                   <div
                     key={n.id}
                     onClick={() => markNotificationRead(n.id)}
