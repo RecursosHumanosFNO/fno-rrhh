@@ -2,10 +2,10 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import type { User, Empleado, AuthState } from '@/types'
-import { users, empleados } from '@/lib/mockData'
+import { useData } from './DataContext'
 
 interface AuthContextType extends AuthState {
-  login: (email: string, password: string, remember: boolean) => Promise<boolean>
+  login: (email: string, password: string, remember: boolean) => Promise<'ok' | 'pendiente' | 'error'>
   logout: () => void
   updateEmpleado: (data: Partial<Empleado>) => void
 }
@@ -13,6 +13,8 @@ interface AuthContextType extends AuthState {
 const AuthContext = createContext<AuthContextType | null>(null)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const { users, empleados, pendingRegistrations, updateEmpleado: updateEmpData } = useData()
+
   const [auth, setAuth] = useState<AuthState>({
     user: null,
     empleado: null,
@@ -33,19 +35,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem('fno_session')
       }
     }
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const login = useCallback(async (email: string, password: string, remember: boolean): Promise<boolean> => {
-    const user = users.find(u => u.email === email.toLowerCase().trim() && u.password === password)
-    if (!user) return false
-    const empleado = empleados.find(e => e.id === user.empleadoId)
-    if (!empleado) return false
-    setAuth({ user, empleado, isAuthenticated: true })
-    if (remember) {
-      localStorage.setItem('fno_session', JSON.stringify({ userId: user.id }))
+  // Sync empleado data cuando cambia en DataContext
+  useEffect(() => {
+    if (auth.user) {
+      const updatedEmp = empleados.find(e => e.id === auth.user!.empleadoId)
+      if (updatedEmp) setAuth(prev => ({ ...prev, empleado: updatedEmp }))
     }
-    return true
-  }, [])
+  }, [empleados]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const login = useCallback(async (email: string, password: string, remember: boolean): Promise<'ok' | 'pendiente' | 'error'> => {
+    const normalEmail = email.toLowerCase().trim()
+
+    // Verificar si está en pendientes
+    const pending = pendingRegistrations.find(p => p.email === normalEmail)
+    if (pending) return 'pendiente'
+
+    const user = users.find(u => u.email === normalEmail && u.password === password)
+    if (!user) return 'error'
+
+    const empleado = empleados.find(e => e.id === user.empleadoId)
+    if (!empleado) return 'error'
+
+    setAuth({ user, empleado, isAuthenticated: true })
+    if (remember) localStorage.setItem('fno_session', JSON.stringify({ userId: user.id }))
+    return 'ok'
+  }, [users, empleados, pendingRegistrations])
 
   const logout = useCallback(() => {
     setAuth({ user: null, empleado: null, isAuthenticated: false })
@@ -53,8 +69,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const updateEmpleado = useCallback((data: Partial<Empleado>) => {
+    if (!auth.empleado) return
+    updateEmpData(auth.empleado.id, data)
     setAuth(prev => prev.empleado ? { ...prev, empleado: { ...prev.empleado, ...data } } : prev)
-  }, [])
+  }, [auth.empleado, updateEmpData])
 
   return (
     <AuthContext.Provider value={{ ...auth, login, logout, updateEmpleado }}>

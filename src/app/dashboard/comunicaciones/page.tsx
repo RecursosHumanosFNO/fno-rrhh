@@ -2,14 +2,15 @@
 
 import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { novedades, eventos, empleados } from '@/lib/mockData'
+import { useData } from '@/contexts/DataContext'
+import { eventos } from '@/lib/mockData'
 import {
-  NOVEDAD_CATEGORIA_COLOR, NOVEDAD_CATEGORIA_LABEL, formatFecha,
+  NOVEDAD_CATEGORIA_COLOR, NOVEDAD_CATEGORIA_LABEL, formatFecha, parseLocalDate,
 } from '@/lib/utils'
 import type { NovedadCategoria } from '@/types'
 import {
   Megaphone, Plus, Pin, Calendar, PartyPopper, AlertTriangle,
-  Bell, MessageSquare, X, ChevronRight, Info, Zap,
+  Bell, MessageSquare, X, ChevronRight, Zap, Trash2,
 } from 'lucide-react'
 
 const CATEGORIA_ICONS: Record<NovedadCategoria, React.ElementType> = {
@@ -22,6 +23,7 @@ const CATEGORIA_ICONS: Record<NovedadCategoria, React.ElementType> = {
 
 export default function ComunicacionesPage() {
   const { user } = useAuth()
+  const { novedades, empleados, addNovedad, deleteNovedad } = useData()
   const isAdmin = user?.role === 'admin'
 
   const [catFilter, setCatFilter] = useState<NovedadCategoria | ''>('')
@@ -29,14 +31,47 @@ export default function ComunicacionesPage() {
   const [showNueva, setShowNueva] = useState(false)
   const [activeTab, setActiveTab] = useState<'novedades' | 'calendario'>('novedades')
 
-  const filtered = novedades.filter(n => !catFilter || n.categoria === catFilter)
-    .sort((a, b) => new Date(b.fechaPublicacion).getTime() - new Date(a.fechaPublicacion).getTime())
+  const [newForm, setNewForm] = useState({
+    titulo: '', contenido: '', categoria: 'novedad' as NovedadCategoria, importante: false,
+  })
 
-  const novedad = novedades.find(n => n.id === selectedNovedad)
+  const filtered = novedades
+    .filter(n => !catFilter || n.categoria === catFilter)
+    .sort((a, b) => b.fechaPublicacion.localeCompare(a.fechaPublicacion))
 
   const hoy = new Date()
-  const eventosFuturos = eventos.filter(e => new Date(e.fecha) >= hoy)
-    .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime())
+
+  // Birthday fix: use parseLocalDate to avoid UTC timezone offset bug
+  const cumpleaniosMes = empleados.filter(e => {
+    if (!e.fechaNacimiento) return false
+    const nac = parseLocalDate(e.fechaNacimiento)
+    return nac.getMonth() === hoy.getMonth()
+  }).sort((a, b) => {
+    const da = parseLocalDate(a.fechaNacimiento).getDate()
+    const db = parseLocalDate(b.fechaNacimiento).getDate()
+    return da - db
+  })
+
+  const eventosFuturos = eventos
+    .filter(e => {
+      const fecha = parseLocalDate(e.fecha)
+      return fecha >= new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate())
+    })
+    .sort((a, b) => a.fecha.localeCompare(b.fecha))
+
+  function handlePublicar() {
+    if (!newForm.titulo.trim() || !newForm.contenido.trim()) return
+    addNovedad({
+      titulo: newForm.titulo,
+      contenido: newForm.contenido,
+      categoria: newForm.categoria,
+      fechaPublicacion: new Date().toISOString().slice(0, 10),
+      autor: 'RRHH',
+      importante: newForm.importante,
+    })
+    setShowNueva(false)
+    setNewForm({ titulo: '', contenido: '', categoria: 'novedad', importante: false })
+  }
 
   return (
     <div className="page-container">
@@ -61,7 +96,7 @@ export default function ComunicacionesPage() {
           <button
             key={t}
             onClick={() => setActiveTab(t)}
-            className={`px-4 py-2.5 text-sm font-medium capitalize border-b-2 transition-colors ${
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
               activeTab === t
                 ? 'border-brand-700 text-brand-700 dark:border-brand-400 dark:text-brand-400'
                 : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
@@ -72,6 +107,7 @@ export default function ComunicacionesPage() {
         ))}
       </div>
 
+      {/* ── NOVEDADES TAB ── */}
       {activeTab === 'novedades' && (
         <>
           {/* Categoría filters */}
@@ -119,8 +155,13 @@ export default function ComunicacionesPage() {
                     onClick={() => setSelectedNovedad(isSelected ? null : n.id)}
                   >
                     <div className="flex items-start gap-3">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${NOVEDAD_CATEGORIA_COLOR[n.categoria].replace('text-', 'bg-').split(' ')[0].replace('bg-', 'bg-').replace('100', '50')} `}
-                        style={{ background: 'var(--icon-bg)' }}>
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                        n.categoria === 'comunicado' ? 'bg-blue-50 dark:bg-blue-900/20' :
+                        n.categoria === 'alerta' ? 'bg-red-50 dark:bg-red-900/20' :
+                        n.categoria === 'novedad' ? 'bg-emerald-50 dark:bg-emerald-900/20' :
+                        n.categoria === 'cumpleanos' ? 'bg-pink-50 dark:bg-pink-900/20' :
+                        'bg-purple-50 dark:bg-purple-900/20'
+                      }`}>
                         <Icon className={`w-5 h-5 ${NOVEDAD_CATEGORIA_COLOR[n.categoria].split(' ')[1]}`} />
                       </div>
                       <div className="flex-1 min-w-0">
@@ -130,7 +171,7 @@ export default function ComunicacionesPage() {
                           </span>
                           {n.importante && (
                             <span className="badge bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
-                              <Pin className="w-3 h-3" /> Importante
+                              <Pin className="w-3 h-3 mr-0.5" /> Importante
                             </span>
                           )}
                         </div>
@@ -145,14 +186,25 @@ export default function ComunicacionesPage() {
                           Publicado el {formatFecha(n.fechaPublicacion)} · Por {n.autor}
                         </p>
                       </div>
-                      {!isSelected ? <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 mt-1" /> : null}
+                      <div className="flex items-center gap-1 shrink-0">
+                        {isAdmin && (
+                          <button
+                            onClick={ev => { ev.stopPropagation(); deleteNovedad(n.id) }}
+                            className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 transition-colors"
+                            title="Eliminar"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                        {!isSelected && <ChevronRight className="w-4 h-4 text-slate-400" />}
+                      </div>
                     </div>
                   </div>
                 )
               })}
             </div>
 
-            {/* Aside: próximos eventos y cumpleaños */}
+            {/* Aside */}
             <div className="space-y-6">
               {/* Próximos eventos */}
               <div className="card p-5">
@@ -160,18 +212,18 @@ export default function ComunicacionesPage() {
                   <Calendar className="w-4 h-4 text-brand-700 dark:text-brand-400" /> Próximos eventos
                 </p>
                 <div className="space-y-3">
-                  {eventosFuturos.slice(0, 5).map(ev => (
+                  {eventosFuturos.length === 0 ? (
+                    <p className="text-slate-400 text-sm text-center py-2">Sin eventos próximos</p>
+                  ) : eventosFuturos.slice(0, 5).map(ev => (
                     <div key={ev.id} className="flex items-start gap-3">
                       <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 ${
-                        ev.tipo === 'cumpleanos' ? 'bg-pink-50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400' :
+                        ev.tipo === 'feriado' ? 'bg-blue-50 dark:bg-blue-900/20 text-brand-700 dark:text-brand-400' :
                         ev.tipo === 'evento' ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400' :
-                        ev.tipo === 'vencimiento' ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400' :
-                        'bg-blue-50 dark:bg-blue-900/20 text-brand-700 dark:text-brand-400'
+                        'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'
                       }`}>
-                        {ev.tipo === 'cumpleanos' ? <PartyPopper className="w-4 h-4" /> :
-                         ev.tipo === 'vencimiento' ? <AlertTriangle className="w-4 h-4" /> :
-                         ev.tipo === 'feriado' ? <Zap className="w-4 h-4" /> :
-                         <Calendar className="w-4 h-4" />}
+                        {ev.tipo === 'feriado' ? <Zap className="w-4 h-4" /> :
+                         ev.tipo === 'evento' ? <Calendar className="w-4 h-4" /> :
+                         <AlertTriangle className="w-4 h-4" />}
                       </div>
                       <div>
                         <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{ev.titulo}</p>
@@ -183,31 +235,28 @@ export default function ComunicacionesPage() {
                 </div>
               </div>
 
-              {/* Cumpleaños del mes */}
+              {/* Cumpleaños del mes — timezone-safe */}
               <div className="card p-5">
                 <p className="section-title text-base mb-4 flex items-center gap-2">
                   <PartyPopper className="w-4 h-4 text-pink-500" /> Cumpleaños del mes
                 </p>
                 <div className="space-y-2.5">
-                  {empleados.filter(e => {
-                    const mes = parseInt(e.fechaNacimiento.split('-')[1])
-                    return mes === new Date().getMonth() + 1
-                  }).map(e => (
-                    <div key={e.id} className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center text-pink-600 dark:text-pink-400 text-xs font-bold">
-                        {e.nombre.charAt(0)}{e.apellido.charAt(0)}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{e.nombre} {e.apellido}</p>
-                        <p className="text-xs text-slate-400">
-                          {new Date(e.fechaNacimiento).getDate()}/{new Date().getMonth() + 1}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                  {empleados.filter(e => parseInt(e.fechaNacimiento.split('-')[1]) === new Date().getMonth() + 1).length === 0 && (
+                  {cumpleaniosMes.length === 0 ? (
                     <p className="text-slate-400 text-sm text-center py-2">Sin cumpleaños este mes</p>
-                  )}
+                  ) : cumpleaniosMes.map(e => {
+                    const nac = parseLocalDate(e.fechaNacimiento)
+                    return (
+                      <div key={e.id} className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center text-pink-600 dark:text-pink-400 text-xs font-bold overflow-hidden">
+                          {e.foto ? <img src={e.foto} alt="" className="w-8 h-8 object-cover" /> : `${e.nombre.charAt(0)}${e.apellido.charAt(0)}`}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{e.nombre} {e.apellido}</p>
+                          <p className="text-xs text-slate-400">{nac.getDate()}/{hoy.getMonth() + 1}</p>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             </div>
@@ -215,50 +264,48 @@ export default function ComunicacionesPage() {
         </>
       )}
 
+      {/* ── CALENDARIO TAB ── */}
       {activeTab === 'calendario' && (
         <div className="card p-5">
           <p className="section-title mb-5 flex items-center gap-2">
-            <Calendar className="w-4 h-4" /> Calendario de Eventos — Mayo / Junio 2026
+            <Calendar className="w-4 h-4" /> Calendario 2026 — Feriados y Jornadas Institucionales
           </p>
           <div className="space-y-3">
-            {eventos.sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime()).map(ev => {
-              const emp = ev.empleadoId ? empleados.find(e => e.id === ev.empleadoId) : null
-              return (
-                <div key={ev.id} className={`flex items-start gap-4 p-4 rounded-xl border ${
-                  ev.tipo === 'cumpleanos' ? 'border-pink-200 dark:border-pink-800 bg-pink-50/50 dark:bg-pink-900/10' :
-                  ev.tipo === 'vencimiento' ? 'border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/10' :
-                  ev.tipo === 'feriado' ? 'border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/10' :
-                  'border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-900/10'
-                }`}>
-                  <div className="text-center shrink-0 w-12">
-                    <p className="text-lg font-bold text-slate-800 dark:text-slate-100">
-                      {new Date(ev.fecha).getDate()}
-                    </p>
-                    <p className="text-xs text-slate-500 uppercase">
-                      {new Date(ev.fecha).toLocaleDateString('es-AR', { month: 'short' })}
-                    </p>
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-semibold text-slate-700 dark:text-slate-200">{ev.titulo}</p>
-                    {ev.descripcion && <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{ev.descripcion}</p>}
-                    {emp && <p className="text-xs text-slate-400 mt-0.5">{emp.sector}</p>}
-                  </div>
-                  <span className={`badge text-xs ${
-                    ev.tipo === 'cumpleanos' ? 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400' :
-                    ev.tipo === 'vencimiento' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
-                    ev.tipo === 'feriado' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                    'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+            {eventos
+              .sort((a, b) => a.fecha.localeCompare(b.fecha))
+              .map(ev => {
+                const fecha = parseLocalDate(ev.fecha)
+                return (
+                  <div key={ev.id} className={`flex items-start gap-4 p-4 rounded-xl border ${
+                    ev.tipo === 'feriado'
+                      ? 'border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/10'
+                      : 'border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-900/10'
                   }`}>
-                    {ev.tipo === 'cumpleanos' ? 'Cumpleaños' : ev.tipo === 'vencimiento' ? 'Vencimiento' : ev.tipo === 'feriado' ? 'Feriado' : 'Evento'}
-                  </span>
-                </div>
-              )
-            })}
+                    <div className="text-center shrink-0 w-12">
+                      <p className="text-lg font-bold text-slate-800 dark:text-slate-100">{fecha.getDate()}</p>
+                      <p className="text-xs text-slate-500 uppercase">
+                        {fecha.toLocaleDateString('es-AR', { month: 'short' })}
+                      </p>
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-slate-700 dark:text-slate-200">{ev.titulo}</p>
+                      {ev.descripcion && <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{ev.descripcion}</p>}
+                    </div>
+                    <span className={`badge text-xs shrink-0 ${
+                      ev.tipo === 'feriado'
+                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                        : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                    }`}>
+                      {ev.tipo === 'feriado' ? '🇦🇷 Feriado' : '🏫 Jornada'}
+                    </span>
+                  </div>
+                )
+              })}
           </div>
         </div>
       )}
 
-      {/* Nueva novedad modal */}
+      {/* Modal nueva novedad */}
       {showNueva && isAdmin && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowNueva(false)}>
           <div className="card w-full max-w-lg animate-scale-in" onClick={e => e.stopPropagation()}>
@@ -267,23 +314,51 @@ export default function ComunicacionesPage() {
               <button onClick={() => setShowNueva(false)}><X className="w-5 h-5 text-slate-400" /></button>
             </div>
             <div className="p-5 space-y-4">
-              <div><label className="form-label">Título *</label><input className="form-input" placeholder="Título de la novedad" /></div>
+              <div>
+                <label className="form-label">Título *</label>
+                <input
+                  className="form-input"
+                  placeholder="Título de la novedad"
+                  value={newForm.titulo}
+                  onChange={e => setNewForm(f => ({ ...f, titulo: e.target.value }))}
+                />
+              </div>
               <div>
                 <label className="form-label">Categoría *</label>
-                <select className="form-select">
+                <select className="form-select" value={newForm.categoria} onChange={e => setNewForm(f => ({ ...f, categoria: e.target.value as NovedadCategoria }))}>
                   {(['comunicado', 'novedad', 'alerta', 'evento', 'cumpleanos'] as NovedadCategoria[]).map(c => (
                     <option key={c} value={c}>{NOVEDAD_CATEGORIA_LABEL[c]}</option>
                   ))}
                 </select>
               </div>
-              <div><label className="form-label">Contenido *</label><textarea className="form-input resize-none" rows={4} placeholder="Escribí el contenido del comunicado..." /></div>
+              <div>
+                <label className="form-label">Contenido *</label>
+                <textarea
+                  className="form-input resize-none"
+                  rows={4}
+                  placeholder="Escribí el contenido del comunicado..."
+                  value={newForm.contenido}
+                  onChange={e => setNewForm(f => ({ ...f, contenido: e.target.value }))}
+                />
+              </div>
               <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" />
-                <span className="text-sm text-slate-600 dark:text-slate-400">Marcar como importante</span>
+                <input
+                  type="checkbox"
+                  checked={newForm.importante}
+                  onChange={e => setNewForm(f => ({ ...f, importante: e.target.checked }))}
+                  className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                />
+                <span className="text-sm text-slate-600 dark:text-slate-400">Marcar como importante (aparecerá destacado)</span>
               </label>
               <div className="flex gap-2 justify-end">
                 <button onClick={() => setShowNueva(false)} className="btn-secondary">Cancelar</button>
-                <button className="btn-primary">Publicar</button>
+                <button
+                  onClick={handlePublicar}
+                  disabled={!newForm.titulo.trim() || !newForm.contenido.trim()}
+                  className="btn-primary disabled:opacity-50"
+                >
+                  Publicar
+                </button>
               </div>
             </div>
           </div>

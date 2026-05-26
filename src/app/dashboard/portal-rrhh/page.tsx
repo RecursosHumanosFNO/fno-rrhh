@@ -2,11 +2,11 @@
 
 import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { tickets as allTickets, empleados } from '@/lib/mockData'
+import { useData } from '@/contexts/DataContext'
 import {
   TICKET_ESTADO_LABEL, TICKET_ESTADO_COLOR, TICKET_TIPO_LABEL, formatFecha,
 } from '@/lib/utils'
-import type { TicketTipo } from '@/types'
+import type { TicketTipo, TicketEstado } from '@/types'
 import {
   HeadphonesIcon, Plus, X, MessageSquare, Clock, CheckCircle2,
   Circle, ChevronDown, ChevronUp, Send, FileCheck, HelpCircle,
@@ -25,21 +25,55 @@ const TIPO_ICONS: Record<TicketTipo, React.ElementType> = {
 
 export default function PortalRRHHPage() {
   const { user } = useAuth()
+  const { empleados, tickets, addTicket, respondTicket } = useData()
   const isAdmin = user?.role === 'admin'
 
   const [showNuevo, setShowNuevo] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [estadoFilter, setEstadoFilter] = useState('')
   const [respuesta, setRespuesta] = useState<Record<string, string>>({})
+  const [estadoResp, setEstadoResp] = useState<Record<string, TicketEstado>>({})
+
+  // New ticket form
+  const [newForm, setNewForm] = useState({
+    tipo: 'consulta' as TicketTipo,
+    asunto: '',
+    descripcion: '',
+  })
+  const [newError, setNewError] = useState('')
 
   const base = isAdmin
-    ? allTickets
-    : allTickets.filter(t => t.empleadoId === user?.empleadoId)
+    ? tickets
+    : tickets.filter(t => t.empleadoId === user?.empleadoId)
 
-  const filtered = base.filter(t => !estadoFilter || t.estado === estadoFilter)
-    .sort((a, b) => new Date(b.fechaCreacion).getTime() - new Date(a.fechaCreacion).getTime())
+  const filtered = base
+    .filter(t => !estadoFilter || t.estado === estadoFilter)
+    .sort((a, b) => b.fechaCreacion.localeCompare(a.fechaCreacion))
 
   const abiertos = base.filter(t => t.estado === 'abierto' || t.estado === 'en_proceso').length
+
+  function handleNuevoTicket() {
+    setNewError('')
+    if (!newForm.asunto.trim()) { setNewError('Completá el asunto.'); return }
+    if (!newForm.descripcion.trim()) { setNewError('Completá la descripción.'); return }
+    if (!user?.empleadoId) return
+    addTicket({
+      empleadoId: user.empleadoId,
+      tipo: newForm.tipo,
+      asunto: newForm.asunto,
+      descripcion: newForm.descripcion,
+    })
+    setShowNuevo(false)
+    setNewForm({ tipo: 'consulta', asunto: '', descripcion: '' })
+  }
+
+  function handleResponder(ticketId: string) {
+    const resp = respuesta[ticketId] ?? ''
+    const estado = estadoResp[ticketId] ?? 'en_proceso'
+    respondTicket(ticketId, resp, estado)
+    setRespuesta(prev => { const n = { ...prev }; delete n[ticketId]; return n })
+    setExpandedId(null)
+  }
 
   return (
     <div className="page-container">
@@ -58,18 +92,18 @@ export default function PortalRRHHPage() {
         )}
       </div>
 
-      {/* Info cards */}
+      {/* Info cards for employee */}
       {!isAdmin && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
-            { label: 'Certificado laboral', desc: 'Para bancos, alquileres, etc.', icon: FileCheck, color: 'text-brand-700 bg-blue-50 dark:bg-blue-900/20' },
-            { label: 'Consultas generales', desc: 'Dudas sobre liquidación, contratos, etc.', icon: HelpCircle, color: 'text-purple-600 bg-purple-50 dark:bg-purple-900/20' },
-            { label: 'Actualización de datos', desc: 'Cambio de datos personales o bancarios', icon: RefreshCw, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20' },
-          ].map(({ label, desc, icon: Icon, color }) => (
+            { label: 'Certificado laboral', desc: 'Para bancos, alquileres, etc.', icon: FileCheck, color: 'text-brand-700 bg-blue-50 dark:bg-blue-900/20', tipo: 'certificado_laboral' as TicketTipo },
+            { label: 'Consultas generales', desc: 'Dudas sobre liquidación, contratos, etc.', icon: HelpCircle, color: 'text-purple-600 bg-purple-50 dark:bg-purple-900/20', tipo: 'consulta' as TicketTipo },
+            { label: 'Actualización de datos', desc: 'Cambio de datos personales o bancarios', icon: RefreshCw, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20', tipo: 'actualizacion_datos' as TicketTipo },
+          ].map(({ label, desc, icon: Icon, color, tipo }) => (
             <div
               key={label}
-              className="card-hover p-4 flex items-start gap-3"
-              onClick={() => setShowNuevo(true)}
+              className="card-hover p-4 flex items-start gap-3 cursor-pointer"
+              onClick={() => { setNewForm(f => ({ ...f, tipo })); setShowNuevo(true) }}
             >
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
                 <Icon className="w-5 h-5" />
@@ -83,9 +117,9 @@ export default function PortalRRHHPage() {
         </div>
       )}
 
-      {/* Stats row for admin */}
+      {/* Stats for admin */}
       {isAdmin && (
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { label: 'Abiertos', count: base.filter(t => t.estado === 'abierto').length, color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20', icon: Circle },
             { label: 'En proceso', count: base.filter(t => t.estado === 'en_proceso').length, color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20', icon: Clock },
@@ -94,7 +128,7 @@ export default function PortalRRHHPage() {
           ].map(({ label, count, color, icon: Icon }) => (
             <div key={label} className="card p-4 flex items-center gap-2.5">
               <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
-                <Icon className="w-4.5 h-4.5" />
+                <Icon className="w-4 h-4" />
               </div>
               <div>
                 <p className="text-xl font-bold text-slate-800 dark:text-slate-100">{count}</p>
@@ -107,7 +141,7 @@ export default function PortalRRHHPage() {
 
       {/* Filter */}
       <div className="flex gap-2 flex-wrap">
-        {['', 'abierto', 'en_proceso', 'resuelto', 'cerrado'].map(estado => (
+        {(['', 'abierto', 'en_proceso', 'resuelto', 'cerrado'] as const).map(estado => (
           <button
             key={estado}
             onClick={() => setEstadoFilter(estado)}
@@ -117,7 +151,7 @@ export default function PortalRRHHPage() {
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
             }`}
           >
-            {!estado ? 'Todos' : TICKET_ESTADO_LABEL[estado as keyof typeof TICKET_ESTADO_LABEL]}
+            {!estado ? 'Todos' : TICKET_ESTADO_LABEL[estado]}
           </button>
         ))}
       </div>
@@ -128,7 +162,9 @@ export default function PortalRRHHPage() {
           <HeadphonesIcon className="w-12 h-12 text-slate-300 mx-auto mb-3" />
           <p className="text-slate-500 font-medium">No hay pedidos registrados</p>
           {!isAdmin && (
-            <p className="text-slate-400 text-sm mt-1">Creá tu primer pedido a RRHH arriba.</p>
+            <button onClick={() => setShowNuevo(true)} className="btn-primary mt-3">
+              <Plus className="w-4 h-4" /> Crear primer pedido
+            </button>
           )}
         </div>
       ) : (
@@ -166,8 +202,8 @@ export default function PortalRRHHPage() {
                   <div className="border-t border-slate-100 dark:border-slate-800 p-4 space-y-4 bg-slate-50/50 dark:bg-slate-800/30 animate-fade-in">
                     {isAdmin && emp && (
                       <div className="flex items-center gap-2.5 p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800">
-                        <div className="w-8 h-8 rounded-full bg-brand-700 flex items-center justify-center text-white text-xs font-bold">
-                          {emp.nombre.charAt(0)}{emp.apellido.charAt(0)}
+                        <div className="w-8 h-8 rounded-full bg-brand-700 flex items-center justify-center text-white text-xs font-bold overflow-hidden">
+                          {emp.foto ? <img src={emp.foto} alt="" className="w-8 h-8 object-cover" /> : `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}`}
                         </div>
                         <div>
                           <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{emp.nombre} {emp.apellido}</p>
@@ -192,7 +228,7 @@ export default function PortalRRHHPage() {
                       </div>
                     )}
 
-                    {/* Admin response */}
+                    {/* Admin response form */}
                     {isAdmin && (ticket.estado === 'abierto' || ticket.estado === 'en_proceso') && (
                       <div className="space-y-2">
                         <label className="form-label">Responder al empleado</label>
@@ -204,12 +240,20 @@ export default function PortalRRHHPage() {
                           onChange={e => setRespuesta(prev => ({ ...prev, [ticket.id]: e.target.value }))}
                         />
                         <div className="flex gap-2">
-                          <select className="form-select w-auto text-sm">
-                            <option value="en_proceso">Marcar como En proceso</option>
-                            <option value="resuelto">Marcar como Resuelto</option>
+                          <select
+                            className="form-select w-auto text-sm"
+                            value={estadoResp[ticket.id] ?? 'en_proceso'}
+                            onChange={e => setEstadoResp(prev => ({ ...prev, [ticket.id]: e.target.value as TicketEstado }))}
+                          >
+                            <option value="en_proceso">Marcar En proceso</option>
+                            <option value="resuelto">Marcar Resuelto</option>
                             <option value="cerrado">Cerrar ticket</option>
                           </select>
-                          <button className="btn-primary">
+                          <button
+                            onClick={() => handleResponder(ticket.id)}
+                            disabled={!respuesta[ticket.id]?.trim()}
+                            className="btn-primary disabled:opacity-50"
+                          >
                             <Send className="w-4 h-4" /> Responder
                           </button>
                         </div>
@@ -232,16 +276,35 @@ export default function PortalRRHHPage() {
               <button onClick={() => setShowNuevo(false)}><X className="w-5 h-5 text-slate-400" /></button>
             </div>
             <div className="p-5 space-y-4">
+              {newError && (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-lg px-4 py-2.5 text-sm">
+                  {newError}
+                </div>
+              )}
               <div>
                 <label className="form-label">Tipo de pedido *</label>
-                <select className="form-select">
+                <select className="form-select" value={newForm.tipo} onChange={e => setNewForm(f => ({ ...f, tipo: e.target.value as TicketTipo }))}>
                   {TIPOS.map(t => <option key={t} value={t}>{TICKET_TIPO_LABEL[t]}</option>)}
                 </select>
               </div>
-              <div><label className="form-label">Asunto *</label><input className="form-input" placeholder="Ej: Necesito un certificado de trabajo" /></div>
+              <div>
+                <label className="form-label">Asunto *</label>
+                <input
+                  className="form-input"
+                  placeholder="Ej: Necesito un certificado de trabajo"
+                  value={newForm.asunto}
+                  onChange={e => setNewForm(f => ({ ...f, asunto: e.target.value }))}
+                />
+              </div>
               <div>
                 <label className="form-label">Descripción *</label>
-                <textarea className="form-input resize-none" rows={4} placeholder="Describí en detalle tu pedido o consulta. Cuanto más detalle, más rápida la respuesta..." />
+                <textarea
+                  className="form-input resize-none"
+                  rows={4}
+                  placeholder="Describí en detalle tu pedido o consulta. Cuanto más detalle, más rápida la respuesta..."
+                  value={newForm.descripcion}
+                  onChange={e => setNewForm(f => ({ ...f, descripcion: e.target.value }))}
+                />
               </div>
               <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl p-3">
                 <p className="text-xs text-brand-700 dark:text-brand-400 font-medium mb-0.5">Tiempo de respuesta estimado</p>
@@ -249,7 +312,9 @@ export default function PortalRRHHPage() {
               </div>
               <div className="flex gap-2 justify-end pt-2">
                 <button onClick={() => setShowNuevo(false)} className="btn-secondary">Cancelar</button>
-                <button className="btn-primary"><Send className="w-4 h-4" /> Enviar pedido</button>
+                <button onClick={handleNuevoTicket} className="btn-primary">
+                  <Send className="w-4 h-4" /> Enviar pedido
+                </button>
               </div>
             </div>
           </div>

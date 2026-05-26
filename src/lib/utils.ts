@@ -6,10 +6,22 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+/**
+ * Parsea una fecha "YYYY-MM-DD" como fecha LOCAL (evita bug de zona horaria UTC)
+ * Sin esto, new Date("1990-07-16") en Argentina (UTC-3) muestra el 15
+ */
+export function parseLocalDate(dateStr: string): Date {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
 export function formatFecha(fecha: string): string {
   if (!fecha) return '-'
-  const [year, month, day] = fecha.split('-')
-  return `${day}/${month}/${year}`
+  const d = parseLocalDate(fecha)
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const yyyy = d.getFullYear()
+  return `${dd}/${mm}/${yyyy}`
 }
 
 export function formatMes(mes: number, anio: number): string {
@@ -29,11 +41,12 @@ export function formatMonto(monto: number): string {
 }
 
 export function calcularAntiguedad(fechaIngreso: string): string {
-  const inicio = new Date(fechaIngreso)
+  const inicio = parseLocalDate(fechaIngreso)
   const hoy = new Date()
   const anios = hoy.getFullYear() - inicio.getFullYear()
   const meses = hoy.getMonth() - inicio.getMonth()
   const totalMeses = anios * 12 + meses
+  if (totalMeses < 1) return 'Menos de 1 mes'
   if (totalMeses < 12) return `${totalMeses} ${totalMeses === 1 ? 'mes' : 'meses'}`
   const a = Math.floor(totalMeses / 12)
   const m = totalMeses % 12
@@ -43,12 +56,18 @@ export function calcularAntiguedad(fechaIngreso: string): string {
 }
 
 export function calcularEdad(fechaNacimiento: string): number {
-  const nac = new Date(fechaNacimiento)
+  const nac = parseLocalDate(fechaNacimiento)
   const hoy = new Date()
   let edad = hoy.getFullYear() - nac.getFullYear()
   const m = hoy.getMonth() - nac.getMonth()
   if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) edad--
   return edad
+}
+
+export function getBirthdayThisYear(fechaNacimiento: string): Date {
+  const nac = parseLocalDate(fechaNacimiento)
+  const hoy = new Date()
+  return new Date(hoy.getFullYear(), nac.getMonth(), nac.getDate())
 }
 
 export const SOLICITUD_TIPO_LABEL: Record<SolicitudTipo, string> = {
@@ -128,6 +147,6 @@ export function getInitials(nombre: string, apellido: string): string {
   return `${nombre.charAt(0)}${apellido.charAt(0)}`.toUpperCase()
 }
 
-export function diasRestantesVacaciones(diasTotales: number, diasUsados: number): number {
-  return Math.max(0, diasTotales - diasUsados)
+export function uid(): string {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36)
 }

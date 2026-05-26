@@ -31,6 +31,19 @@ export interface User {
   empleadoId: string
 }
 
+export interface PendingRegistration {
+  id: string
+  nombre: string
+  apellido: string
+  dni: string
+  email: string
+  password: string
+  sector: string
+  cargo: string
+  telefono: string
+  fechaSolicitud: string
+}
+
 export interface Empleado {
   id: string
   nombre: string
@@ -40,6 +53,9 @@ export interface Empleado {
   email: string
   telefono: string
   direccion: string
+  foto: string
+  fotoCover: string
+  cuil: string
   contactoEmergencia: {
     nombre: string
     telefono: string
@@ -54,7 +70,8 @@ export interface Empleado {
   estado: EmpleadoEstado
   diasVacaciones: number
   diasVacacionesUsados: number
-  foto?: string
+  cbu?: string
+  banco?: string
 }
 
 export interface Recibo {
@@ -111,6 +128,15 @@ export interface Ticket {
   fechaCreacion: string
   fechaActualizacion: string
   respuesta?: string
+}
+
+export interface AppNotification {
+  id: string
+  texto: string
+  leida: boolean
+  fecha: string
+  tipo: 'solicitud' | 'novedad' | 'recibo' | 'ticket' | 'registro' | 'sistema'
+  empleadoId?: string
 }
 
 export interface AuthState {

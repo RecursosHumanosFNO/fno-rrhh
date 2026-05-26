@@ -1,0 +1,235 @@
+'use client'
+
+import {
+  Heart, Eye, Star, BookOpen, Leaf, Sparkles,
+  MapPin, GraduationCap, Trophy, Users,
+} from 'lucide-react'
+import Image from 'next/image'
+
+const VALORES = [
+  { icon: Heart, title: 'Compromiso', desc: 'Nos comprometemos con cada persona, familia y comunidad que acompañamos, poniendo el corazón en cada acción.' },
+  { icon: Users, title: 'Comunidad', desc: 'Creemos en la fuerza colectiva y en construir lazos sólidos que transformen la realidad de nuestro barrio y ciudad.' },
+  { icon: GraduationCap, title: 'Educación', desc: 'La educación es el motor de cambio. Apostamos por el aprendizaje como herramienta de inclusión y transformación social.' },
+  { icon: Leaf, title: 'Sustentabilidad', desc: 'Impulsamos prácticas sustentables que cuidan el ambiente y generan oportunidades productivas para nuestros jóvenes.' },
+  { icon: Trophy, title: 'Excelencia', desc: 'Buscamos la calidad en todo lo que hacemos, desde la gestión institucional hasta el acompañamiento diario a nuestros estudiantes.' },
+  { icon: Star, title: 'Inclusión', desc: 'Ninguna barrera debe impedir el acceso al conocimiento. Trabajamos para que todos tengan las mismas oportunidades.' },
+]
+
+const HITOS = [
+  {
+    year: '1996',
+    title: 'Los orígenes deportivos',
+    desc: 'La Fundación nace con foco en el deporte como herramienta de inclusión social para niños y jóvenes del barrio Neuquén Oeste.',
+    icon: Trophy,
+  },
+  {
+    year: '2004',
+    title: 'Colegio Neuquén Oeste',
+    desc: 'Se crea el Colegio Neuquén Oeste, ofreciendo educación secundaria de calidad con orientación social, dando respuesta a una comunidad con pocas opciones educativas.',
+    icon: BookOpen,
+  },
+  {
+    year: '2011',
+    title: 'Tecnicatura en Deporte Social',
+    desc: 'Se inaugura la Tecnicatura en Deporte Social, formando profesionales comprometidos con el deporte como práctica comunitaria y educativa.',
+    icon: GraduationCap,
+  },
+  {
+    year: '2017',
+    title: 'Centro de Preparación y Reinserción Educativa (CPREM)',
+    desc: 'Se pone en marcha el CPREM, un espacio de segunda oportunidad para adultos que no pudieron completar sus estudios, brindando educación nocturna y flexible.',
+    icon: Users,
+  },
+  {
+    year: '2021',
+    title: 'Proyecto de Hidroponía',
+    desc: 'Se lanza el proyecto de agricultura hidropónica, generando oportunidades laborales, formación técnica y alimentos para la comunidad de forma sustentable.',
+    icon: Leaf,
+  },
+  {
+    year: '2026',
+    title: 'Portal RRHH',
+    desc: 'Digitalización de la gestión de Recursos Humanos con el lanzamiento de esta plataforma interna, modernizando los procesos para más de 160 colaboradores.',
+    icon: Sparkles,
+  },
+]
+
+export default function FundacionPage() {
+  return (
+    <div className="page-container">
+      {/* Hero */}
+      <div className="relative rounded-2xl overflow-hidden bg-brand-700 dark:bg-brand-900 min-h-[220px] flex items-end">
+        <div
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-25"
+          style={{ backgroundImage: "url('/sede.jpg')" }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-brand-900/90 via-brand-800/60 to-transparent" />
+        <div className="relative z-10 p-8 flex items-end gap-5">
+          <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-white/30 bg-white flex items-center justify-center shrink-0 shadow-xl">
+            <Image
+              src="/logo.png"
+              alt="Logo FNO"
+              width={80}
+              height={80}
+              className="object-contain"
+              onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                const t = e.target as HTMLImageElement
+                t.style.display = 'none'
+              }}
+            />
+          </div>
+          <div>
+            <p className="text-blue-200 text-sm font-medium mb-1">Conocé nuestra historia</p>
+            <h1 className="text-3xl font-bold text-white leading-tight">Fundación Neuquén Oeste</h1>
+            <div className="flex items-center gap-1.5 mt-2 text-blue-200 text-sm">
+              <MapPin className="w-3.5 h-3.5" />
+              <span>Neuquén Capital, Patagonia Argentina</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Misión & Visión */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="card p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-900/30 flex items-center justify-center">
+              <Heart className="w-5 h-5 text-brand-700 dark:text-brand-400" />
+            </div>
+            <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Nuestra Misión</h2>
+          </div>
+          <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+            Somos una organización de la sociedad civil comprometida con el desarrollo integral de niños, jóvenes y adultos del oeste de la ciudad de Neuquén. Trabajamos desde la educación, el deporte y la cultura para generar oportunidades reales de inclusión, empleo y ciudadanía activa, apostando al crecimiento personal y colectivo de nuestra comunidad.
+          </p>
+        </div>
+
+        <div className="card p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center">
+              <Eye className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+            </div>
+            <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Nuestra Visión</h2>
+          </div>
+          <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+            Ser referentes en la Patagonia en educación con impacto social, construyendo una comunidad donde cada persona tenga acceso a herramientas que le permitan transformar su vida y la de quienes la rodean. Soñamos con un territorio más justo, más educado y más sustentable, donde el origen no determine el destino.
+          </p>
+        </div>
+      </div>
+
+      {/* Valores */}
+      <div className="card p-6">
+        <div className="mb-6">
+          <h2 className="section-title text-lg">Nuestros Valores</h2>
+          <p className="section-subtitle">Los principios que guían cada uno de nuestros pasos</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {VALORES.map(({ icon: Icon, title, desc }) => (
+            <div key={title} className="rounded-xl border border-slate-100 dark:border-slate-800 p-4 hover:border-brand-200 dark:hover:border-brand-700 transition-colors group">
+              <div className="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-900/30 flex items-center justify-center mb-3 group-hover:bg-brand-100 dark:group-hover:bg-brand-900/50 transition-colors">
+                <Icon className="w-5 h-5 text-brand-700 dark:text-brand-400" />
+              </div>
+              <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-1.5">{title}</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Historia — timeline */}
+      <div className="card p-6">
+        <div className="mb-6">
+          <h2 className="section-title text-lg">Nuestra Historia</h2>
+          <p className="section-subtitle">Tres décadas de trabajo, crecimiento y transformación comunitaria</p>
+        </div>
+        <div className="relative">
+          {/* Vertical line */}
+          <div className="absolute left-[19px] top-2 bottom-2 w-0.5 bg-slate-200 dark:bg-slate-700 hidden sm:block" />
+          <div className="space-y-6">
+            {HITOS.map(({ year, title, desc, icon: Icon }, i) => (
+              <div key={year} className="flex gap-4 sm:gap-6 items-start">
+                {/* Circle */}
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 relative z-10 ${
+                  i === HITOS.length - 1
+                    ? 'bg-brand-700 dark:bg-brand-600 text-white'
+                    : 'bg-white dark:bg-slate-900 border-2 border-brand-300 dark:border-brand-600 text-brand-700 dark:text-brand-400'
+                }`}>
+                  <Icon className="w-4 h-4" />
+                </div>
+                <div className="flex-1 pb-2">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                      i === HITOS.length - 1
+                        ? 'bg-brand-700 text-white dark:bg-brand-600'
+                        : 'bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-400'
+                    }`}>
+                      {year}
+                    </span>
+                    <h3 className="font-bold text-slate-800 dark:text-slate-100">{title}</h3>
+                  </div>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Zona Restaurativa */}
+      <div className="card p-6 border-l-4 border-emerald-400 dark:border-emerald-500">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
+            <Heart className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">Zona Restaurativa</h2>
+            <p className="text-slate-600 dark:text-slate-400 leading-relaxed mb-3">
+              La Zona Restaurativa es un espacio institucional de escucha, contención y reparación de vínculos dentro de nuestra comunidad educativa. Inspirada en la justicia restaurativa, busca resolver conflictos desde el diálogo, la empatía y la responsabilidad compartida, en lugar de la punición.
+            </p>
+            <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+              En este espacio, estudiantes, docentes y familias pueden participar de círculos de conversación, mediaciones y procesos de acompañamiento que fortalecen el tejido comunitario y promueven una cultura de paz y respeto mutuo. Es uno de los pilares que distingue nuestra propuesta educativa a nivel regional.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Nuestro Sueño */}
+      <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-brand-700 to-brand-900 p-8">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/4" />
+        <div className="relative z-10 max-w-2xl">
+          <div className="flex items-center gap-2 mb-3">
+            <Sparkles className="w-5 h-5 text-yellow-300" />
+            <h2 className="text-lg font-bold text-white">Nuestro Sueño</h2>
+          </div>
+          <p className="text-blue-100 leading-relaxed mb-4 text-lg font-light italic">
+            "Soñamos con un barrio donde ningún chico deje la escuela, donde cada joven encuentre en la Fundación una oportunidad real de futuro, y donde nuestra comunidad sea un ejemplo de cómo la educación transforma vidas."
+          </p>
+          <p className="text-blue-200 leading-relaxed text-sm">
+            Ese sueño nos moviliza cada día: ampliar nuestras instalaciones, llegar a más familias, consolidar nuestros proyectos productivos y ser el puente entre el barrio y un mundo lleno de posibilidades. Con el compromiso de nuestro equipo de más de 160 personas, sabemos que es posible.
+          </p>
+          <div className="flex items-center gap-4 mt-6 pt-5 border-t border-white/20">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-white">+160</p>
+              <p className="text-blue-200 text-xs">Colaboradores</p>
+            </div>
+            <div className="w-px h-10 bg-white/20" />
+            <div className="text-center">
+              <p className="text-2xl font-bold text-white">+30</p>
+              <p className="text-blue-200 text-xs">Años de historia</p>
+            </div>
+            <div className="w-px h-10 bg-white/20" />
+            <div className="text-center">
+              <p className="text-2xl font-bold text-white">+500</p>
+              <p className="text-blue-200 text-xs">Estudiantes anuales</p>
+            </div>
+            <div className="w-px h-10 bg-white/20" />
+            <div className="text-center">
+              <p className="text-2xl font-bold text-white">6</p>
+              <p className="text-blue-200 text-xs">Programas activos</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

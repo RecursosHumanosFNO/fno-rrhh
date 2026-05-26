@@ -1,23 +1,22 @@
 'use client'
 
 import { useAuth } from '@/contexts/AuthContext'
-import {
-  empleados, solicitudes, novedades, recibos, eventos,
-} from '@/lib/mockData'
+import { useData } from '@/contexts/DataContext'
+import { eventos } from '@/lib/mockData'
 import {
   SOLICITUD_ESTADO_COLOR, SOLICITUD_ESTADO_LABEL, SOLICITUD_TIPO_LABEL,
   NOVEDAD_CATEGORIA_COLOR, NOVEDAD_CATEGORIA_LABEL, formatFecha, formatMes,
-  diasRestantesVacaciones,
+  getBirthdayThisYear,
 } from '@/lib/utils'
 import {
   Users, ClipboardList, CalendarCheck, TrendingUp, AlertTriangle,
   CheckCircle2, XCircle, Clock, Download, PartyPopper, Bell,
-  ArrowRight, FileText, HeadphonesIcon, Plus,
+  ArrowRight, FileText, HeadphonesIcon, Plus, UserPlus,
 } from 'lucide-react'
 import Link from 'next/link'
 
 export default function DashboardPage() {
-  const { user, empleado } = useAuth()
+  const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
 
   const hoy = new Date()
@@ -47,20 +46,22 @@ function StatCard({ icon: Icon, label, value, sub, color }: {
 }
 
 function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string }) {
+  const { empleados, solicitudes, novedades, pendingRegistrations, approvePendingRegistration, rejectPendingRegistration } = useData()
+
   const pendientes = solicitudes.filter(s => s.estado === 'pendiente')
   const activos = empleados.filter(e => e.estado === 'activo').length
   const enLicencia = empleados.filter(e => e.estado === 'licencia' || e.estado === 'vacaciones').length
+  const sectoresActivos = new Set(empleados.map(e => e.sector).filter(Boolean)).size
 
-  const proximosCumples = eventos.filter(e => {
-    if (e.tipo !== 'cumpleanos') return false
-    const emp = empleados.find(em => em.id === e.empleadoId)
-    if (!emp) return false
-    const nac = new Date(emp.fechaNacimiento)
-    const hoy = new Date()
-    const proximo = new Date(hoy.getFullYear(), nac.getMonth(), nac.getDate())
-    if (proximo < hoy) proximo.setFullYear(hoy.getFullYear() + 1)
-    return (proximo.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24) <= 30
-  })
+  const hoy = new Date()
+  const proximosCumples = empleados
+    .filter(emp => emp.fechaNacimiento)
+    .map(emp => ({ emp, cumple: getBirthdayThisYear(emp.fechaNacimiento) }))
+    .filter(({ cumple }) => {
+      const diff = (cumple.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24)
+      return diff >= 0 && diff <= 30
+    })
+    .sort((a, b) => a.cumple.getTime() - b.cumple.getTime())
 
   return (
     <div className="page-container">
@@ -87,6 +88,54 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
         </div>
       </div>
 
+      {/* Pending Registrations Alert */}
+      {pendingRegistrations.length > 0 && (
+        <div className="card border-l-4 border-amber-500 p-4">
+          <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="w-10 h-10 bg-amber-50 dark:bg-amber-900/20 rounded-xl flex items-center justify-center shrink-0">
+                <UserPlus className="w-5 h-5 text-amber-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="font-semibold text-slate-800 dark:text-slate-100">
+                  {pendingRegistrations.length} solicitud{pendingRegistrations.length > 1 ? 'es' : ''} de acceso pendiente{pendingRegistrations.length > 1 ? 's' : ''}
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                  {pendingRegistrations.slice(0, 2).map(r => `${r.nombre} ${r.apellido}`).join(', ')}
+                  {pendingRegistrations.length > 2 ? ` y ${pendingRegistrations.length - 2} más` : ''}
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {pendingRegistrations.slice(0, 3).map(reg => (
+                <div key={reg.id} className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 rounded-lg px-2.5 py-1.5 border border-slate-200 dark:border-slate-700">
+                  <span className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate max-w-[120px]">
+                    {reg.nombre} {reg.apellido}
+                  </span>
+                  <button
+                    onClick={() => approvePendingRegistration(reg.id)}
+                    className="text-emerald-600 hover:text-emerald-700 p-0.5 shrink-0" title="Aprobar"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => rejectPendingRegistration(reg.id)}
+                    className="text-red-500 hover:text-red-600 p-0.5 shrink-0" title="Rechazar"
+                  >
+                    <XCircle className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              {pendingRegistrations.length > 0 && (
+                <Link href="/dashboard/empleados" className="text-xs text-brand-600 dark:text-brand-400 hover:underline self-center">
+                  Ver todos →
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard icon={Users} label="Total empleados" value={empleados.length}
@@ -95,7 +144,7 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
           sub="Requieren revisión" color="bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400" />
         <StatCard icon={CalendarCheck} label="Fuera de oficina" value={enLicencia}
           sub="Licencia o vacaciones" color="bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400" />
-        <StatCard icon={TrendingUp} label="Sectores activos" value={6}
+        <StatCard icon={TrendingUp} label="Sectores activos" value={sectoresActivos}
           sub="Unidades de trabajo" color="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400" />
       </div>
 
@@ -121,8 +170,11 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
               const emp = empleados.find(e => e.id === sol.empleadoId)
               return (
                 <div key={sol.id} className="p-4 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                  <div className="w-9 h-9 rounded-full bg-brand-700 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                    {emp ? `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}` : '?'}
+                  <div className="w-9 h-9 rounded-full bg-brand-700 flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden">
+                    {emp?.foto
+                      ? <img src={emp.foto} alt="" className="w-9 h-9 object-cover" />
+                      : emp ? `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}` : '?'
+                    }
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">
@@ -149,31 +201,32 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
 
         {/* Aside column */}
         <div className="space-y-6">
-          {/* Cumpleaños */}
+          {/* Próximos cumpleaños */}
           <div className="card p-5">
             <div className="flex items-center gap-2 mb-4">
-              <PartyPopper className="w-4.5 h-4.5 text-pink-500" />
+              <PartyPopper className="w-4 h-4 text-pink-500" />
               <p className="section-title text-base">Próximos cumpleaños</p>
             </div>
             {proximosCumples.length === 0 ? (
-              <p className="text-slate-400 text-sm text-center py-2">Sin cumpleaños este mes</p>
+              <p className="text-slate-400 text-sm text-center py-2">Sin cumpleaños en los próximos 30 días</p>
             ) : (
               <div className="space-y-3">
-                {proximosCumples.map(ev => {
-                  const emp = empleados.find(e => e.id === ev.empleadoId)
-                  if (!emp) return null
-                  return (
-                    <div key={ev.id} className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center text-pink-600 dark:text-pink-400 text-xs font-bold shrink-0">
-                        {emp.nombre.charAt(0)}{emp.apellido.charAt(0)}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{emp.nombre} {emp.apellido}</p>
-                        <p className="text-xs text-slate-400">{emp.fechaNacimiento.slice(5).split('-').reverse().join('/')}</p>
-                      </div>
+                {proximosCumples.slice(0, 5).map(({ emp, cumple }) => (
+                  <div key={emp.id} className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center text-pink-600 dark:text-pink-400 text-xs font-bold shrink-0 overflow-hidden">
+                      {emp.foto
+                        ? <img src={emp.foto} alt="" className="w-8 h-8 object-cover" />
+                        : `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}`
+                      }
                     </div>
-                  )
-                })}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{emp.nombre} {emp.apellido}</p>
+                      <p className="text-xs text-slate-400">
+                        {cumple.getDate()}/{cumple.toLocaleDateString('es-AR', { month: 'short' })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -191,7 +244,7 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
                 <Link
                   key={href}
                   href={href}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl hover:shadow-card transition-all group border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl hover:shadow-card transition-all border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
                 >
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${color}`}>
                     <Icon className="w-5 h-5" />
@@ -213,7 +266,12 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
           </Link>
         </div>
         <div className="divide-y divide-slate-100 dark:divide-slate-800">
-          {novedades.slice(0, 3).map(n => (
+          {novedades.length === 0 ? (
+            <div className="p-8 text-center">
+              <Bell className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+              <p className="text-slate-500 dark:text-slate-400 text-sm">Sin novedades publicadas aún</p>
+            </div>
+          ) : novedades.slice(0, 3).map(n => (
             <div key={n.id} className="p-4 flex items-start gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
               {n.importante && <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />}
               <div className="flex-1 min-w-0">
@@ -236,15 +294,16 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
 
 function EmployeeDashboard({ saludo, fechaStr, empleadoId }: { saludo: string, fechaStr: string, empleadoId: string }) {
   const { empleado } = useAuth()
+  const { solicitudes, recibos, novedades } = useData()
+
   const misSolicitudes = solicitudes.filter(s => s.empleadoId === empleadoId)
   const misPendientes = misSolicitudes.filter(s => s.estado === 'pendiente')
   const misRecibos = recibos.filter(r => r.empleadoId === empleadoId).sort((a, b) => b.anio - a.anio || b.mes - a.mes)
   const ultimoRecibo = misRecibos[0]
-  const diasRestantes = empleado ? diasRestantesVacaciones(empleado.diasVacaciones, empleado.diasVacacionesUsados) : 0
 
   return (
     <div className="page-container">
-      {/* Welcome */}
+      {/* Welcome banner */}
       <div className="bg-gradient-to-r from-brand-700 to-brand-500 rounded-2xl p-6 text-white">
         <p className="text-blue-200 text-sm font-medium capitalize">{fechaStr}</p>
         <h1 className="text-2xl font-bold mt-1">
@@ -254,13 +313,11 @@ function EmployeeDashboard({ saludo, fechaStr, empleadoId }: { saludo: string, f
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard icon={CalendarCheck} label="Días de vacaciones" value={diasRestantes}
-          sub={`de ${empleado?.diasVacaciones} disponibles`} color="bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <StatCard icon={ClipboardList} label="Solicitudes pendientes" value={misPendientes.length}
           sub="En espera de resolución" color="bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400" />
         <StatCard icon={FileText} label="Último recibo" value={ultimoRecibo ? formatMes(ultimoRecibo.mes, ultimoRecibo.anio) : 'N/A'}
-          sub={ultimoRecibo ? `Subido el ${formatFecha(ultimoRecibo.fechaSubida)}` : 'Sin recibos'} color="bg-blue-50 dark:bg-blue-900/20 text-brand-700 dark:text-brand-400" />
+          sub={ultimoRecibo ? `Subido el ${formatFecha(ultimoRecibo.fechaSubida)}` : 'Sin recibos disponibles'} color="bg-blue-50 dark:bg-blue-900/20 text-brand-700 dark:text-brand-400" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -277,6 +334,9 @@ function EmployeeDashboard({ saludo, fechaStr, empleadoId }: { saludo: string, f
               <div className="p-8 text-center">
                 <ClipboardList className="w-10 h-10 text-slate-300 mx-auto mb-2" />
                 <p className="text-slate-500 text-sm">No tenés solicitudes aún.</p>
+                <Link href="/dashboard/solicitudes" className="btn-primary mt-3 inline-flex">
+                  <Plus className="w-4 h-4" /> Nueva solicitud
+                </Link>
               </div>
             ) : misSolicitudes.slice(0, 4).map(sol => (
               <div key={sol.id} className="p-4 flex items-center gap-3">
@@ -320,21 +380,21 @@ function EmployeeDashboard({ saludo, fechaStr, empleadoId }: { saludo: string, f
             </div>
           </div>
 
-          {/* Mis recibos */}
+          {/* Últimos recibos */}
           <div className="card p-5">
             <p className="section-title text-base mb-3">Últimos Recibos</p>
             <div className="space-y-2">
-              {misRecibos.slice(0, 3).map(r => (
-                <div key={r.id} className="flex items-center justify-between py-1.5">
-                  <span className="text-sm text-slate-600 dark:text-slate-400">{formatMes(r.mes, r.anio)}</span>
-                  <button className="flex items-center gap-1 text-brand-600 dark:text-brand-400 text-xs font-medium hover:underline">
-                    <Download className="w-3.5 h-3.5" /> Descargar
-                  </button>
-                </div>
-              ))}
-              {misRecibos.length === 0 && (
-                <p className="text-slate-400 text-sm text-center py-2">Sin recibos disponibles</p>
-              )}
+              {misRecibos.length === 0
+                ? <p className="text-slate-400 text-sm text-center py-2">Sin recibos disponibles</p>
+                : misRecibos.slice(0, 3).map(r => (
+                  <div key={r.id} className="flex items-center justify-between py-1.5">
+                    <span className="text-sm text-slate-600 dark:text-slate-400">{formatMes(r.mes, r.anio)}</span>
+                    <button className="flex items-center gap-1 text-brand-600 dark:text-brand-400 text-xs font-medium hover:underline">
+                      <Download className="w-3.5 h-3.5" /> Descargar
+                    </button>
+                  </div>
+                ))
+              }
             </div>
           </div>
         </div>
@@ -349,7 +409,12 @@ function EmployeeDashboard({ saludo, fechaStr, empleadoId }: { saludo: string, f
           </Link>
         </div>
         <div className="divide-y divide-slate-100 dark:divide-slate-800">
-          {novedades.slice(0, 3).map(n => (
+          {novedades.length === 0 ? (
+            <div className="p-8 text-center">
+              <Bell className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+              <p className="text-slate-500 dark:text-slate-400 text-sm">Sin novedades</p>
+            </div>
+          ) : novedades.slice(0, 3).map(n => (
             <div key={n.id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
               <div className="flex items-start gap-2">
                 {n.importante && <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />}

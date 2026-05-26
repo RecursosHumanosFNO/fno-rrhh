@@ -1,36 +1,55 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { formatFecha, calcularAntiguedad, calcularEdad, diasRestantesVacaciones } from '@/lib/utils'
+import { useData } from '@/contexts/DataContext'
+import { formatFecha, calcularAntiguedad, calcularEdad } from '@/lib/utils'
 import {
-  User, Edit2, Save, X, Lock, Bell, Shield, Calendar, Building2,
-  Phone, MapPin, Mail, Clock, CheckCircle2, Eye, EyeOff,
+  User, Edit2, Save, X, Lock, Building2, Phone, Mail,
+  Clock, CheckCircle2, Eye, EyeOff, Camera, Image as ImageIcon,
+  Shield, AlertCircle,
 } from 'lucide-react'
 
 export default function PerfilPage() {
-  const { empleado, updateEmpleado } = useAuth()
+  const { empleado, user, updateEmpleado } = useAuth()
+  const { users, updateUserPassword } = useData()
   const [editMode, setEditMode] = useState(false)
   const [editPass, setEditPass] = useState(false)
   const [showOld, setShowOld] = useState(false)
   const [showNew, setShowNew] = useState(false)
+  const [passMsg, setPassMsg] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null)
 
   const [form, setForm] = useState({
+    nombre: empleado?.nombre ?? '',
+    apellido: empleado?.apellido ?? '',
+    dni: empleado?.dni ?? '',
+    cuil: empleado?.cuil ?? '',
+    fechaNacimiento: empleado?.fechaNacimiento ?? '',
     telefono: empleado?.telefono ?? '',
     direccion: empleado?.direccion ?? '',
     contactoNombre: empleado?.contactoEmergencia.nombre ?? '',
     contactoTelefono: empleado?.contactoEmergencia.telefono ?? '',
     contactoRelacion: empleado?.contactoEmergencia.relacion ?? '',
+    cbu: empleado?.cbu ?? '',
+    banco: empleado?.banco ?? '',
   })
 
-  if (!empleado) return null
+  const [passForm, setPassForm] = useState({ old: '', nueva: '', confirm: '' })
+  const fotoRef = useRef<HTMLInputElement>(null)
+  const coverRef = useRef<HTMLInputElement>(null)
 
-  const diasRestantes = diasRestantesVacaciones(empleado.diasVacaciones, empleado.diasVacacionesUsados)
-  const edad = calcularEdad(empleado.fechaNacimiento)
+  if (!empleado || !user) return null
+
+  const edad = empleado.fechaNacimiento ? calcularEdad(empleado.fechaNacimiento) : null
   const antiguedad = calcularAntiguedad(empleado.fechaIngreso)
 
   function handleSave() {
     updateEmpleado({
+      nombre: form.nombre,
+      apellido: form.apellido,
+      dni: form.dni,
+      cuil: form.cuil,
+      fechaNacimiento: form.fechaNacimiento,
       telefono: form.telefono,
       direccion: form.direccion,
       contactoEmergencia: {
@@ -38,13 +57,62 @@ export default function PerfilPage() {
         telefono: form.contactoTelefono,
         relacion: form.contactoRelacion,
       },
+      cbu: form.cbu,
+      banco: form.banco,
     })
     setEditMode(false)
   }
 
+  function handleCancel() {
+    setForm({
+      nombre: empleado!.nombre,
+      apellido: empleado!.apellido,
+      dni: empleado!.dni,
+      cuil: empleado!.cuil ?? '',
+      fechaNacimiento: empleado!.fechaNacimiento,
+      telefono: empleado!.telefono,
+      direccion: empleado!.direccion,
+      contactoNombre: empleado!.contactoEmergencia.nombre,
+      contactoTelefono: empleado!.contactoEmergencia.telefono,
+      contactoRelacion: empleado!.contactoEmergencia.relacion,
+      cbu: empleado!.cbu ?? '',
+      banco: empleado!.banco ?? '',
+    })
+    setEditMode(false)
+  }
+
+  function handlePhotoUpload(file: File, field: 'foto' | 'fotoCover') {
+    const reader = new FileReader()
+    reader.onload = e => {
+      const base64 = e.target?.result as string
+      updateEmpleado({ [field]: base64 })
+    }
+    reader.readAsDataURL(file)
+  }
+
+  function handlePasswordChange() {
+    const userRecord = users.find(u => u.id === user!.id)
+    if (!userRecord) return
+    if (passForm.old !== userRecord.password) {
+      setPassMsg({ type: 'err', msg: 'La contraseña actual es incorrecta.' })
+      return
+    }
+    if (passForm.nueva.length < 6) {
+      setPassMsg({ type: 'err', msg: 'La nueva contraseña debe tener al menos 6 caracteres.' })
+      return
+    }
+    if (passForm.nueva !== passForm.confirm) {
+      setPassMsg({ type: 'err', msg: 'Las contraseñas nuevas no coinciden.' })
+      return
+    }
+    updateUserPassword(user!.id, passForm.nueva)
+    setPassMsg({ type: 'ok', msg: 'Contraseña actualizada correctamente.' })
+    setPassForm({ old: '', nueva: '', confirm: '' })
+    setTimeout(() => { setPassMsg(null); setEditPass(false) }, 2500)
+  }
+
   return (
     <div className="page-container max-w-4xl">
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Mi Perfil</h1>
         <p className="text-slate-500 dark:text-slate-400 text-sm mt-0.5">Tu información personal y laboral</p>
@@ -52,37 +120,78 @@ export default function PerfilPage() {
 
       {/* Profile card */}
       <div className="card overflow-hidden">
-        <div className="h-28 bg-gradient-to-r from-brand-700 to-brand-500" />
+        {/* Cover photo */}
+        <div className="relative h-32 bg-gradient-to-r from-brand-700 to-brand-500 overflow-hidden group cursor-pointer" onClick={() => coverRef.current?.click()}>
+          {empleado.fotoCover && (
+            <img src={empleado.fotoCover} alt="" className="w-full h-full object-cover absolute inset-0" />
+          )}
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+            <div className="bg-white/90 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-700 flex items-center gap-1.5">
+              <ImageIcon className="w-3.5 h-3.5" /> Cambiar portada
+            </div>
+          </div>
+          <input
+            ref={coverRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={e => e.target.files?.[0] && handlePhotoUpload(e.target.files[0], 'fotoCover')}
+          />
+        </div>
+
         <div className="px-6 pb-6">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-12">
             <div className="flex items-end gap-4">
-              <div className="w-24 h-24 rounded-2xl bg-brand-700 border-4 border-white dark:border-slate-900 flex items-center justify-center text-white text-3xl font-bold shadow-xl">
-                {empleado.nombre.charAt(0)}{empleado.apellido.charAt(0)}
+              {/* Profile photo */}
+              <div className="relative group cursor-pointer" onClick={() => fotoRef.current?.click()}>
+                <div className="w-24 h-24 rounded-2xl border-4 border-white dark:border-slate-900 shadow-xl overflow-hidden bg-brand-700">
+                  {empleado.foto
+                    ? <img src={empleado.foto} alt="" className="w-full h-full object-cover" />
+                    : <div className="w-full h-full flex items-center justify-center text-white text-3xl font-bold">
+                        {empleado.nombre.charAt(0)}{empleado.apellido.charAt(0)}
+                      </div>
+                  }
+                </div>
+                <div className="absolute inset-0 rounded-2xl flex items-center justify-center bg-black/0 group-hover:bg-black/30 transition-colors">
+                  <Camera className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+                <input
+                  ref={fotoRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={e => e.target.files?.[0] && handlePhotoUpload(e.target.files[0], 'foto')}
+                />
               </div>
+
               <div className="mb-2">
                 <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">{empleado.nombre} {empleado.apellido}</h2>
                 <p className="text-slate-500 dark:text-slate-400">{empleado.cargo}</p>
                 <p className="text-sm text-slate-400 dark:text-slate-500">{empleado.sector}</p>
               </div>
             </div>
+
             {!editMode ? (
               <button onClick={() => setEditMode(true)} className="btn-secondary mb-2">
                 <Edit2 className="w-4 h-4" /> Editar datos
               </button>
             ) : (
               <div className="flex gap-2 mb-2">
-                <button onClick={() => setEditMode(false)} className="btn-secondary"><X className="w-4 h-4" /> Cancelar</button>
-                <button onClick={handleSave} className="btn-primary"><Save className="w-4 h-4" /> Guardar</button>
+                <button onClick={handleCancel} className="btn-secondary">
+                  <X className="w-4 h-4" /> Cancelar
+                </button>
+                <button onClick={handleSave} className="btn-primary">
+                  <Save className="w-4 h-4" /> Guardar
+                </button>
               </div>
             )}
           </div>
 
           {/* Stats row */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-5">
             {[
               { label: 'Antigüedad', value: antiguedad, icon: Clock },
-              { label: 'Vacaciones disponibles', value: `${diasRestantes} días`, icon: Calendar },
-              { label: 'Edad', value: `${edad} años`, icon: User },
+              { label: 'Edad', value: edad ? `${edad} años` : '—', icon: User },
               { label: 'Jornada', value: empleado.jornada, icon: Shield },
             ].map(({ label, value, icon: Icon }) => (
               <div key={label} className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3">
@@ -102,47 +211,46 @@ export default function PerfilPage() {
         <div className="card p-5">
           <p className="section-title mb-4 flex items-center gap-2"><User className="w-4 h-4" /> Datos Personales</p>
           <div className="space-y-3">
-            {[
-              { label: 'Nombre completo', value: `${empleado.nombre} ${empleado.apellido}`, editable: false, icon: User },
-              { label: 'DNI', value: empleado.dni, editable: false, icon: Shield },
-              { label: 'Fecha de nacimiento', value: `${formatFecha(empleado.fechaNacimiento)} (${edad} años)`, editable: false, icon: Calendar },
-              { label: 'Email', value: empleado.email, editable: false, icon: Mail },
-            ].map(({ label, value, editable, icon: Icon }) => (
-              <div key={label} className="flex items-start gap-3 py-2 border-b border-slate-100 dark:border-slate-800 last:border-0">
-                <Icon className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
-                <div className="flex-1">
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">{label}</p>
-                  {editable && editMode ? (
-                    <input className="form-input text-sm" defaultValue={value} />
-                  ) : (
-                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{value}</p>
-                  )}
-                </div>
-              </div>
-            ))}
-            {/* Editable fields */}
-            <div className="flex items-start gap-3 py-2 border-b border-slate-100 dark:border-slate-800">
-              <Phone className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
-              <div className="flex-1">
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Teléfono</p>
-                {editMode ? (
-                  <input className="form-input text-sm" value={form.telefono} onChange={e => setForm(f => ({ ...f, telefono: e.target.value }))} />
-                ) : (
-                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.telefono}</p>
-                )}
-              </div>
-            </div>
-            <div className="flex items-start gap-3 py-2">
-              <MapPin className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
-              <div className="flex-1">
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Dirección</p>
-                {editMode ? (
-                  <input className="form-input text-sm" value={form.direccion} onChange={e => setForm(f => ({ ...f, direccion: e.target.value }))} />
-                ) : (
-                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.direccion}</p>
-                )}
-              </div>
-            </div>
+            <Field label="Nombre">
+              {editMode
+                ? <input className="form-input text-sm" value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} />
+                : <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.nombre}</span>}
+            </Field>
+            <Field label="Apellido">
+              {editMode
+                ? <input className="form-input text-sm" value={form.apellido} onChange={e => setForm(f => ({ ...f, apellido: e.target.value }))} />
+                : <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.apellido}</span>}
+            </Field>
+            <Field label="DNI">
+              {editMode
+                ? <input className="form-input text-sm" value={form.dni} onChange={e => setForm(f => ({ ...f, dni: e.target.value }))} />
+                : <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.dni || '—'}</span>}
+            </Field>
+            <Field label="CUIL">
+              {editMode
+                ? <input className="form-input text-sm" value={form.cuil} onChange={e => setForm(f => ({ ...f, cuil: e.target.value }))} placeholder="20-XXXXXXXX-X" />
+                : <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.cuil || '—'}</span>}
+            </Field>
+            <Field label="Fecha de nacimiento">
+              {editMode
+                ? <input className="form-input text-sm" type="date" value={form.fechaNacimiento} onChange={e => setForm(f => ({ ...f, fechaNacimiento: e.target.value }))} />
+                : <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    {empleado.fechaNacimiento ? `${formatFecha(empleado.fechaNacimiento)}${edad ? ` (${edad} años)` : ''}` : '—'}
+                  </span>}
+            </Field>
+            <Field label="Email" icon={<Mail className="w-3.5 h-3.5 text-slate-400" />}>
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.email}</span>
+            </Field>
+            <Field label="Teléfono">
+              {editMode
+                ? <input className="form-input text-sm" value={form.telefono} onChange={e => setForm(f => ({ ...f, telefono: e.target.value }))} />
+                : <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.telefono || '—'}</span>}
+            </Field>
+            <Field label="Dirección">
+              {editMode
+                ? <input className="form-input text-sm" value={form.direccion} onChange={e => setForm(f => ({ ...f, direccion: e.target.value }))} />
+                : <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.direccion || '—'}</span>}
+            </Field>
           </div>
         </div>
 
@@ -156,7 +264,7 @@ export default function PerfilPage() {
                 { label: 'Cargo', value: empleado.cargo },
                 { label: 'Fecha de ingreso', value: formatFecha(empleado.fechaIngreso) },
                 { label: 'Tipo de contrato', value: empleado.tipoContrato },
-                { label: 'Supervisor/a', value: empleado.supervisor },
+                { label: 'Supervisor/a', value: empleado.supervisor || '—' },
               ].map(({ label, value }) => (
                 <div key={label} className="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-800 last:border-0">
                   <span className="text-xs text-slate-500 dark:text-slate-400">{label}</span>
@@ -166,34 +274,42 @@ export default function PerfilPage() {
             </div>
           </div>
 
+          {/* Datos bancarios */}
+          <div className="card p-5">
+            <p className="section-title mb-4 flex items-center gap-2"><Shield className="w-4 h-4" /> Datos Bancarios</p>
+            <div className="space-y-3">
+              <Field label="CBU">
+                {editMode
+                  ? <input className="form-input text-sm" value={form.cbu} onChange={e => setForm(f => ({ ...f, cbu: e.target.value }))} placeholder="Número de CBU" />
+                  : <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.cbu || '—'}</span>}
+              </Field>
+              <Field label="Banco">
+                {editMode
+                  ? <input className="form-input text-sm" value={form.banco} onChange={e => setForm(f => ({ ...f, banco: e.target.value }))} placeholder="Ej: Banco Provincia" />
+                  : <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.banco || '—'}</span>}
+              </Field>
+            </div>
+          </div>
+
           {/* Contacto emergencia */}
           <div className="card p-5">
             <p className="section-title mb-4 flex items-center gap-2"><Phone className="w-4 h-4" /> Contacto de Emergencia</p>
-            <div className="space-y-2.5">
-              <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Nombre</p>
-                {editMode ? (
-                  <input className="form-input text-sm" value={form.contactoNombre} onChange={e => setForm(f => ({ ...f, contactoNombre: e.target.value }))} />
-                ) : (
-                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.contactoEmergencia.nombre}</p>
-                )}
-              </div>
-              <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Teléfono</p>
-                {editMode ? (
-                  <input className="form-input text-sm" value={form.contactoTelefono} onChange={e => setForm(f => ({ ...f, contactoTelefono: e.target.value }))} />
-                ) : (
-                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.contactoEmergencia.telefono}</p>
-                )}
-              </div>
-              <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Relación</p>
-                {editMode ? (
-                  <input className="form-input text-sm" value={form.contactoRelacion} onChange={e => setForm(f => ({ ...f, contactoRelacion: e.target.value }))} />
-                ) : (
-                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.contactoEmergencia.relacion}</p>
-                )}
-              </div>
+            <div className="space-y-3">
+              <Field label="Nombre">
+                {editMode
+                  ? <input className="form-input text-sm" value={form.contactoNombre} onChange={e => setForm(f => ({ ...f, contactoNombre: e.target.value }))} />
+                  : <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.contactoEmergencia.nombre || '—'}</span>}
+              </Field>
+              <Field label="Teléfono">
+                {editMode
+                  ? <input className="form-input text-sm" value={form.contactoTelefono} onChange={e => setForm(f => ({ ...f, contactoTelefono: e.target.value }))} />
+                  : <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.contactoEmergencia.telefono || '—'}</span>}
+              </Field>
+              <Field label="Relación">
+                {editMode
+                  ? <input className="form-input text-sm" value={form.contactoRelacion} onChange={e => setForm(f => ({ ...f, contactoRelacion: e.target.value }))} />
+                  : <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.contactoEmergencia.relacion || '—'}</span>}
+              </Field>
             </div>
           </div>
         </div>
@@ -209,10 +325,29 @@ export default function PerfilPage() {
         </div>
         {editPass ? (
           <div className="max-w-sm space-y-4">
+            {passMsg && (
+              <div className={`rounded-lg px-4 py-2.5 text-sm flex items-center gap-2 ${
+                passMsg.type === 'ok'
+                  ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
+                  : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'
+              }`}>
+                {passMsg.type === 'ok'
+                  ? <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  : <AlertCircle className="w-4 h-4 shrink-0" />
+                }
+                {passMsg.msg}
+              </div>
+            )}
             <div>
               <label className="form-label">Contraseña actual</label>
               <div className="relative">
-                <input type={showOld ? 'text' : 'password'} className="form-input pr-10" placeholder="••••••••" />
+                <input
+                  type={showOld ? 'text' : 'password'}
+                  className="form-input pr-10"
+                  placeholder="••••••••"
+                  value={passForm.old}
+                  onChange={e => setPassForm(p => ({ ...p, old: e.target.value }))}
+                />
                 <button type="button" onClick={() => setShowOld(!showOld)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
                   {showOld ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -221,7 +356,13 @@ export default function PerfilPage() {
             <div>
               <label className="form-label">Nueva contraseña</label>
               <div className="relative">
-                <input type={showNew ? 'text' : 'password'} className="form-input pr-10" placeholder="••••••••" />
+                <input
+                  type={showNew ? 'text' : 'password'}
+                  className="form-input pr-10"
+                  placeholder="Mínimo 6 caracteres"
+                  value={passForm.nueva}
+                  onChange={e => setPassForm(p => ({ ...p, nueva: e.target.value }))}
+                />
                 <button type="button" onClick={() => setShowNew(!showNew)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
                   {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -229,41 +370,47 @@ export default function PerfilPage() {
             </div>
             <div>
               <label className="form-label">Confirmar nueva contraseña</label>
-              <input type="password" className="form-input" placeholder="••••••••" />
+              <input
+                type="password"
+                className="form-input"
+                placeholder="••••••••"
+                value={passForm.confirm}
+                onChange={e => setPassForm(p => ({ ...p, confirm: e.target.value }))}
+              />
             </div>
             <div className="flex gap-2">
-              <button onClick={() => setEditPass(false)} className="btn-secondary">Cancelar</button>
-              <button className="btn-primary"><CheckCircle2 className="w-4 h-4" /> Actualizar contraseña</button>
+              <button
+                onClick={() => { setEditPass(false); setPassMsg(null); setPassForm({ old: '', nueva: '', confirm: '' }) }}
+                className="btn-secondary"
+              >
+                Cancelar
+              </button>
+              <button onClick={handlePasswordChange} className="btn-primary">
+                <CheckCircle2 className="w-4 h-4" /> Actualizar contraseña
+              </button>
             </div>
           </div>
         ) : (
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Tu contraseña fue actualizada por última vez hace 30 días. Recomendamos cambiarla cada 90 días.
+            Tu contraseña fue configurada al registrarte. Recomendamos cambiarla regularmente.
           </p>
         )}
       </div>
+    </div>
+  )
+}
 
-      {/* Notificaciones */}
-      <div className="card p-5">
-        <p className="section-title mb-4 flex items-center gap-2"><Bell className="w-4 h-4" /> Preferencias de Notificación</p>
-        <div className="space-y-3">
-          {[
-            { label: 'Resolución de solicitudes', desc: 'Cuando una solicitud es aprobada o rechazada', default: true },
-            { label: 'Nuevas novedades institucionales', desc: 'Cuando se publica un comunicado o novedad', default: true },
-            { label: 'Disponibilidad de recibos', desc: 'Cuando tu recibo de sueldo está listo', default: true },
-            { label: 'Recordatorios de vencimientos', desc: 'Alertas de fechas importantes', default: false },
-          ].map(({ label, desc, default: checked }) => (
-            <label key={label} className="flex items-start gap-3 cursor-pointer group">
-              <div className="mt-0.5">
-                <input type="checkbox" defaultChecked={checked} className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-brand-700 dark:group-hover:text-brand-400 transition-colors">{label}</p>
-                <p className="text-xs text-slate-400 dark:text-slate-500">{desc}</p>
-              </div>
-            </label>
-          ))}
-        </div>
+function Field({ label, children, icon }: {
+  label: string
+  children: React.ReactNode
+  icon?: React.ReactNode
+}) {
+  return (
+    <div className="flex items-start gap-2 py-2 border-b border-slate-100 dark:border-slate-800 last:border-0">
+      {icon && <div className="mt-0.5 shrink-0">{icon}</div>}
+      <div className="flex-1 min-w-0">
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">{label}</p>
+        <div>{children}</div>
       </div>
     </div>
   )

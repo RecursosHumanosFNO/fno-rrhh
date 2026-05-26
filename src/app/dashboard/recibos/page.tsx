@@ -2,21 +2,30 @@
 
 import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { recibos, empleados } from '@/lib/mockData'
+import { useData } from '@/contexts/DataContext'
 import { formatFecha, formatMes, formatMonto } from '@/lib/utils'
-import { FileText, Download, Upload, Search, Filter, X, ChevronDown } from 'lucide-react'
+import { FileText, Download, Upload, Search, X, CheckCircle2 } from 'lucide-react'
 
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
 
 export default function RecibosPage() {
   const { user } = useAuth()
+  const { empleados, recibos, addRecibo } = useData()
   const isAdmin = user?.role === 'admin'
 
   const [query, setQuery] = useState('')
   const [mesFilter, setMesFilter] = useState('')
   const [anioFilter, setAnioFilter] = useState('2026')
   const [showUpload, setShowUpload] = useState(false)
+  const [uploadSuccess, setUploadSuccess] = useState(false)
+
+  const [uploadForm, setUploadForm] = useState({
+    empleadoId: '',
+    mes: new Date().getMonth() + 1,
+    anio: 2026,
+    monto: '',
+  })
 
   const misRecibos = isAdmin
     ? recibos
@@ -30,6 +39,25 @@ export default function RecibosPage() {
     const matchAnio = !anioFilter || r.anio === parseInt(anioFilter)
     return matchQuery && matchMes && matchAnio
   }).sort((a, b) => b.anio - a.anio || b.mes - a.mes)
+
+  function handleSubir() {
+    if (!uploadForm.empleadoId || !uploadForm.monto) return
+    const emp = empleados.find(e => e.id === uploadForm.empleadoId)
+    addRecibo({
+      empleadoId: uploadForm.empleadoId,
+      mes: uploadForm.mes,
+      anio: uploadForm.anio,
+      archivo: `recibo_${emp?.apellido ?? 'emp'}_${MESES[uploadForm.mes - 1].toLowerCase()}_${uploadForm.anio}.pdf`,
+      fechaSubida: new Date().toISOString().slice(0, 10),
+      monto: parseFloat(uploadForm.monto),
+    })
+    setUploadSuccess(true)
+    setTimeout(() => {
+      setUploadSuccess(false)
+      setShowUpload(false)
+      setUploadForm({ empleadoId: '', mes: new Date().getMonth() + 1, anio: 2026, monto: '' })
+    }, 1500)
+  }
 
   return (
     <div className="page-container">
@@ -90,7 +118,9 @@ export default function RecibosPage() {
         <div className="card p-12 text-center">
           <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
           <p className="text-slate-500 font-medium">No se encontraron recibos</p>
-          <p className="text-slate-400 text-sm mt-1">Probá con otros filtros</p>
+          <p className="text-slate-400 text-sm mt-1">
+            {isAdmin ? 'Subí recibos usando el botón "Subir recibo"' : 'Los recibos aparecerán aquí cuando RRHH los suba'}
+          </p>
         </div>
       ) : (
         <div className="card overflow-hidden">
@@ -112,8 +142,8 @@ export default function RecibosPage() {
                     {isAdmin && (
                       <td className="table-cell">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-brand-700 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                            {emp ? `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}` : '?'}
+                          <div className="w-8 h-8 rounded-full bg-brand-700 flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden">
+                            {emp?.foto ? <img src={emp.foto} alt="" className="w-8 h-8 object-cover" /> : emp ? `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}` : '?'}
                           </div>
                           <div>
                             <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
@@ -127,7 +157,7 @@ export default function RecibosPage() {
                     <td className="table-cell">
                       <div className="flex items-center gap-2.5">
                         <div className="w-9 h-9 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-center shrink-0">
-                          <FileText className="w-4.5 h-4.5 text-brand-700 dark:text-brand-400" />
+                          <FileText className="w-4 h-4 text-brand-700 dark:text-brand-400" />
                         </div>
                         <div>
                           <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{formatMes(r.mes, r.anio)}</p>
@@ -186,9 +216,18 @@ export default function RecibosPage() {
               <button onClick={() => setShowUpload(false)}><X className="w-5 h-5 text-slate-400" /></button>
             </div>
             <div className="p-5 space-y-4">
+              {uploadSuccess && (
+                <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 rounded-lg px-4 py-3 text-sm flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4" /> Recibo subido correctamente.
+                </div>
+              )}
               <div>
                 <label className="form-label">Empleado *</label>
-                <select className="form-select">
+                <select
+                  className="form-select"
+                  value={uploadForm.empleadoId}
+                  onChange={e => setUploadForm(f => ({ ...f, empleadoId: e.target.value }))}
+                >
                   <option value="">Seleccionar empleado</option>
                   {empleados.filter(e => e.estado === 'activo').map(e => (
                     <option key={e.id} value={e.id}>{e.nombre} {e.apellido}</option>
@@ -198,33 +237,53 @@ export default function RecibosPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="form-label">Mes *</label>
-                  <select className="form-select">
+                  <select
+                    className="form-select"
+                    value={uploadForm.mes}
+                    onChange={e => setUploadForm(f => ({ ...f, mes: parseInt(e.target.value) }))}
+                  >
                     {MESES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="form-label">Año *</label>
-                  <select className="form-select">
-                    <option>2026</option>
-                    <option>2025</option>
+                  <select
+                    className="form-select"
+                    value={uploadForm.anio}
+                    onChange={e => setUploadForm(f => ({ ...f, anio: parseInt(e.target.value) }))}
+                  >
+                    <option value={2026}>2026</option>
+                    <option value={2025}>2025</option>
                   </select>
                 </div>
               </div>
               <div>
-                <label className="form-label">Monto neto *</label>
-                <input className="form-input" type="number" placeholder="285000" />
+                <label className="form-label">Monto neto (ARS) *</label>
+                <input
+                  className="form-input"
+                  type="number"
+                  placeholder="Ej: 450000"
+                  value={uploadForm.monto}
+                  onChange={e => setUploadForm(f => ({ ...f, monto: e.target.value }))}
+                />
               </div>
               <div>
-                <label className="form-label">Archivo PDF *</label>
-                <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-6 text-center cursor-pointer hover:border-brand-500 transition-colors">
+                <label className="form-label">Archivo PDF</label>
+                <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-6 text-center hover:border-brand-500 transition-colors">
                   <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                  <p className="text-sm text-slate-500">Hacé clic o arrastrá el archivo aquí</p>
+                  <p className="text-sm text-slate-500">Archivo PDF (referencia — se registra el monto)</p>
                   <p className="text-xs text-slate-400 mt-1">PDF hasta 5MB</p>
                 </div>
               </div>
               <div className="flex gap-2 justify-end pt-2">
                 <button onClick={() => setShowUpload(false)} className="btn-secondary">Cancelar</button>
-                <button className="btn-primary">Subir recibo</button>
+                <button
+                  onClick={handleSubir}
+                  disabled={!uploadForm.empleadoId || !uploadForm.monto || uploadSuccess}
+                  className="btn-primary disabled:opacity-50"
+                >
+                  Subir recibo
+                </button>
               </div>
             </div>
           </div>

@@ -1,32 +1,53 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { useData } from '@/contexts/DataContext'
 import { useRouter } from 'next/navigation'
-import { empleados as allEmpleados, SECTORES } from '@/lib/mockData'
+import { SECTORES } from '@/lib/mockData'
 import {
-  EMPLEADO_ESTADO_COLOR, EMPLEADO_ESTADO_LABEL, formatFecha, calcularAntiguedad,
+  EMPLEADO_ESTADO_COLOR, EMPLEADO_ESTADO_LABEL, formatFecha, calcularAntiguedad, uid,
 } from '@/lib/utils'
 import {
-  Search, Filter, Users, Plus, Download, LayoutGrid, List,
-  Mail, Phone, Building2, Calendar, ChevronRight, X,
+  Search, Users, Plus, Download, LayoutGrid, List,
+  Mail, Building2, Calendar, ChevronRight, X, CheckCircle2, XCircle,
 } from 'lucide-react'
 import Link from 'next/link'
+import type { EmpleadoEstado } from '@/types'
 
 export default function EmpleadosPage() {
   const { user } = useAuth()
   const router = useRouter()
 
-  if (user?.role !== 'admin') {
-    router.replace('/dashboard')
-    return null
-  }
+  useEffect(() => {
+    if (user?.role !== 'admin') router.replace('/dashboard')
+  }, [user, router])
+
+  if (user?.role !== 'admin') return null
+
+  return <EmpleadosContent />
+}
+
+function EmpleadosContent() {
+  const {
+    empleados: allEmpleados, pendingRegistrations,
+    addEmpleado, addUser, deleteEmpleado,
+    approvePendingRegistration, rejectPendingRegistration,
+  } = useData()
 
   const [query, setQuery] = useState('')
   const [sectorFilter, setSectorFilter] = useState('')
   const [estadoFilter, setEstadoFilter] = useState('')
   const [view, setView] = useState<'grid' | 'list'>('grid')
   const [showNuevo, setShowNuevo] = useState(false)
+  const [showPending, setShowPending] = useState(false)
+
+  const [form, setForm] = useState({
+    nombre: '', apellido: '', dni: '', email: '', telefono: '',
+    fechaNacimiento: '', sector: '', cargo: '', tipoContrato: 'Contrato' as const,
+    jornada: 'Full Time' as const, fechaIngreso: new Date().toISOString().slice(0, 10),
+    supervisor: '', password: 'cambiar123',
+  })
 
   const filtered = allEmpleados.filter(e => {
     const matchQuery = `${e.nombre} ${e.apellido} ${e.cargo} ${e.email} ${e.dni}`.toLowerCase().includes(query.toLowerCase())
@@ -37,6 +58,37 @@ export default function EmpleadosPage() {
 
   const hasFilters = !!query || !!sectorFilter || !!estadoFilter
 
+  function handleCreate() {
+    if (!form.nombre || !form.apellido || !form.email || !form.sector || !form.cargo) return
+    const empId = addEmpleado({
+      nombre: form.nombre, apellido: form.apellido, dni: form.dni,
+      fechaNacimiento: form.fechaNacimiento, email: form.email.toLowerCase().trim(),
+      telefono: form.telefono, direccion: '', foto: '', fotoCover: '', cuil: '',
+      contactoEmergencia: { nombre: '', telefono: '', relacion: '' },
+      sector: form.sector, cargo: form.cargo,
+      fechaIngreso: form.fechaIngreso,
+      tipoContrato: form.tipoContrato,
+      jornada: form.jornada,
+      supervisor: form.supervisor,
+      estado: 'activo' as EmpleadoEstado,
+      diasVacaciones: 14, diasVacacionesUsados: 0,
+    })
+    addUser({
+      id: uid(),
+      email: form.email.toLowerCase().trim(),
+      password: form.password,
+      role: 'employee',
+      empleadoId: empId,
+    })
+    setShowNuevo(false)
+    setForm({
+      nombre: '', apellido: '', dni: '', email: '', telefono: '',
+      fechaNacimiento: '', sector: '', cargo: '', tipoContrato: 'Contrato',
+      jornada: 'Full Time', fechaIngreso: new Date().toISOString().slice(0, 10),
+      supervisor: '', password: 'cambiar123',
+    })
+  }
+
   return (
     <div className="page-container">
       {/* Header */}
@@ -44,7 +96,12 @@ export default function EmpleadosPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Empleados</h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-0.5">
-            {allEmpleados.length} empleados en total · {allEmpleados.filter(e => e.estado === 'activo').length} activos
+            {allEmpleados.length} empleados · {allEmpleados.filter(e => e.estado === 'activo').length} activos
+            {pendingRegistrations.length > 0 && (
+              <button onClick={() => setShowPending(true)} className="ml-2 inline-flex items-center gap-1 text-amber-600 hover:text-amber-700 font-medium">
+                · {pendingRegistrations.length} pendiente{pendingRegistrations.length > 1 ? 's' : ''} de aprobación ↗
+              </button>
+            )}
           </p>
         </div>
         <div className="flex gap-2">
@@ -56,6 +113,45 @@ export default function EmpleadosPage() {
           </button>
         </div>
       </div>
+
+      {/* Pending registrations quick panel */}
+      {showPending && pendingRegistrations.length > 0 && (
+        <div className="card p-5 border border-amber-200 dark:border-amber-800">
+          <div className="flex items-center justify-between mb-4">
+            <p className="section-title text-amber-700 dark:text-amber-400">Solicitudes de acceso pendientes</p>
+            <button onClick={() => setShowPending(false)}><X className="w-4 h-4 text-slate-400" /></button>
+          </div>
+          <div className="space-y-3">
+            {pendingRegistrations.map(reg => (
+              <div key={reg.id} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+                <div className="w-9 h-9 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-700 dark:text-amber-400 text-xs font-bold shrink-0">
+                  {reg.nombre.charAt(0)}{reg.apellido.charAt(0)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{reg.nombre} {reg.apellido}</p>
+                  <p className="text-xs text-slate-400">{reg.cargo} · {reg.sector} · {reg.email}</p>
+                </div>
+                <div className="flex gap-1.5 shrink-0">
+                  <button
+                    onClick={() => approvePendingRegistration(reg.id)}
+                    className="btn-success text-sm py-1.5 px-3"
+                    title="Aprobar acceso"
+                  >
+                    <CheckCircle2 className="w-4 h-4" /> Aprobar
+                  </button>
+                  <button
+                    onClick={() => rejectPendingRegistration(reg.id)}
+                    className="btn-danger text-sm py-1.5 px-3"
+                    title="Rechazar"
+                  >
+                    <XCircle className="w-4 h-4" /> Rechazar
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="card p-4 flex flex-wrap gap-3 items-center">
@@ -74,19 +170,11 @@ export default function EmpleadosPage() {
             </button>
           )}
         </div>
-        <select
-          className="form-select w-auto text-sm"
-          value={sectorFilter}
-          onChange={e => setSectorFilter(e.target.value)}
-        >
+        <select className="form-select w-auto text-sm" value={sectorFilter} onChange={e => setSectorFilter(e.target.value)}>
           <option value="">Todos los sectores</option>
           {SECTORES.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
-        <select
-          className="form-select w-auto text-sm"
-          value={estadoFilter}
-          onChange={e => setEstadoFilter(e.target.value)}
-        >
+        <select className="form-select w-auto text-sm" value={estadoFilter} onChange={e => setEstadoFilter(e.target.value)}>
           <option value="">Todos los estados</option>
           <option value="activo">Activo</option>
           <option value="inactivo">Inactivo</option>
@@ -128,8 +216,11 @@ export default function EmpleadosPage() {
           {filtered.map(emp => (
             <Link key={emp.id} href={`/dashboard/empleados/${emp.id}`} className="card-hover p-5 flex flex-col gap-3">
               <div className="flex items-start justify-between">
-                <div className="w-12 h-12 rounded-xl bg-brand-700 flex items-center justify-center text-white font-bold text-base">
-                  {emp.nombre.charAt(0)}{emp.apellido.charAt(0)}
+                <div className="w-12 h-12 rounded-xl bg-brand-700 flex items-center justify-center text-white font-bold text-base overflow-hidden">
+                  {emp.foto
+                    ? <img src={emp.foto} alt="" className="w-12 h-12 object-cover" />
+                    : `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}`
+                  }
                 </div>
                 <span className={`badge ${EMPLEADO_ESTADO_COLOR[emp.estado]}`}>
                   {EMPLEADO_ESTADO_LABEL[emp.estado]}
@@ -178,8 +269,8 @@ export default function EmpleadosPage() {
                 <tr key={emp.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                   <td className="table-cell">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-brand-700 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                        {emp.nombre.charAt(0)}{emp.apellido.charAt(0)}
+                      <div className="w-9 h-9 rounded-full bg-brand-700 flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden">
+                        {emp.foto ? <img src={emp.foto} alt="" className="w-9 h-9 object-cover" /> : `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}`}
                       </div>
                       <div>
                         <p className="font-semibold text-slate-700 dark:text-slate-200">{emp.nombre} {emp.apellido}</p>
@@ -219,34 +310,57 @@ export default function EmpleadosPage() {
       {/* Modal Nuevo Empleado */}
       {showNuevo && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowNuevo(false)}>
-          <div className="card w-full max-w-lg max-h-[80vh] overflow-y-auto animate-scale-in" onClick={e => e.stopPropagation()}>
+          <div className="card w-full max-w-lg max-h-[85vh] overflow-y-auto animate-scale-in" onClick={e => e.stopPropagation()}>
             <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <p className="section-title">Nuevo Empleado</p>
               <button onClick={() => setShowNuevo(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
             </div>
             <div className="p-5 space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div><label className="form-label">Nombre *</label><input className="form-input" placeholder="María" /></div>
-                <div><label className="form-label">Apellido *</label><input className="form-input" placeholder="García" /></div>
+                <div>
+                  <label className="form-label">Nombre *</label>
+                  <input className="form-input" placeholder="María" value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="form-label">Apellido *</label>
+                  <input className="form-input" placeholder="García" value={form.apellido} onChange={e => setForm(f => ({ ...f, apellido: e.target.value }))} />
+                </div>
               </div>
-              <div><label className="form-label">DNI *</label><input className="form-input" placeholder="XX.XXX.XXX" /></div>
-              <div><label className="form-label">Email institucional *</label><input className="form-input" type="email" placeholder="mgarcia@fno.org.ar" /></div>
-              <div><label className="form-label">Teléfono</label><input className="form-input" placeholder="299-XXXXXXX" /></div>
-              <div><label className="form-label">Fecha de nacimiento</label><input className="form-input" type="date" /></div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="form-label">DNI</label>
+                  <input className="form-input" placeholder="XX.XXX.XXX" value={form.dni} onChange={e => setForm(f => ({ ...f, dni: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="form-label">Teléfono</label>
+                  <input className="form-input" placeholder="299-XXXXXXX" value={form.telefono} onChange={e => setForm(f => ({ ...f, telefono: e.target.value }))} />
+                </div>
+              </div>
+              <div>
+                <label className="form-label">Email *</label>
+                <input className="form-input" type="email" placeholder="empleado@email.com" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+              </div>
+              <div>
+                <label className="form-label">Fecha de nacimiento</label>
+                <input className="form-input" type="date" value={form.fechaNacimiento} onChange={e => setForm(f => ({ ...f, fechaNacimiento: e.target.value }))} />
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="form-label">Sector *</label>
-                  <select className="form-select">
+                  <select className="form-select" value={form.sector} onChange={e => setForm(f => ({ ...f, sector: e.target.value }))}>
                     <option value="">Seleccionar</option>
                     {SECTORES.map(s => <option key={s}>{s}</option>)}
                   </select>
                 </div>
-                <div><label className="form-label">Cargo *</label><input className="form-input" placeholder="Docente" /></div>
+                <div>
+                  <label className="form-label">Cargo *</label>
+                  <input className="form-input" placeholder="Docente" value={form.cargo} onChange={e => setForm(f => ({ ...f, cargo: e.target.value }))} />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="form-label">Tipo de contrato</label>
-                  <select className="form-select">
+                  <select className="form-select" value={form.tipoContrato} onChange={e => setForm(f => ({ ...f, tipoContrato: e.target.value as typeof form.tipoContrato }))}>
                     <option>Planta Permanente</option>
                     <option>Contrato</option>
                     <option>Planta Provisional</option>
@@ -255,17 +369,31 @@ export default function EmpleadosPage() {
                 </div>
                 <div>
                   <label className="form-label">Jornada</label>
-                  <select className="form-select">
+                  <select className="form-select" value={form.jornada} onChange={e => setForm(f => ({ ...f, jornada: e.target.value as typeof form.jornada }))}>
                     <option>Full Time</option>
                     <option>Part Time</option>
                     <option>Por Horas</option>
                   </select>
                 </div>
               </div>
-              <div><label className="form-label">Fecha de ingreso *</label><input className="form-input" type="date" /></div>
+              <div>
+                <label className="form-label">Fecha de ingreso *</label>
+                <input className="form-input" type="date" value={form.fechaIngreso} onChange={e => setForm(f => ({ ...f, fechaIngreso: e.target.value }))} />
+              </div>
+              <div>
+                <label className="form-label">Contraseña inicial</label>
+                <input className="form-input" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="cambiar123" />
+                <p className="text-xs text-slate-400 mt-1">El empleado puede cambiarla desde su perfil.</p>
+              </div>
               <div className="flex gap-2 justify-end pt-2">
                 <button onClick={() => setShowNuevo(false)} className="btn-secondary">Cancelar</button>
-                <button className="btn-primary">Crear empleado</button>
+                <button
+                  onClick={handleCreate}
+                  disabled={!form.nombre || !form.apellido || !form.email || !form.sector || !form.cargo}
+                  className="btn-primary disabled:opacity-50"
+                >
+                  Crear empleado
+                </button>
               </div>
             </div>
           </div>
