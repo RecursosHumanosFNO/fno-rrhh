@@ -56,9 +56,9 @@ export default function LoginPage() {
         </div>
         <div className="relative z-10 grid grid-cols-3 gap-4">
           {[
-            { n: '10', label: 'Empleados' },
-            { n: '6', label: 'Sectores' },
-            { n: '5+', label: 'Años activos' },
+            { n: '8+', label: 'Sectores' },
+            { n: '100%', label: 'Digital' },
+            { n: '24/7', label: 'Disponible' },
           ].map(item => (
             <div key={item.label} className="bg-white/10 backdrop-blur rounded-xl p-4 text-center border border-white/20">
               <p className="text-2xl font-bold text-white">{item.n}</p>
@@ -101,7 +101,7 @@ export default function LoginPage() {
                 <input
                   type="email"
                   className="form-input pl-10"
-                  placeholder="usuario@fno.org.ar"
+                  placeholder="tu@email.com"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   autoComplete="email"
@@ -156,12 +156,10 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800">
-            <p className="text-xs font-semibold text-blue-700 dark:text-blue-400 mb-2">Credenciales de demostración</p>
-            <div className="space-y-1 text-xs text-blue-600 dark:text-blue-300">
-              <p><span className="font-medium">Admin:</span> admin@fno.org.ar / admin123</p>
-              <p><span className="font-medium">Empleada:</span> mgonzalez@fno.org.ar / empleado123</p>
-            </div>
+          <div className="mt-8 p-4 bg-slate-100 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+            <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
+              Para restablecer tu contraseña contactá al administrador del sistema.
+            </p>
           </div>
 
           <p className="text-center text-xs text-slate-400 dark:text-slate-600 mt-8">
