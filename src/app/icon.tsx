@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og'
 
-export const size = { width: 300, height: 300 }
+export const size = { width: 380, height: 380 }
 export const contentType = 'image/png'
 
 export default function Icon() {
