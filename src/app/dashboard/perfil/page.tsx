@@ -89,6 +89,11 @@ export default function PerfilPage() {
       contactoRelacion: empleado!.contactoEmergencia.relacion,
       cbu: empleado!.cbu ?? '',
       banco: empleado!.banco ?? '',
+      sector: empleado!.sector,
+      cargo: empleado!.cargo,
+      tipoContrato: empleado!.tipoContrato,
+      jornada: empleado!.jornada,
+      supervisor: empleado!.supervisor ?? '',
     })
     setEditMode(false)
   }
