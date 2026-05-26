@@ -62,7 +62,7 @@ export default function EmpleadoDetailPage() {
   const [form, setForm] = useState({
     nombre: emp.nombre, apellido: emp.apellido, dni: emp.dni, cuil: emp.cuil ?? '',
     fechaNacimiento: emp.fechaNacimiento, telefono: emp.telefono, direccion: emp.direccion,
-    sector: emp.sector, cargo: emp.cargo, tipoContrato: emp.tipoContrato, jornada: emp.jornada,
+    sector: emp.sector, cargo: emp.cargo, jornada: emp.jornada,
     supervisor: emp.supervisor, estado: emp.estado, fechaIngreso: emp.fechaIngreso,
     contactoNombre: emp.contactoEmergencia.nombre,
     contactoTelefono: emp.contactoEmergencia.telefono,
@@ -74,7 +74,7 @@ export default function EmpleadoDetailPage() {
     updateEmpleado(emp!.id, {
       nombre: form.nombre, apellido: form.apellido, dni: form.dni, cuil: form.cuil,
       fechaNacimiento: form.fechaNacimiento, telefono: form.telefono, direccion: form.direccion,
-      sector: form.sector, cargo: form.cargo, tipoContrato: form.tipoContrato as Empleado['tipoContrato'],
+      sector: form.sector, cargo: form.cargo,
       jornada: form.jornada as Empleado['jornada'], supervisor: form.supervisor,
       estado: form.estado as EmpleadoEstado, fechaIngreso: form.fechaIngreso,
       contactoEmergencia: {
@@ -183,7 +183,6 @@ export default function EmpleadoDetailPage() {
             {[
               { label: 'Antigüedad', value: antiguedad, icon: Calendar },
               { label: 'Edad', value: edad ? `${edad} años` : '—', icon: User },
-              { label: 'Contrato', value: emp.tipoContrato, icon: Shield },
               { label: 'Jornada', value: emp.jornada, icon: Clock },
             ].map(({ label, value, icon: Icon }) => (
               <div key={label} className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3">
@@ -350,10 +349,6 @@ export default function EmpleadoDetailPage() {
             <EditField label="Fecha de ingreso" value={formatFecha(emp.fechaIngreso)} editMode={isAdmin && editMode}
               editor={<input className="form-input text-sm" type="date" value={form.fechaIngreso} onChange={e => setForm(f => ({ ...f, fechaIngreso: e.target.value }))} />} />
             <EditField label="Antigüedad" value={antiguedad} editMode={false} editor={null} />
-            <EditField label="Tipo de contrato" value={form.tipoContrato} editMode={isAdmin && editMode}
-              editor={<select className="form-select text-sm" value={form.tipoContrato} onChange={e => setForm(f => ({ ...f, tipoContrato: e.target.value as typeof form.tipoContrato }))}>
-                <option>Planta Permanente</option><option>Contrato</option><option>Planta Provisional</option><option>Pasantía</option>
-              </select>} />
             <EditField label="Jornada" value={form.jornada} editMode={isAdmin && editMode}
               editor={<select className="form-select text-sm" value={form.jornada} onChange={e => setForm(f => ({ ...f, jornada: e.target.value as typeof form.jornada }))}>
                 <option>Full Time</option><option>Part Time</option><option>Por Horas</option>

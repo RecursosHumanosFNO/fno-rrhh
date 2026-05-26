@@ -36,7 +36,6 @@ export default function PerfilPage() {
     banco: empleado?.banco ?? '',
     sector: empleado?.sector ?? '',
     cargo: empleado?.cargo ?? '',
-    tipoContrato: empleado?.tipoContrato ?? '',
     jornada: empleado?.jornada ?? '',
     supervisor: empleado?.supervisor ?? '',
     fechaIngreso: empleado?.fechaIngreso ?? '',
@@ -69,7 +68,6 @@ export default function PerfilPage() {
       banco: form.banco,
       sector: form.sector,
       cargo: form.cargo,
-      tipoContrato: form.tipoContrato as Empleado['tipoContrato'],
       jornada: form.jornada as Empleado['jornada'],
       supervisor: form.supervisor,
       fechaIngreso: form.fechaIngreso,
@@ -93,7 +91,6 @@ export default function PerfilPage() {
       banco: empleado!.banco ?? '',
       sector: empleado!.sector,
       cargo: empleado!.cargo,
-      tipoContrato: empleado!.tipoContrato,
       jornada: empleado!.jornada,
       supervisor: empleado!.supervisor ?? '',
       fechaIngreso: empleado!.fechaIngreso,
@@ -298,14 +295,6 @@ export default function PerfilPage() {
                 {editMode
                   ? <input className="form-input text-sm max-w-[55%]" type="date" value={form.fechaIngreso} onChange={e => setForm(f => ({ ...f, fechaIngreso: e.target.value }))} />
                   : <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{formatFecha(empleado.fechaIngreso)}</span>}
-              </div>
-              <div className="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-xs text-slate-500 dark:text-slate-400">Tipo de contrato</span>
-                {editMode
-                  ? <select className="form-select text-sm max-w-[55%]" value={form.tipoContrato} onChange={e => setForm(f => ({ ...f, tipoContrato: e.target.value }))}>
-                      <option>Planta Permanente</option><option>Contrato</option><option>Planta Provisional</option><option>Pasantía</option>
-                    </select>
-                  : <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.tipoContrato}</span>}
               </div>
               <div className="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-800">
                 <span className="text-xs text-slate-500 dark:text-slate-400">Jornada</span>
