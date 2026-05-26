@@ -8,16 +8,16 @@ import Header from '@/components/layout/Header'
 import { cn } from '@/lib/utils'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, isLoading } = useAuth()
   const router = useRouter()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
   useEffect(() => {
-    if (!isAuthenticated) router.replace('/login')
-  }, [isAuthenticated, router])
+    if (!isLoading && !isAuthenticated) router.replace('/login')
+  }, [isAuthenticated, isLoading, router])
 
-  if (!isAuthenticated) {
+  if (isLoading || !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-brand-700">
         <div className="w-10 h-10 border-4 border-white/30 border-t-white rounded-full animate-spin" />

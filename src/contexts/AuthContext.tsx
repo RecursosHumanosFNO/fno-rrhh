@@ -8,6 +8,7 @@ interface AuthContextType extends AuthState {
   login: (email: string, password: string, remember: boolean) => Promise<'ok' | 'pendiente' | 'error'>
   logout: () => void
   updateEmpleado: (data: Partial<Empleado>) => void
+  isLoading: boolean
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -20,6 +21,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     empleado: null,
     isAuthenticated: false,
   })
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const stored = localStorage.getItem('fno_session')
@@ -35,6 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem('fno_session')
       }
     }
+    setIsLoading(false)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync empleado data cuando cambia en DataContext
@@ -59,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!empleado) return 'error'
 
     setAuth({ user, empleado, isAuthenticated: true })
-    if (remember) localStorage.setItem('fno_session', JSON.stringify({ userId: user.id }))
+    localStorage.setItem('fno_session', JSON.stringify({ userId: user.id }))
     return 'ok'
   }, [users, empleados, pendingRegistrations])
 
@@ -75,7 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [auth.empleado, updateEmpData])
 
   return (
-    <AuthContext.Provider value={{ ...auth, login, logout, updateEmpleado }}>
+    <AuthContext.Provider value={{ ...auth, login, logout, updateEmpleado, isLoading }}>
       {children}
     </AuthContext.Provider>
   )
