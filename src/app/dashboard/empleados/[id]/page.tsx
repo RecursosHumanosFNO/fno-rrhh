@@ -63,7 +63,7 @@ export default function EmpleadoDetailPage() {
     nombre: emp.nombre, apellido: emp.apellido, dni: emp.dni, cuil: emp.cuil ?? '',
     fechaNacimiento: emp.fechaNacimiento, telefono: emp.telefono, direccion: emp.direccion,
     sector: emp.sector, cargo: emp.cargo, tipoContrato: emp.tipoContrato, jornada: emp.jornada,
-    supervisor: emp.supervisor, estado: emp.estado,
+    supervisor: emp.supervisor, estado: emp.estado, fechaIngreso: emp.fechaIngreso,
     contactoNombre: emp.contactoEmergencia.nombre,
     contactoTelefono: emp.contactoEmergencia.telefono,
     contactoRelacion: emp.contactoEmergencia.relacion,
@@ -76,7 +76,7 @@ export default function EmpleadoDetailPage() {
       fechaNacimiento: form.fechaNacimiento, telefono: form.telefono, direccion: form.direccion,
       sector: form.sector, cargo: form.cargo, tipoContrato: form.tipoContrato as Empleado['tipoContrato'],
       jornada: form.jornada as Empleado['jornada'], supervisor: form.supervisor,
-      estado: form.estado as EmpleadoEstado,
+      estado: form.estado as EmpleadoEstado, fechaIngreso: form.fechaIngreso,
       contactoEmergencia: {
         nombre: form.contactoNombre,
         telefono: form.contactoTelefono,
@@ -347,7 +347,8 @@ export default function EmpleadoDetailPage() {
               editor={<select className="form-select text-sm" value={form.sector} onChange={e => setForm(f => ({ ...f, sector: e.target.value }))}>{SECTORES.map(s => <option key={s}>{s}</option>)}</select>} />
             <EditField label="Cargo" value={form.cargo} editMode={isAdmin && editMode}
               editor={<input className="form-input text-sm" value={form.cargo} onChange={e => setForm(f => ({ ...f, cargo: e.target.value }))} />} />
-            <EditField label="Fecha de ingreso" value={formatFecha(emp.fechaIngreso)} editMode={false} editor={null} />
+            <EditField label="Fecha de ingreso" value={formatFecha(emp.fechaIngreso)} editMode={isAdmin && editMode}
+              editor={<input className="form-input text-sm" type="date" value={form.fechaIngreso} onChange={e => setForm(f => ({ ...f, fechaIngreso: e.target.value }))} />} />
             <EditField label="Antigüedad" value={antiguedad} editMode={false} editor={null} />
             <EditField label="Tipo de contrato" value={form.tipoContrato} editMode={isAdmin && editMode}
               editor={<select className="form-select text-sm" value={form.tipoContrato} onChange={e => setForm(f => ({ ...f, tipoContrato: e.target.value as typeof form.tipoContrato }))}>
