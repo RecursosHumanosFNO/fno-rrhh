@@ -1,4 +1,4 @@
-# Portal RRHH — Fundación Neuquén Oeste
+# Portal RH — Fundación Cristiana Neuquén Oeste
 
 Sistema de Gestión de Recursos Humanos desarrollado con Next.js 14, TypeScript y TailwindCSS.
 
