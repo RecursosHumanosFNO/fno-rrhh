@@ -136,17 +136,91 @@ export default function PerfilPage() {
       </div>
 
       {/* Profile card */}
-      <div className="card">
-        {/* Cover photo */}
-        <div className="relative h-32 bg-gradient-to-r from-brand-700 to-brand-500 overflow-hidden rounded-t-xl group cursor-pointer" onClick={() => coverRef.current?.click()}>
-          {empleado.fotoCover && (
-            <img src={empleado.fotoCover} alt="" className="w-full h-full object-cover absolute inset-0" />
-          )}
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-            <div className="bg-white/90 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-700 flex items-center gap-1.5">
-              <ImageIcon className="w-3.5 h-3.5" /> Cambiar portada
+      <div className="card overflow-hidden">
+        <div className="relative">
+          {/* Blurred cover background */}
+          <div className="absolute inset-0">
+            {empleado.fotoCover
+              ? <img src={empleado.fotoCover} alt="" className="w-full h-full object-cover scale-110 blur-lg" />
+              : null
+            }
+            <div className={`absolute inset-0 ${empleado.fotoCover ? 'bg-gradient-to-b from-slate-900/60 via-slate-900/65 to-slate-900/80' : 'bg-gradient-to-r from-brand-700 to-brand-500'}`} />
+          </div>
+
+          {/* Content overlay */}
+          <div className="relative z-10 px-6 pt-5 pb-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                {/* Profile photo */}
+                <div className="relative group cursor-pointer shrink-0" onClick={() => fotoRef.current?.click()}>
+                  <div className="w-20 h-20 rounded-2xl border-[3px] border-white/50 shadow-xl overflow-hidden bg-brand-700">
+                    {empleado.foto
+                      ? <img src={empleado.foto} alt="" className="w-full h-full object-cover" />
+                      : <div className="w-full h-full flex items-center justify-center text-white text-2xl font-bold">
+                          {empleado.nombre.charAt(0)}{empleado.apellido.charAt(0)}
+                        </div>
+                    }
+                  </div>
+                  <div className="absolute inset-0 rounded-2xl flex items-center justify-center bg-black/0 group-hover:bg-black/40 transition-colors">
+                    <Camera className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                  <input
+                    ref={fotoRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={e => e.target.files?.[0] && handlePhotoUpload(e.target.files[0], 'foto')}
+                  />
+                </div>
+
+                <div>
+                  <h2 className="text-xl font-bold text-white">{empleado.nombre} {empleado.apellido}</h2>
+                  <p className="text-white/80 text-sm">{empleado.cargo}</p>
+                  <p className="text-white/60 text-sm">{empleado.sector}</p>
+                </div>
+              </div>
+
+              {!editMode ? (
+                <button onClick={() => setEditMode(true)} className="btn-secondary shrink-0 bg-white/15 border-white/25 text-white hover:bg-white/25">
+                  <Edit2 className="w-4 h-4" /> Editar datos
+                </button>
+              ) : (
+                <div className="flex gap-2 shrink-0">
+                  <button onClick={handleCancel} className="btn-secondary bg-white/15 border-white/25 text-white hover:bg-white/25">
+                    <X className="w-4 h-4" /> Cancelar
+                  </button>
+                  <button onClick={handleSave} className="btn-primary">
+                    <Save className="w-4 h-4" /> Guardar
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Stats row */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-5">
+              {[
+                { label: 'Antigüedad', value: antiguedad, icon: Clock },
+                { label: 'Edad', value: edad ? `${edad} años` : '—', icon: User },
+                { label: 'Jornada', value: empleado.jornada, icon: Shield },
+              ].map(({ label, value, icon: Icon }) => (
+                <div key={label} className="bg-white/15 backdrop-blur-sm rounded-xl p-3 border border-white/20">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Icon className="w-3.5 h-3.5 text-white/70" />
+                    <p className="text-xs text-white/70">{label}</p>
+                  </div>
+                  <p className="text-sm font-semibold text-white">{value}</p>
+                </div>
+              ))}
             </div>
           </div>
+
+          {/* Change cover button */}
+          <button
+            onClick={() => coverRef.current?.click()}
+            className="absolute top-3 right-3 bg-black/30 hover:bg-black/50 text-white text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors z-10"
+          >
+            <ImageIcon className="w-3 h-3" /> Cambiar portada
+          </button>
           <input
             ref={coverRef}
             type="file"
@@ -154,72 +228,6 @@ export default function PerfilPage() {
             className="hidden"
             onChange={e => e.target.files?.[0] && handlePhotoUpload(e.target.files[0], 'fotoCover')}
           />
-        </div>
-
-        <div className="px-6 pb-6">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-12">
-            <div className="flex items-end gap-4">
-              {/* Profile photo */}
-              <div className="relative group cursor-pointer" onClick={() => fotoRef.current?.click()}>
-                <div className="w-24 h-24 rounded-2xl border-4 border-white dark:border-slate-900 shadow-xl overflow-hidden bg-brand-700">
-                  {empleado.foto
-                    ? <img src={empleado.foto} alt="" className="w-full h-full object-cover" />
-                    : <div className="w-full h-full flex items-center justify-center text-white text-3xl font-bold">
-                        {empleado.nombre.charAt(0)}{empleado.apellido.charAt(0)}
-                      </div>
-                  }
-                </div>
-                <div className="absolute inset-0 rounded-2xl flex items-center justify-center bg-black/0 group-hover:bg-black/30 transition-colors">
-                  <Camera className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
-                <input
-                  ref={fotoRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={e => e.target.files?.[0] && handlePhotoUpload(e.target.files[0], 'foto')}
-                />
-              </div>
-
-              <div className="mb-2">
-                <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">{empleado.nombre} {empleado.apellido}</h2>
-                <p className="text-slate-500 dark:text-slate-400">{empleado.cargo}</p>
-                <p className="text-sm text-slate-400 dark:text-slate-500">{empleado.sector}</p>
-              </div>
-            </div>
-
-            {!editMode ? (
-              <button onClick={() => setEditMode(true)} className="btn-secondary mb-2">
-                <Edit2 className="w-4 h-4" /> Editar datos
-              </button>
-            ) : (
-              <div className="flex gap-2 mb-2">
-                <button onClick={handleCancel} className="btn-secondary">
-                  <X className="w-4 h-4" /> Cancelar
-                </button>
-                <button onClick={handleSave} className="btn-primary">
-                  <Save className="w-4 h-4" /> Guardar
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Stats row */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-5">
-            {[
-              { label: 'Antigüedad', value: antiguedad, icon: Clock },
-              { label: 'Edad', value: edad ? `${edad} años` : '—', icon: User },
-              { label: 'Jornada', value: empleado.jornada, icon: Shield },
-            ].map(({ label, value, icon: Icon }) => (
-              <div key={label} className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <Icon className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
-                </div>
-                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{value}</p>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
 

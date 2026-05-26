@@ -118,81 +118,90 @@ export default function EmpleadoDetailPage() {
       )}
 
       {/* Profile header */}
-      <div className="card">
-        <div className="h-24 bg-gradient-to-r from-brand-700 to-brand-500 relative overflow-hidden rounded-t-xl">
-          {emp.fotoCover && <img src={emp.fotoCover} alt="" className="w-full h-full object-cover absolute inset-0" />}
-        </div>
-        <div className="px-6 pb-6">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-10">
-            <div className="flex items-end gap-4">
-              {/* Photo */}
-              <div className="relative group">
-                <div className="w-20 h-20 rounded-2xl bg-brand-700 border-4 border-white dark:border-slate-900 flex items-center justify-center text-white text-2xl font-bold shadow-lg overflow-hidden">
-                  {emp.foto
-                    ? <img src={emp.foto} alt="" className="w-full h-full object-cover" />
-                    : `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}`
-                  }
+      <div className="card overflow-hidden">
+        <div className="relative">
+          {/* Blurred cover background */}
+          <div className="absolute inset-0">
+            {emp.fotoCover
+              ? <img src={emp.fotoCover} alt="" className="w-full h-full object-cover scale-110 blur-lg" />
+              : null
+            }
+            <div className={`absolute inset-0 ${emp.fotoCover ? 'bg-gradient-to-b from-slate-900/60 via-slate-900/65 to-slate-900/80' : 'bg-gradient-to-r from-brand-700 to-brand-500'}`} />
+          </div>
+
+          {/* Content overlay */}
+          <div className="relative z-10 px-6 pt-5 pb-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                {/* Photo */}
+                <div className="relative group shrink-0">
+                  <div className="w-20 h-20 rounded-2xl bg-brand-700 border-[3px] border-white/50 flex items-center justify-center text-white text-2xl font-bold shadow-xl overflow-hidden">
+                    {emp.foto
+                      ? <img src={emp.foto} alt="" className="w-full h-full object-cover" />
+                      : `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}`
+                    }
+                  </div>
+                  {isAdmin && (
+                    <>
+                      <button
+                        onClick={() => fotoRef.current?.click()}
+                        className="absolute inset-0 rounded-2xl flex items-center justify-center bg-black/0 group-hover:bg-black/40 transition-colors opacity-0 group-hover:opacity-100"
+                      >
+                        <Camera className="w-5 h-5 text-white" />
+                      </button>
+                      <input
+                        ref={fotoRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={e => e.target.files?.[0] && handlePhotoUpload(e.target.files[0])}
+                      />
+                    </>
+                  )}
                 </div>
-                {isAdmin && (
+                <div>
+                  <h1 className="text-xl font-bold text-white">{emp.nombre} {emp.apellido}</h1>
+                  <p className="text-white/80 text-sm">{emp.cargo} · {emp.sector}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className={`badge text-sm py-1 px-3 ${EMPLEADO_ESTADO_COLOR[emp.estado]}`}>
+                  {EMPLEADO_ESTADO_LABEL[emp.estado]}
+                </span>
+                {isAdmin && !editMode && (
+                  <button onClick={() => setEditMode(true)} className="btn-secondary bg-white/15 border-white/25 text-white hover:bg-white/25">
+                    <Edit2 className="w-4 h-4" /> Editar
+                  </button>
+                )}
+                {isAdmin && editMode && (
                   <>
-                    <button
-                      onClick={() => fotoRef.current?.click()}
-                      className="absolute inset-0 rounded-2xl flex items-center justify-center bg-black/0 group-hover:bg-black/30 transition-colors opacity-0 group-hover:opacity-100"
-                    >
-                      <Camera className="w-5 h-5 text-white" />
+                    <button onClick={() => setEditMode(false)} className="btn-secondary bg-white/15 border-white/25 text-white hover:bg-white/25">
+                      <X className="w-4 h-4" /> Cancelar
                     </button>
-                    <input
-                      ref={fotoRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={e => e.target.files?.[0] && handlePhotoUpload(e.target.files[0])}
-                    />
+                    <button onClick={handleSave} className="btn-primary">
+                      <Save className="w-4 h-4" /> Guardar
+                    </button>
                   </>
                 )}
               </div>
-              <div className="mb-2">
-                <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">{emp.nombre} {emp.apellido}</h1>
-                <p className="text-slate-500 dark:text-slate-400 text-sm">{emp.cargo} · {emp.sector}</p>
-              </div>
             </div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className={`badge text-sm py-1 px-3 ${EMPLEADO_ESTADO_COLOR[emp.estado]}`}>
-                {EMPLEADO_ESTADO_LABEL[emp.estado]}
-              </span>
-              {isAdmin && !editMode && (
-                <button onClick={() => setEditMode(true)} className="btn-secondary">
-                  <Edit2 className="w-4 h-4" /> Editar
-                </button>
-              )}
-              {isAdmin && editMode && (
-                <>
-                  <button onClick={() => setEditMode(false)} className="btn-secondary">
-                    <X className="w-4 h-4" /> Cancelar
-                  </button>
-                  <button onClick={handleSave} className="btn-primary">
-                    <Save className="w-4 h-4" /> Guardar
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
 
-          {/* Quick stats */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
-            {[
-              { label: 'Antigüedad', value: antiguedad, icon: Calendar },
-              { label: 'Edad', value: edad ? `${edad} años` : '—', icon: User },
-              { label: 'Jornada', value: emp.jornada, icon: Clock },
-            ].map(({ label, value, icon: Icon }) => (
-              <div key={label} className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <Icon className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
+            {/* Quick stats */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-5">
+              {[
+                { label: 'Antigüedad', value: antiguedad, icon: Calendar },
+                { label: 'Edad', value: edad ? `${edad} años` : '—', icon: User },
+                { label: 'Jornada', value: emp.jornada, icon: Clock },
+              ].map(({ label, value, icon: Icon }) => (
+                <div key={label} className="bg-white/15 backdrop-blur-sm rounded-xl p-3 border border-white/20">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Icon className="w-3.5 h-3.5 text-white/70" />
+                    <p className="text-xs text-white/70">{label}</p>
+                  </div>
+                  <p className="text-sm font-semibold text-white">{value}</p>
                 </div>
-                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{value}</p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </div>
