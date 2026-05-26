@@ -3,10 +3,12 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import type {
   Empleado, Solicitud, Recibo, Novedad, Ticket, User,
-  AppNotification, PendingRegistration, TicketEstado,
+  AppNotification, PendingRegistration, TicketEstado, UserRole,
 } from '@/types'
 import * as initial from '@/lib/mockData'
 import { uid } from '@/lib/utils'
+import { supabase } from '@/lib/supabase'
+import { SOLICITUD_TIPO_LABEL } from '@/lib/utils'
 
 interface DataContextType {
   empleados: Empleado[]
@@ -57,6 +59,15 @@ function load<T>(key: string, fallback: T): T {
   } catch { return fallback }
 }
 
+// Fire-and-forget email notification — never blocks the UI
+function sendEmail(type: string, data: Record<string, string>) {
+  fetch('/api/notify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type, data }),
+  }).catch(() => { /* email failure is non-fatal */ })
+}
+
 export function DataProvider({ children }: { children: React.ReactNode }) {
   const [empleados, setEmpleados] = useState<Empleado[]>(() => load('fno_empleados', initial.empleados))
   const [solicitudes, setSolicitudes] = useState<Solicitud[]>(() => load('fno_solicitudes', initial.solicitudes))
@@ -69,7 +80,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     { id: 'sys1', texto: 'Bienvenido al Portal de RRHH de Fundación Neuquén Oeste', leida: false, fecha: '2026-05-26', tipo: 'sistema' },
   ]))
 
-  // Persistencia automática
+  // ── Persistencia localStorage ──────────────────────────────────────────────
   useEffect(() => { localStorage.setItem('fno_empleados', JSON.stringify(empleados)) }, [empleados])
   useEffect(() => { localStorage.setItem('fno_solicitudes', JSON.stringify(solicitudes)) }, [solicitudes])
   useEffect(() => { localStorage.setItem('fno_recibos', JSON.stringify(recibos)) }, [recibos])
@@ -78,6 +89,53 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { localStorage.setItem('fno_users', JSON.stringify(users)) }, [users])
   useEffect(() => { localStorage.setItem('fno_pending', JSON.stringify(pendingRegistrations)) }, [pendingRegistrations])
   useEffect(() => { localStorage.setItem('fno_notifs', JSON.stringify(notifications)) }, [notifications])
+
+  // ── Sincronización con Supabase (users + pending_registrations) ────────────
+  // Carga al iniciar — sobreescribe localStorage con datos del servidor
+  useEffect(() => {
+    if (!supabase) return
+
+    async function syncFromSupabase() {
+      if (!supabase) return
+      try {
+        const [usersRes, pendingRes] = await Promise.all([
+          supabase.from('fno_users').select('*'),
+          supabase.from('fno_pending').select('*'),
+        ])
+
+        if (usersRes.data && usersRes.data.length > 0) {
+          const mapped: User[] = usersRes.data.map((u: Record<string, string>) => ({
+            id: u.id,
+            email: u.email,
+            password: u.password,
+            role: u.role as UserRole,
+            empleadoId: u.empleado_id,
+          }))
+          setUsers(mapped)
+        }
+
+        if (pendingRes.data) {
+          const mapped: PendingRegistration[] = pendingRes.data.map((p: Record<string, string>) => ({
+            id: p.id,
+            nombre: p.nombre,
+            apellido: p.apellido,
+            dni: p.dni,
+            email: p.email,
+            password: p.password,
+            sector: p.sector,
+            cargo: p.cargo,
+            telefono: p.telefono ?? '',
+            fechaSolicitud: p.fecha_solicitud,
+          }))
+          setPending(mapped)
+        }
+      } catch (e) {
+        console.error('Supabase sync error:', e)
+      }
+    }
+
+    syncFromSupabase()
+  }, [])
 
   const addNotification = useCallback((n: Omit<AppNotification, 'id' | 'fecha' | 'leida'>) => {
     setNotifications(prev => [{ ...n, id: uid(), fecha: new Date().toISOString().slice(0, 10), leida: false }, ...prev])
@@ -107,13 +165,30 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     addNotification({ texto: `Nueva solicitud de ${s.tipo.replace('_', ' ')}: requiere revisión`, tipo: 'solicitud', empleadoId: s.empleadoId })
   }, [addNotification])
 
+  // Llama a email cuando el admin aprueba/rechaza una solicitud
   const approveSolicitud = useCallback((id: string, comment: string) => {
     setSolicitudes(prev => prev.map(s => s.id === id
       ? { ...s, estado: 'aprobado', fechaResolucion: new Date().toISOString().slice(0, 10), comentarioAdmin: comment }
       : s
     ))
     const sol = solicitudes.find(s => s.id === id)
-    if (sol) addNotification({ texto: 'Tu solicitud fue aprobada', tipo: 'solicitud', empleadoId: sol.empleadoId })
+    if (sol) {
+      addNotification({ texto: 'Tu solicitud fue aprobada', tipo: 'solicitud', empleadoId: sol.empleadoId })
+      // Buscar email del empleado para notificarlo
+      setEmpleados(prev => {
+        const emp = prev.find(e => e.id === sol.empleadoId)
+        if (emp?.email) {
+          sendEmail('solicitud_resuelta', {
+            email: emp.email,
+            nombre: `${emp.nombre} ${emp.apellido}`,
+            tipo: SOLICITUD_TIPO_LABEL[sol.tipo as keyof typeof SOLICITUD_TIPO_LABEL] ?? sol.tipo,
+            estado: 'aprobado',
+            comentario: comment,
+          })
+        }
+        return prev
+      })
+    }
   }, [solicitudes, addNotification])
 
   const rejectSolicitud = useCallback((id: string, comment: string) => {
@@ -122,7 +197,22 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       : s
     ))
     const sol = solicitudes.find(s => s.id === id)
-    if (sol) addNotification({ texto: 'Tu solicitud fue rechazada', tipo: 'solicitud', empleadoId: sol.empleadoId })
+    if (sol) {
+      addNotification({ texto: 'Tu solicitud fue rechazada', tipo: 'solicitud', empleadoId: sol.empleadoId })
+      setEmpleados(prev => {
+        const emp = prev.find(e => e.id === sol.empleadoId)
+        if (emp?.email) {
+          sendEmail('solicitud_resuelta', {
+            email: emp.email,
+            nombre: `${emp.nombre} ${emp.apellido}`,
+            tipo: SOLICITUD_TIPO_LABEL[sol.tipo as keyof typeof SOLICITUD_TIPO_LABEL] ?? sol.tipo,
+            estado: 'rechazado',
+            comentario: comment,
+          })
+        }
+        return prev
+      })
+    }
   }, [solicitudes, addNotification])
 
   // ── Novedades ──────────────────────────────────────────────────────────────
@@ -158,10 +248,20 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   // ── Usuarios ───────────────────────────────────────────────────────────────
   const addUser = useCallback((u: User) => {
     setUsers(prev => [...prev, u])
+    // Persist to Supabase for cross-device login
+    if (supabase) {
+      supabase.from('fno_users').insert({
+        id: u.id, email: u.email, password: u.password,
+        role: u.role, empleado_id: u.empleadoId,
+      }).then()
+    }
   }, [])
 
   const updateUserPassword = useCallback((userId: string, newPassword: string) => {
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, password: newPassword } : u))
+    if (supabase) {
+      supabase.from('fno_users').update({ password: newPassword }).eq('id', userId).then()
+    }
   }, [])
 
   const getUserByEmail = useCallback((email: string) =>
@@ -172,10 +272,32 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     pendingRegistrations.find(p => p.email === email.toLowerCase().trim()),
   [pendingRegistrations])
 
-  // ── Registro pendiente ────────────────────────────────────────────────────
+  // ── Registro pendiente ─────────────────────────────────────────────────────
   const addPendingRegistration = useCallback((reg: Omit<PendingRegistration, 'id' | 'fechaSolicitud'>) => {
-    setPending(prev => [...prev, { ...reg, id: uid(), fechaSolicitud: new Date().toISOString().slice(0, 10) }])
+    const newReg: PendingRegistration = { ...reg, id: uid(), fechaSolicitud: new Date().toISOString().slice(0, 10) }
+    setPending(prev => [...prev, newReg])
     addNotification({ texto: `Nueva solicitud de acceso: ${reg.nombre} ${reg.apellido}`, tipo: 'registro' })
+
+    // Persist to Supabase so admin sees it from any device
+    if (supabase) {
+      supabase.from('fno_pending').insert({
+        id: newReg.id, nombre: reg.nombre, apellido: reg.apellido, dni: reg.dni,
+        email: reg.email, password: reg.password, sector: reg.sector,
+        cargo: reg.cargo, telefono: reg.telefono || '',
+        fecha_solicitud: newReg.fechaSolicitud,
+      }).then()
+    }
+
+    // Email to admin
+    sendEmail('new_registration', {
+      nombre: reg.nombre,
+      apellido: reg.apellido,
+      dni: reg.dni,
+      email: reg.email,
+      sector: reg.sector,
+      cargo: reg.cargo,
+      telefono: reg.telefono || '',
+    })
   }, [addNotification])
 
   const approvePendingRegistration = useCallback((id: string) => {
@@ -192,16 +314,35 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       fechaIngreso: hoy, tipoContrato: 'Contrato', jornada: 'Full Time',
       supervisor: '', estado: 'activo', diasVacaciones: 14, diasVacacionesUsados: 0,
     }
+    const nuevoUser: User = { id: uid(), email: reg.email, password: reg.password, role: 'employee', empleadoId }
+
     setEmpleados(prev => [...prev, nuevoEmpleado])
-    setUsers(prev => [...prev, { id: uid(), email: reg.email, password: reg.password, role: 'employee', empleadoId }])
+    setUsers(prev => [...prev, nuevoUser])
     setPending(prev => prev.filter(p => p.id !== id))
     addNotification({ texto: `Acceso aprobado para ${reg.nombre} ${reg.apellido}`, tipo: 'registro' })
+
+    // Persist approved user to Supabase
+    if (supabase) {
+      supabase.from('fno_users').insert({
+        id: nuevoUser.id, email: nuevoUser.email, password: nuevoUser.password,
+        role: nuevoUser.role, empleado_id: nuevoUser.empleadoId,
+      }).then()
+      supabase.from('fno_pending').delete().eq('id', id).then()
+    }
+
+    // Email to registrant
+    sendEmail('registration_approved', { nombre: reg.nombre, email: reg.email })
   }, [pendingRegistrations, addNotification])
 
   const rejectPendingRegistration = useCallback((id: string) => {
     const reg = pendingRegistrations.find(p => p.id === id)
     setPending(prev => prev.filter(p => p.id !== id))
-    if (reg) addNotification({ texto: `Solicitud de acceso rechazada: ${reg.nombre} ${reg.apellido}`, tipo: 'registro' })
+    if (reg) {
+      addNotification({ texto: `Solicitud de acceso rechazada: ${reg.nombre} ${reg.apellido}`, tipo: 'registro' })
+      if (supabase) supabase.from('fno_pending').delete().eq('id', id).then()
+      // Email to registrant
+      sendEmail('registration_rejected', { nombre: reg.nombre, email: reg.email })
+    }
   }, [pendingRegistrations, addNotification])
 
   // ── Notificaciones ─────────────────────────────────────────────────────────
