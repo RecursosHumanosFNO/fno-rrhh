@@ -75,4 +75,4 @@ src/
 
 ## Para producción
 
-Para conectar a una base de datos real (PostgreSQL), reemplazar `src/lib/mockData.ts` por llamadas a la API con Prisma ORM o similar. El esquema relacional ya está implícito en los tipos de `src/types/index.ts`.
+Para conectar a una base de datos real (PostgreSQL), reemplazar `src/lib/mockData.ts` por llamadas a la API con Prisma ORM o similar. El esquema relacional ya está implícito en los tipos de `src/types/index.ts`. 
