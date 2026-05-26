@@ -80,6 +80,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
             placeholder="Buscar empleados, novedades..."
             className="bg-transparent text-sm text-slate-600 dark:text-slate-300 placeholder-slate-400 focus:outline-none w-full"
             value={query}
+            autoComplete="off"
             onChange={e => { setQuery(e.target.value); setShowSearch(true) }}
             onFocus={() => setShowSearch(true)}
           />
