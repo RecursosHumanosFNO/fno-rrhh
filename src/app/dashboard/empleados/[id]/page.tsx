@@ -123,7 +123,7 @@ export default function EmpleadoDetailPage() {
           {/* Blurred cover background */}
           <div className="absolute inset-0">
             {emp.fotoCover
-              ? <img src={emp.fotoCover} alt="" className="w-full h-full object-cover scale-110 blur-lg" />
+              ? <img src={emp.fotoCover} alt="" className="w-full h-full object-cover scale-105 blur-sm" />
               : null
             }
             <div className={`absolute inset-0 ${emp.fotoCover ? 'bg-gradient-to-b from-slate-900/60 via-slate-900/65 to-slate-900/80' : 'bg-gradient-to-r from-brand-700 to-brand-500'}`} />
