@@ -4,6 +4,8 @@ import { useState, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { formatFecha, calcularAntiguedad, calcularEdad } from '@/lib/utils'
+import type { Empleado } from '@/types'
+import { SECTORES } from '@/lib/mockData'
 import {
   User, Edit2, Save, X, Lock, Building2, Phone, Mail,
   Clock, CheckCircle2, Eye, EyeOff, Camera, Image as ImageIcon,
@@ -32,6 +34,11 @@ export default function PerfilPage() {
     contactoRelacion: empleado?.contactoEmergencia.relacion ?? '',
     cbu: empleado?.cbu ?? '',
     banco: empleado?.banco ?? '',
+    sector: empleado?.sector ?? '',
+    cargo: empleado?.cargo ?? '',
+    tipoContrato: empleado?.tipoContrato ?? '',
+    jornada: empleado?.jornada ?? '',
+    supervisor: empleado?.supervisor ?? '',
   })
 
   const [passForm, setPassForm] = useState({ old: '', nueva: '', confirm: '' })
@@ -59,6 +66,11 @@ export default function PerfilPage() {
       },
       cbu: form.cbu,
       banco: form.banco,
+      sector: form.sector,
+      cargo: form.cargo,
+      tipoContrato: form.tipoContrato as Empleado['tipoContrato'],
+      jornada: form.jornada as Empleado['jornada'],
+      supervisor: form.supervisor,
     })
     setEditMode(false)
   }
@@ -119,9 +131,9 @@ export default function PerfilPage() {
       </div>
 
       {/* Profile card */}
-      <div className="card overflow-hidden">
+      <div className="card">
         {/* Cover photo */}
-        <div className="relative h-32 bg-gradient-to-r from-brand-700 to-brand-500 overflow-hidden group cursor-pointer" onClick={() => coverRef.current?.click()}>
+        <div className="relative h-32 bg-gradient-to-r from-brand-700 to-brand-500 overflow-hidden rounded-t-xl group cursor-pointer" onClick={() => coverRef.current?.click()}>
           {empleado.fotoCover && (
             <img src={empleado.fotoCover} alt="" className="w-full h-full object-cover absolute inset-0" />
           )}
@@ -259,18 +271,46 @@ export default function PerfilPage() {
           <div className="card p-5">
             <p className="section-title mb-4 flex items-center gap-2"><Building2 className="w-4 h-4" /> Datos Laborales</p>
             <div className="space-y-2.5">
-              {[
-                { label: 'Sector', value: empleado.sector },
-                { label: 'Cargo', value: empleado.cargo },
-                { label: 'Fecha de ingreso', value: formatFecha(empleado.fechaIngreso) },
-                { label: 'Tipo de contrato', value: empleado.tipoContrato },
-                { label: 'Supervisor/a', value: empleado.supervisor || '—' },
-              ].map(({ label, value }) => (
-                <div key={label} className="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-800 last:border-0">
-                  <span className="text-xs text-slate-500 dark:text-slate-400">{label}</span>
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300 text-right max-w-[55%]">{value}</span>
-                </div>
-              ))}
+              <div className="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-xs text-slate-500 dark:text-slate-400">Sector</span>
+                {editMode
+                  ? <select className="form-select text-sm max-w-[55%]" value={form.sector} onChange={e => setForm(f => ({ ...f, sector: e.target.value }))}>
+                      {SECTORES.map(s => <option key={s}>{s}</option>)}
+                    </select>
+                  : <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.sector}</span>}
+              </div>
+              <div className="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-xs text-slate-500 dark:text-slate-400">Cargo</span>
+                {editMode
+                  ? <input className="form-input text-sm max-w-[55%]" value={form.cargo} onChange={e => setForm(f => ({ ...f, cargo: e.target.value }))} />
+                  : <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.cargo}</span>}
+              </div>
+              <div className="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-xs text-slate-500 dark:text-slate-400">Fecha de ingreso</span>
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{formatFecha(empleado.fechaIngreso)}</span>
+              </div>
+              <div className="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-xs text-slate-500 dark:text-slate-400">Tipo de contrato</span>
+                {editMode
+                  ? <select className="form-select text-sm max-w-[55%]" value={form.tipoContrato} onChange={e => setForm(f => ({ ...f, tipoContrato: e.target.value }))}>
+                      <option>Planta Permanente</option><option>Contrato</option><option>Planta Provisional</option><option>Pasantía</option>
+                    </select>
+                  : <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.tipoContrato}</span>}
+              </div>
+              <div className="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-xs text-slate-500 dark:text-slate-400">Jornada</span>
+                {editMode
+                  ? <select className="form-select text-sm max-w-[55%]" value={form.jornada} onChange={e => setForm(f => ({ ...f, jornada: e.target.value }))}>
+                      <option>Full Time</option><option>Part Time</option><option>Por Horas</option>
+                    </select>
+                  : <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.jornada}</span>}
+              </div>
+              <div className="flex justify-between items-center py-1.5">
+                <span className="text-xs text-slate-500 dark:text-slate-400">Supervisor/a</span>
+                {editMode
+                  ? <input className="form-input text-sm max-w-[55%]" value={form.supervisor} onChange={e => setForm(f => ({ ...f, supervisor: e.target.value }))} />
+                  : <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.supervisor || '—'}</span>}
+              </div>
             </div>
           </div>
 

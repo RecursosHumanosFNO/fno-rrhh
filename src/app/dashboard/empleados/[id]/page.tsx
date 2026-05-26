@@ -118,8 +118,8 @@ export default function EmpleadoDetailPage() {
       )}
 
       {/* Profile header */}
-      <div className="card overflow-hidden">
-        <div className="h-24 bg-gradient-to-r from-brand-700 to-brand-500 relative overflow-hidden">
+      <div className="card">
+        <div className="h-24 bg-gradient-to-r from-brand-700 to-brand-500 relative overflow-hidden rounded-t-xl">
           {emp.fotoCover && <img src={emp.fotoCover} alt="" className="w-full h-full object-cover absolute inset-0" />}
         </div>
         <div className="px-6 pb-6">

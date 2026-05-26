@@ -8,17 +8,24 @@ import { cn } from '@/lib/utils'
 import type { PendingRegistration } from '@/types'
 import {
   UserCheck, UserX, Clock, Mail, Phone,
-  Building2, Briefcase, CreditCard, CheckCircle, XCircle, Users,
+  Building2, Briefcase, CreditCard, CheckCircle, XCircle, Users, RefreshCw,
 } from 'lucide-react'
 
 export default function RegistrosPendientesPage() {
   const { user } = useAuth()
-  const { pendingRegistrations, approvePendingRegistration, rejectPendingRegistration } = useData()
+  const { pendingRegistrations, approvePendingRegistration, rejectPendingRegistration, refreshPending } = useData()
   const router = useRouter()
 
   const [confirmAction, setConfirmAction] = useState<{ type: 'approve' | 'reject'; reg: PendingRegistration } | null>(null)
   const [processing, setProcessing] = useState<string | null>(null)
   const [toast, setToast] = useState<{ type: 'approve' | 'reject'; nombre: string } | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
+
+  async function handleRefresh() {
+    setRefreshing(true)
+    await refreshPending()
+    setRefreshing(false)
+  }
 
   if (user?.role !== 'admin') {
     router.push('/dashboard')
@@ -46,18 +53,28 @@ export default function RegistrosPendientesPage() {
   return (
     <div className="page-container">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-3">
-          Solicitudes de Acceso
-          {pendingRegistrations.length > 0 && (
-            <span className="bg-red-500 text-white text-sm font-bold px-2.5 py-0.5 rounded-full">
-              {pendingRegistrations.length}
-            </span>
-          )}
-        </h1>
-        <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
-          Empleados que solicitaron acceso al portal y están pendientes de aprobación
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-3">
+            Solicitudes de Acceso
+            {pendingRegistrations.length > 0 && (
+              <span className="bg-red-500 text-white text-sm font-bold px-2.5 py-0.5 rounded-full">
+                {pendingRegistrations.length}
+              </span>
+            )}
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
+            Empleados que solicitaron acceso al portal y están pendientes de aprobación
+          </p>
+        </div>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="btn-secondary shrink-0"
+        >
+          <RefreshCw className={cn('w-4 h-4', refreshing && 'animate-spin')} />
+          Actualizar
+        </button>
       </div>
 
       {/* Toast */}

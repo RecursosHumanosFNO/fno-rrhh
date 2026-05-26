@@ -43,6 +43,7 @@ interface DataContextType {
   rejectPendingRegistration: (id: string) => void
   getUserByEmail: (email: string) => User | undefined
   getPendingByEmail: (email: string) => PendingRegistration | undefined
+  refreshPending: () => Promise<void>
   // Notificaciones
   markNotificationRead: (id: string) => void
   markAllRead: () => void
@@ -114,7 +115,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           setUsers(mapped)
         }
 
-        if (pendingRes.data) {
+        if (pendingRes.data && pendingRes.data.length > 0) {
           const mapped: PendingRegistration[] = pendingRes.data.map((p: Record<string, string>) => ({
             id: p.id,
             nombre: p.nombre,
@@ -334,6 +335,23 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     sendEmail('registration_approved', { nombre: reg.nombre, email: reg.email })
   }, [pendingRegistrations, addNotification])
 
+  const refreshPending = useCallback(async () => {
+    if (!supabase) return
+    try {
+      const { data } = await supabase.from('fno_pending').select('*')
+      if (data && data.length > 0) {
+        setPending(data.map((p: Record<string, string>) => ({
+          id: p.id, nombre: p.nombre, apellido: p.apellido, dni: p.dni,
+          email: p.email, password: p.password, sector: p.sector,
+          cargo: p.cargo, telefono: p.telefono ?? '',
+          fechaSolicitud: p.fecha_solicitud,
+        })))
+      }
+    } catch (e) {
+      console.error('refreshPending error:', e)
+    }
+  }, [])
+
   const rejectPendingRegistration = useCallback((id: string) => {
     const reg = pendingRegistrations.find(p => p.id === id)
     setPending(prev => prev.filter(p => p.id !== id))
@@ -364,7 +382,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       addRecibo,
       addTicket, respondTicket,
       addUser, updateUserPassword, getUserByEmail, getPendingByEmail,
-      addPendingRegistration, approvePendingRegistration, rejectPendingRegistration,
+      addPendingRegistration, approvePendingRegistration, rejectPendingRegistration, refreshPending,
       markNotificationRead, markAllRead, addNotification,
     }}>
       {children}
