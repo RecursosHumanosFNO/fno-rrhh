@@ -24,7 +24,7 @@ export default function Icon() {
             fontWeight: 800,
             fontFamily: 'sans-serif',
             display: 'flex',
-            letterSpacing: '-6px',
+            letterSpacing: '-8px',
             paddingLeft: 6,
           }}
         >
