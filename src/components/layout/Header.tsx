@@ -124,7 +124,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
         {/* Dark mode toggle */}
         <button
           onClick={toggleTheme}
-          className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors"
+          className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-teal-900/30 text-slate-500 dark:text-teal-400 transition-colors"
           title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
         >
           {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
@@ -134,7 +134,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
         <div className="relative">
           <button
             onClick={() => { setShowNotifs(!showNotifs); setShowDropdown(false) }}
-            className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 relative transition-colors"
+            className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-teal-900/30 text-slate-500 dark:text-teal-400 relative transition-colors"
           >
             <Bell className="w-4 h-4" />
             {unread.length > 0 && (
@@ -158,7 +158,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
                 {unread.length > 0 && (
                   <button
                     onClick={markAllRead}
-                    className="text-xs text-brand-600 dark:text-brand-400 hover:underline flex items-center gap-1"
+                    className="text-xs text-brand-600 dark:text-teal-400 hover:underline flex items-center gap-1"
                   >
                     <CheckCheck className="w-3 h-3" /> Leer todo
                   </button>
@@ -174,7 +174,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
                   <div
                     key={n.id}
                     onClick={() => markNotificationRead(n.id)}
-                    className={`p-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer flex items-start gap-2.5 ${!n.leida ? 'bg-blue-50/60 dark:bg-blue-900/10' : ''}`}
+                    className={`p-3 hover:bg-slate-50 dark:hover:bg-teal-900/20 transition-colors cursor-pointer flex items-start gap-2.5 ${!n.leida ? 'bg-blue-50/60 dark:bg-teal-900/20' : ''}`}
                   >
                     <span className="text-base shrink-0 mt-0.5">{tipoIcon[n.tipo] ?? '🔔'}</span>
                     <div className="flex-1 min-w-0">
@@ -183,7 +183,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
                       </p>
                       <p className="text-[10px] text-slate-400 mt-0.5">{n.fecha}</p>
                     </div>
-                    {!n.leida && <div className="w-2 h-2 bg-brand-600 rounded-full shrink-0 mt-1.5" />}
+                    {!n.leida && <div className="w-2 h-2 bg-brand-600 dark:bg-teal-400 rounded-full shrink-0 mt-1.5" />}
                   </div>
                 ))}
               </div>

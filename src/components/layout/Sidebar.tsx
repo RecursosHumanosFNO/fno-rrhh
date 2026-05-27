@@ -94,8 +94,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
       {/* Role badge */}
       {!collapsed && (
-        <div className="mx-3 mt-3 px-3 py-1.5 bg-white/10 rounded-lg">
-          <p className="text-blue-100 text-xs font-medium">
+        <div className="mx-3 mt-3 px-3 py-1.5 bg-white/10 dark:bg-teal-900/30 rounded-lg border border-transparent dark:border-teal-700/30">
+          <p className="text-blue-100 dark:text-teal-300 text-xs font-medium">
             {isAdmin ? '🔑 Administrador RRHH' : '👤 Portal del Empleado'}
           </p>
         </div>
