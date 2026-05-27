@@ -58,6 +58,20 @@ export default function EmpleadoDetailPage() {
   const antiguedad = calcularAntiguedad(emp.fechaIngreso)
   const empUser = users.find(u => u.empleadoId === id)
 
+  // Missing fields detection
+  const missingFields: string[] = [
+    ...(!emp.fechaNacimiento ? ['Fecha de nacimiento'] : []),
+    ...(!emp.cuil ? ['CUIL'] : []),
+    ...(!emp.telefono ? ['Teléfono'] : []),
+    ...(!emp.direccion ? ['Dirección'] : []),
+    ...(!emp.cbu ? ['CBU'] : []),
+    ...(!emp.banco ? ['Banco'] : []),
+    ...(!emp.contactoEmergencia?.nombre ? ['Contacto emergencia — nombre'] : []),
+    ...(!emp.contactoEmergencia?.telefono ? ['Contacto emergencia — teléfono'] : []),
+    ...(!emp.contactoEmergencia?.relacion ? ['Contacto emergencia — relación'] : []),
+    ...(!emp.foto ? ['Foto de perfil'] : []),
+  ]
+
   // Editable form state (for admin editing)
   const [form, setForm] = useState({
     nombre: emp.nombre, apellido: emp.apellido, dni: emp.dni, cuil: emp.cuil ?? '',
@@ -205,6 +219,30 @@ export default function EmpleadoDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Missing data warning */}
+      {missingFields.length > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50/80 dark:border-amber-700/30 dark:bg-amber-900/10 p-4 flex gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-500 dark:text-amber-400 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+              Perfil incompleto · {missingFields.length} dato{missingFields.length > 1 ? 's' : ''} faltante{missingFields.length > 1 ? 's' : ''}
+            </p>
+            <p className="text-xs text-amber-700/80 dark:text-amber-400/80 mt-0.5">
+              {isAdmin
+                ? 'Completá los datos del empleado en la pestaña Personal para desactivar este aviso.'
+                : 'Comunicáte con RRHH para completar tu perfil. Faltan los siguientes datos:'}
+            </p>
+            <div className="flex flex-wrap gap-1.5 mt-2.5">
+              {missingFields.map(f => (
+                <span key={f} className="inline-flex items-center gap-1 text-xs bg-amber-100 dark:bg-amber-800/25 text-amber-700 dark:text-amber-300 rounded-full px-2.5 py-0.5 border border-amber-200 dark:border-amber-700/30 font-medium">
+                  <AlertCircle className="w-3 h-3 shrink-0" />{f}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-slate-200 dark:border-slate-800 overflow-x-auto">
