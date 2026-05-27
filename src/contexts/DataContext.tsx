@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import type {
   Empleado, Solicitud, Recibo, Novedad, Ticket, User,
-  AppNotification, PendingRegistration, TicketEstado, UserRole,
+  AppNotification, PendingRegistration, TicketEstado, UserRole, EmpleadoEstado,
 } from '@/types'
 import * as initial from '@/lib/mockData'
 import { uid } from '@/lib/utils'
@@ -60,6 +60,68 @@ function load<T>(key: string, fallback: T): T {
   } catch { return fallback }
 }
 
+// ── Helpers Supabase ↔ Empleado ───────────────────────────────────────────
+function mapSupabaseToEmpleado(row: Record<string, unknown>): Empleado {
+  const ce = (row.contacto_emergencia as Record<string, string>) ?? {}
+  return {
+    id: row.id as string,
+    nombre: (row.nombre as string) ?? '',
+    apellido: (row.apellido as string) ?? '',
+    dni: (row.dni as string) ?? '',
+    fechaNacimiento: (row.fecha_nacimiento as string) ?? '',
+    email: (row.email as string) ?? '',
+    telefono: (row.telefono as string) ?? '',
+    direccion: (row.direccion as string) ?? '',
+    foto: (row.foto as string) ?? '',
+    fotoCover: (row.foto_cover as string) ?? '',
+    cuil: (row.cuil as string) ?? '',
+    contactoEmergencia: {
+      nombre: ce.nombre ?? '',
+      telefono: ce.telefono ?? '',
+      relacion: ce.relacion ?? '',
+    },
+    sector: (row.sector as string) ?? '',
+    cargo: (row.cargo as string) ?? '',
+    fechaIngreso: (row.fecha_ingreso as string) ?? '',
+    tipoContrato: (row.tipo_contrato as Empleado['tipoContrato']) ?? 'Contrato',
+    jornada: (row.jornada as Empleado['jornada']) ?? 'Full Time',
+    supervisor: (row.supervisor as string) ?? '',
+    estado: ((row.estado as EmpleadoEstado) ?? 'activo'),
+    diasVacaciones: (row.dias_vacaciones as number) ?? 14,
+    diasVacacionesUsados: (row.dias_vacaciones_usados as number) ?? 0,
+    cbu: (row.cbu as string) ?? '',
+    banco: (row.banco as string) ?? '',
+  }
+}
+
+function mapEmpleadoToSupabase(e: Empleado) {
+  return {
+    id: e.id,
+    nombre: e.nombre,
+    apellido: e.apellido,
+    dni: e.dni,
+    fecha_nacimiento: e.fechaNacimiento,
+    email: e.email,
+    telefono: e.telefono,
+    direccion: e.direccion,
+    foto: e.foto,
+    foto_cover: e.fotoCover,
+    cuil: e.cuil,
+    contacto_emergencia: e.contactoEmergencia,
+    sector: e.sector,
+    cargo: e.cargo,
+    fecha_ingreso: e.fechaIngreso,
+    tipo_contrato: e.tipoContrato,
+    jornada: e.jornada,
+    supervisor: e.supervisor,
+    estado: e.estado,
+    dias_vacaciones: e.diasVacaciones,
+    dias_vacaciones_usados: e.diasVacacionesUsados,
+    cbu: e.cbu ?? '',
+    banco: e.banco ?? '',
+  }
+}
+
 // Fire-and-forget email notification — never blocks the UI
 function sendEmail(type: string, data: Record<string, string>) {
   fetch('/api/notify', {
@@ -95,9 +157,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const syncFromSupabase = useCallback(async () => {
     if (!supabase) return
     try {
-      const [usersRes, pendingRes] = await Promise.all([
+      const [usersRes, pendingRes, empleadosRes] = await Promise.all([
         supabase.from('fno_users').select('*'),
         supabase.from('fno_pending').select('*'),
+        supabase.from('fno_empleados').select('*'),
       ])
       if (usersRes.data && usersRes.data.length > 0) {
         const mapped: User[] = usersRes.data.map((u: Record<string, string>) => ({
@@ -114,6 +177,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           fechaSolicitud: p.fecha_solicitud,
         }))
         setPending(mapped)
+      }
+      // Si Supabase tiene empleados, es la fuente de verdad
+      if (empleadosRes.data && empleadosRes.data.length > 0) {
+        setEmpleados(empleadosRes.data.map((row: Record<string, unknown>) => mapSupabaseToEmpleado(row)))
       }
     } catch (e) {
       console.error('Supabase sync error:', e)
@@ -152,18 +219,35 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   // ── Empleados ──────────────────────────────────────────────────────────────
   const addEmpleado = useCallback((e: Omit<Empleado, 'id'>): string => {
     const id = uid()
-    setEmpleados(prev => [...prev, { ...e, id }])
+    const newEmp = { ...e, id }
+    setEmpleados(prev => [...prev, newEmp])
     addNotification({ texto: `Nuevo empleado registrado: ${e.nombre} ${e.apellido}`, tipo: 'sistema' })
+    if (supabase) {
+      supabase.from('fno_empleados').insert(mapEmpleadoToSupabase(newEmp)).then(({ error }) => {
+        if (error) console.error('Supabase insert fno_empleados error:', error)
+      })
+    }
     return id
   }, [addNotification])
 
   const updateEmpleado = useCallback((id: string, data: Partial<Empleado>) => {
-    setEmpleados(prev => prev.map(e => e.id === id ? { ...e, ...data } : e))
+    setEmpleados(prev => {
+      const updated = prev.map(e => e.id === id ? { ...e, ...data } : e)
+      if (supabase) {
+        const full = updated.find(e => e.id === id)
+        if (full) supabase.from('fno_empleados').upsert(mapEmpleadoToSupabase(full)).then()
+      }
+      return updated
+    })
   }, [])
 
   const deleteEmpleado = useCallback((id: string) => {
     setEmpleados(prev => prev.filter(e => e.id !== id))
     setUsers(prev => prev.filter(u => u.empleadoId !== id))
+    if (supabase) {
+      supabase.from('fno_empleados').delete().eq('id', id).then()
+      supabase.from('fno_users').delete().eq('empleado_id', id).then()
+    }
   }, [])
 
   // ── Solicitudes ────────────────────────────────────────────────────────────
@@ -332,12 +416,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setPending(prev => prev.filter(p => p.id !== id))
     addNotification({ texto: `Acceso aprobado para ${reg.nombre} ${reg.apellido}`, tipo: 'registro' })
 
-    // Persist approved user to Supabase
+    // Persist approved user + employee to Supabase
     if (supabase) {
       supabase.from('fno_users').insert({
         id: nuevoUser.id, email: nuevoUser.email, password: nuevoUser.password,
         role: nuevoUser.role, empleado_id: nuevoUser.empleadoId,
       }).then()
+      supabase.from('fno_empleados').insert(mapEmpleadoToSupabase(nuevoEmpleado)).then(({ error }) => {
+        if (error) console.error('Supabase insert fno_empleados (approve) error:', error)
+        else console.log('Supabase: empleado aprobado guardado OK')
+      })
       supabase.from('fno_pending').delete().eq('id', id).then()
     }
 
