@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Users, FileText, ClipboardList, Megaphone,
   BarChart3, User, HeadphonesIcon, ChevronLeft, ChevronRight,
-  LogOut, ExternalLink, Info, Building2, UserCheck,
+  LogOut, ExternalLink, Info, Building2, UserCheck, CalendarDays,
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -39,6 +39,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     { href: '/dashboard/recibos', label: 'Recibos de Sueldo', icon: FileText },
     { href: '/dashboard/solicitudes', label: 'Solicitudes', icon: ClipboardList, badge: solicitudes.filter(s => s.estado === 'pendiente').length },
     { href: '/dashboard/comunicaciones', label: 'Comunicaciones', icon: Megaphone },
+    { href: '/dashboard/eventos', label: 'Eventos y Cumpleaños', icon: CalendarDays },
     { href: '/dashboard/estadisticas', label: 'Estadísticas', icon: BarChart3 },
     { href: '/dashboard/portal-rrhh', label: 'Portal RRHH', icon: HeadphonesIcon },
     { href: '/dashboard/fundacion', label: 'La Fundación', icon: Info },
@@ -50,6 +51,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     { href: '/dashboard/recibos', label: 'Mis Recibos', icon: FileText },
     { href: '/dashboard/solicitudes', label: 'Mis Solicitudes', icon: ClipboardList },
     { href: '/dashboard/comunicaciones', label: 'Comunicaciones', icon: Megaphone },
+    { href: '/dashboard/eventos', label: 'Eventos y Cumpleaños', icon: CalendarDays },
     { href: '/dashboard/portal-rrhh', label: 'Portal RRHH', icon: HeadphonesIcon },
     { href: '/dashboard/fundacion', label: 'La Fundación', icon: Info },
     { href: '/dashboard/perfil', label: 'Mi Perfil', icon: User },
