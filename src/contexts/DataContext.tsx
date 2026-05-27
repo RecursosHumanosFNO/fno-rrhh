@@ -4,11 +4,11 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import type {
   Empleado, Solicitud, Recibo, Novedad, Ticket, User,
   AppNotification, PendingRegistration, TicketEstado, UserRole, EmpleadoEstado,
+  SolicitudEstado, SolicitudTipo, NovedadCategoria, TicketTipo,
 } from '@/types'
 import * as initial from '@/lib/mockData'
-import { uid } from '@/lib/utils'
+import { uid, SOLICITUD_TIPO_LABEL } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
-import { SOLICITUD_TIPO_LABEL } from '@/lib/utils'
 
 interface DataContextType {
   empleados: Empleado[]
@@ -60,7 +60,15 @@ function load<T>(key: string, fallback: T): T {
   } catch { return fallback }
 }
 
-// ── Helpers Supabase ↔ Empleado ───────────────────────────────────────────
+function sendEmail(type: string, data: Record<string, string>) {
+  fetch('/api/notify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type, data }),
+  }).catch(() => { /* email failure is non-fatal */ })
+}
+
+// ── Mappers Supabase ↔ Empleado ──────────────────────────────────────────────
 function mapSupabaseToEmpleado(row: Record<string, unknown>): Empleado {
   const ce = (row.contacto_emergencia as Record<string, string>) ?? {}
   return {
@@ -75,11 +83,7 @@ function mapSupabaseToEmpleado(row: Record<string, unknown>): Empleado {
     foto: (row.foto as string) ?? '',
     fotoCover: (row.foto_cover as string) ?? '',
     cuil: (row.cuil as string) ?? '',
-    contactoEmergencia: {
-      nombre: ce.nombre ?? '',
-      telefono: ce.telefono ?? '',
-      relacion: ce.relacion ?? '',
-    },
+    contactoEmergencia: { nombre: ce.nombre ?? '', telefono: ce.telefono ?? '', relacion: ce.relacion ?? '' },
     sector: (row.sector as string) ?? '',
     cargo: (row.cargo as string) ?? '',
     fechaIngreso: (row.fecha_ingreso as string) ?? '',
@@ -93,42 +97,128 @@ function mapSupabaseToEmpleado(row: Record<string, unknown>): Empleado {
     banco: (row.banco as string) ?? '',
   }
 }
-
 function mapEmpleadoToSupabase(e: Empleado) {
   return {
-    id: e.id,
-    nombre: e.nombre,
-    apellido: e.apellido,
-    dni: e.dni,
-    fecha_nacimiento: e.fechaNacimiento,
-    email: e.email,
-    telefono: e.telefono,
-    direccion: e.direccion,
-    foto: e.foto,
-    foto_cover: e.fotoCover,
-    cuil: e.cuil,
+    id: e.id, nombre: e.nombre, apellido: e.apellido, dni: e.dni,
+    fecha_nacimiento: e.fechaNacimiento, email: e.email, telefono: e.telefono,
+    direccion: e.direccion, foto: e.foto, foto_cover: e.fotoCover, cuil: e.cuil,
     contacto_emergencia: e.contactoEmergencia,
-    sector: e.sector,
-    cargo: e.cargo,
-    fecha_ingreso: e.fechaIngreso,
-    tipo_contrato: e.tipoContrato,
-    jornada: e.jornada,
-    supervisor: e.supervisor,
-    estado: e.estado,
-    dias_vacaciones: e.diasVacaciones,
+    sector: e.sector, cargo: e.cargo, fecha_ingreso: e.fechaIngreso,
+    tipo_contrato: e.tipoContrato, jornada: e.jornada, supervisor: e.supervisor,
+    estado: e.estado, dias_vacaciones: e.diasVacaciones,
     dias_vacaciones_usados: e.diasVacacionesUsados,
-    cbu: e.cbu ?? '',
-    banco: e.banco ?? '',
+    cbu: e.cbu ?? '', banco: e.banco ?? '',
   }
 }
 
-// Fire-and-forget email notification — never blocks the UI
-function sendEmail(type: string, data: Record<string, string>) {
-  fetch('/api/notify', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ type, data }),
-  }).catch(() => { /* email failure is non-fatal */ })
+// ── Mappers Supabase ↔ Solicitud ─────────────────────────────────────────────
+function mapSupabaseToSolicitud(row: Record<string, unknown>): Solicitud {
+  return {
+    id: row.id as string,
+    empleadoId: row.empleado_id as string,
+    tipo: row.tipo as SolicitudTipo,
+    fechaInicio: row.fecha_inicio as string,
+    fechaFin: (row.fecha_fin as string) || undefined,
+    descripcion: (row.descripcion as string) ?? '',
+    estado: row.estado as SolicitudEstado,
+    fechaCreacion: row.fecha_creacion as string,
+    fechaResolucion: (row.fecha_resolucion as string) || undefined,
+    comentarioAdmin: (row.comentario_admin as string) || undefined,
+    adjunto: (row.adjunto as string) || undefined,
+  }
+}
+function mapSolicitudToSupabase(s: Solicitud) {
+  return {
+    id: s.id, empleado_id: s.empleadoId, tipo: s.tipo,
+    fecha_inicio: s.fechaInicio, fecha_fin: s.fechaFin ?? '',
+    descripcion: s.descripcion, estado: s.estado,
+    fecha_creacion: s.fechaCreacion, fecha_resolucion: s.fechaResolucion ?? '',
+    comentario_admin: s.comentarioAdmin ?? '', adjunto: s.adjunto ?? '',
+  }
+}
+
+// ── Mappers Supabase ↔ Recibo ─────────────────────────────────────────────────
+function mapSupabaseToRecibo(row: Record<string, unknown>): Recibo {
+  return {
+    id: row.id as string, empleadoId: row.empleado_id as string,
+    mes: row.mes as number, anio: row.anio as number,
+    archivo: (row.archivo as string) ?? '', fechaSubida: row.fecha_subida as string,
+    monto: row.monto as number,
+  }
+}
+function mapReciboToSupabase(r: Recibo) {
+  return {
+    id: r.id, empleado_id: r.empleadoId, mes: r.mes, anio: r.anio,
+    archivo: r.archivo, fecha_subida: r.fechaSubida, monto: r.monto,
+  }
+}
+
+// ── Mappers Supabase ↔ Novedad ────────────────────────────────────────────────
+function mapSupabaseToNovedad(row: Record<string, unknown>): Novedad {
+  return {
+    id: row.id as string, titulo: row.titulo as string,
+    contenido: (row.contenido as string) ?? '',
+    categoria: row.categoria as NovedadCategoria,
+    fechaPublicacion: row.fecha_publicacion as string,
+    autor: (row.autor as string) ?? '',
+    importante: (row.importante as boolean) ?? false,
+    imagen: (row.imagen as string) || undefined,
+  }
+}
+function mapNovedadToSupabase(n: Novedad) {
+  return {
+    id: n.id, titulo: n.titulo, contenido: n.contenido,
+    categoria: n.categoria, fecha_publicacion: n.fechaPublicacion,
+    autor: n.autor, importante: n.importante, imagen: n.imagen ?? '',
+  }
+}
+
+// ── Mappers Supabase ↔ Ticket ─────────────────────────────────────────────────
+function mapSupabaseToTicket(row: Record<string, unknown>): Ticket {
+  return {
+    id: row.id as string, empleadoId: row.empleado_id as string,
+    tipo: row.tipo as TicketTipo, asunto: row.asunto as string,
+    descripcion: (row.descripcion as string) ?? '',
+    estado: row.estado as TicketEstado,
+    fechaCreacion: row.fecha_creacion as string,
+    fechaActualizacion: row.fecha_actualizacion as string,
+    respuesta: (row.respuesta as string) || undefined,
+  }
+}
+function mapTicketToSupabase(t: Ticket) {
+  return {
+    id: t.id, empleado_id: t.empleadoId, tipo: t.tipo, asunto: t.asunto,
+    descripcion: t.descripcion, estado: t.estado,
+    fecha_creacion: t.fechaCreacion, fecha_actualizacion: t.fechaActualizacion,
+    respuesta: t.respuesta ?? '',
+  }
+}
+
+// ── Mappers Supabase ↔ AppNotification ────────────────────────────────────────
+function mapSupabaseToNotif(row: Record<string, unknown>): AppNotification {
+  return {
+    id: row.id as string, texto: row.texto as string,
+    leida: (row.leida as boolean) ?? false,
+    fecha: row.fecha as string,
+    tipo: row.tipo as AppNotification['tipo'],
+    empleadoId: (row.empleado_id as string) || undefined,
+  }
+}
+function mapNotifToSupabase(n: AppNotification) {
+  return {
+    id: n.id, texto: n.texto, leida: n.leida, fecha: n.fecha,
+    tipo: n.tipo, empleado_id: n.empleadoId ?? '',
+  }
+}
+
+// ── Realtime upsert helpers ────────────────────────────────────────────────────
+function upsert<T extends { id: string }>(prev: T[], item: T): T[] {
+  const i = prev.findIndex(x => x.id === item.id)
+  return i >= 0 ? prev.map(x => x.id === item.id ? item : x) : [...prev, item]
+}
+function upsertHead<T extends { id: string }>(prev: T[], item: T): T[] {
+  const i = prev.findIndex(x => x.id === item.id)
+  return i >= 0 ? prev.map(x => x.id === item.id ? item : x) : [item, ...prev]
 }
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
@@ -153,57 +243,133 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { localStorage.setItem('fno_pending', JSON.stringify(pendingRegistrations)) }, [pendingRegistrations])
   useEffect(() => { localStorage.setItem('fno_notifs', JSON.stringify(notifications)) }, [notifications])
 
-  // ── Sincronización con Supabase ────────────────────────────────────────────
+  // ── Sync completo desde Supabase — todas las tablas ────────────────────────
   const syncFromSupabase = useCallback(async () => {
     if (!supabase) return
     try {
-      const [usersRes, pendingRes, empleadosRes] = await Promise.all([
+      const [usersRes, pendingRes, empRes, solRes, recRes, novRes, tickRes, notifRes] = await Promise.all([
         supabase.from('fno_users').select('*'),
         supabase.from('fno_pending').select('*'),
         supabase.from('fno_empleados').select('*'),
+        supabase.from('fno_solicitudes').select('*'),
+        supabase.from('fno_recibos').select('*'),
+        supabase.from('fno_novedades').select('*'),
+        supabase.from('fno_tickets').select('*'),
+        supabase.from('fno_notifs').select('*'),
       ])
-      if (usersRes.data && usersRes.data.length > 0) {
-        const mapped: User[] = usersRes.data.map((u: Record<string, string>) => ({
+
+      if (usersRes.data && usersRes.data.length > 0)
+        setUsers(usersRes.data.map((u: Record<string, string>) => ({
           id: u.id, email: u.email, password: u.password,
           role: u.role as UserRole, empleadoId: u.empleado_id,
-        }))
-        setUsers(mapped)
-      }
-      if (pendingRes.data) {
-        const mapped: PendingRegistration[] = pendingRes.data.map((p: Record<string, string>) => ({
+        })))
+
+      if (pendingRes.data)
+        setPending(pendingRes.data.map((p: Record<string, string>) => ({
           id: p.id, nombre: p.nombre, apellido: p.apellido, dni: p.dni,
           email: p.email, password: p.password, sector: p.sector,
-          cargo: p.cargo, telefono: p.telefono ?? '',
-          fechaSolicitud: p.fecha_solicitud,
-        }))
-        setPending(mapped)
-      }
-      // Si Supabase tiene empleados, es la fuente de verdad
-      if (empleadosRes.data && empleadosRes.data.length > 0) {
-        setEmpleados(empleadosRes.data.map((row: Record<string, unknown>) => mapSupabaseToEmpleado(row)))
-      }
+          cargo: p.cargo, telefono: p.telefono ?? '', fechaSolicitud: p.fecha_solicitud,
+        })))
+
+      if (empRes.data && empRes.data.length > 0)
+        setEmpleados(empRes.data.map((r: Record<string, unknown>) => mapSupabaseToEmpleado(r)))
+
+      if (solRes.data)
+        setSolicitudes(solRes.data.map((r: Record<string, unknown>) => mapSupabaseToSolicitud(r)))
+
+      if (recRes.data)
+        setRecibos(recRes.data.map((r: Record<string, unknown>) => mapSupabaseToRecibo(r)))
+
+      if (novRes.data && novRes.data.length > 0)
+        setNovedades(novRes.data.map((r: Record<string, unknown>) => mapSupabaseToNovedad(r)))
+
+      if (tickRes.data)
+        setTickets(tickRes.data.map((r: Record<string, unknown>) => mapSupabaseToTicket(r)))
+
+      if (notifRes.data && notifRes.data.length > 0)
+        setNotifications(notifRes.data.map((r: Record<string, unknown>) => mapSupabaseToNotif(r)))
+
     } catch (e) {
-      console.error('Supabase sync error:', e)
+      console.error('[sync] Supabase sync error:', e)
     }
   }, [])
 
-  // Sync al montar y cada 30s (cross-device)
+  // Sync al montar + polling cada 30s como fallback
   useEffect(() => {
     syncFromSupabase()
     const interval = setInterval(syncFromSupabase, 30_000)
     return () => clearInterval(interval)
   }, [syncFromSupabase])
 
-  // Sync entre pestañas del mismo navegador via storage event
+  // ── Supabase Realtime — cambios instantáneos cross-device ──────────────────
+  useEffect(() => {
+    if (!supabase) return
+
+    const channel = supabase
+      .channel('fno_realtime_all')
+      // Empleados
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fno_empleados' }, ({ eventType, new: n, old: o }) => {
+        if (eventType === 'DELETE') setEmpleados(prev => prev.filter(e => e.id !== (o as { id: string }).id))
+        else setEmpleados(prev => upsert(prev, mapSupabaseToEmpleado(n as Record<string, unknown>)))
+      })
+      // Usuarios
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fno_users' }, ({ eventType, new: n, old: o }) => {
+        if (eventType === 'DELETE') setUsers(prev => prev.filter(u => u.id !== (o as { id: string }).id))
+        else {
+          const u = n as Record<string, string>
+          setUsers(prev => upsert(prev, { id: u.id, email: u.email, password: u.password, role: u.role as UserRole, empleadoId: u.empleado_id }))
+        }
+      })
+      // Pendientes
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fno_pending' }, ({ eventType, new: n, old: o }) => {
+        if (eventType === 'DELETE') setPending(prev => prev.filter(p => p.id !== (o as { id: string }).id))
+        else {
+          const p = n as Record<string, string>
+          setPending(prev => upsert(prev, { id: p.id, nombre: p.nombre, apellido: p.apellido, dni: p.dni, email: p.email, password: p.password, sector: p.sector, cargo: p.cargo, telefono: p.telefono ?? '', fechaSolicitud: p.fecha_solicitud }))
+        }
+      })
+      // Solicitudes
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fno_solicitudes' }, ({ eventType, new: n, old: o }) => {
+        if (eventType === 'DELETE') setSolicitudes(prev => prev.filter(s => s.id !== (o as { id: string }).id))
+        else setSolicitudes(prev => upsertHead(prev, mapSupabaseToSolicitud(n as Record<string, unknown>)))
+      })
+      // Recibos
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fno_recibos' }, ({ eventType, new: n, old: o }) => {
+        if (eventType === 'DELETE') setRecibos(prev => prev.filter(r => r.id !== (o as { id: string }).id))
+        else setRecibos(prev => upsertHead(prev, mapSupabaseToRecibo(n as Record<string, unknown>)))
+      })
+      // Novedades
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fno_novedades' }, ({ eventType, new: n, old: o }) => {
+        if (eventType === 'DELETE') setNovedades(prev => prev.filter(x => x.id !== (o as { id: string }).id))
+        else setNovedades(prev => upsertHead(prev, mapSupabaseToNovedad(n as Record<string, unknown>)))
+      })
+      // Tickets
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fno_tickets' }, ({ eventType, new: n, old: o }) => {
+        if (eventType === 'DELETE') setTickets(prev => prev.filter(t => t.id !== (o as { id: string }).id))
+        else setTickets(prev => upsertHead(prev, mapSupabaseToTicket(n as Record<string, unknown>)))
+      })
+      // Notificaciones
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fno_notifs' }, ({ eventType, new: n, old: o }) => {
+        if (eventType === 'DELETE') setNotifications(prev => prev.filter(x => x.id !== (o as { id: string }).id))
+        else setNotifications(prev => upsertHead(prev, mapSupabaseToNotif(n as Record<string, unknown>)))
+      })
+      .subscribe((status) => {
+        console.log('[realtime] status:', status)
+      })
+
+    return () => { supabase.removeChannel(channel) }
+  }, [])
+
+  // ── Sync entre pestañas del mismo navegador via storage event ──────────────
   useEffect(() => {
     function onStorage(e: StorageEvent) {
       try {
+        if (e.key === 'fno_empleados' && e.newValue) setEmpleados(JSON.parse(e.newValue))
         if (e.key === 'fno_users' && e.newValue) setUsers(JSON.parse(e.newValue))
         if (e.key === 'fno_pending' && e.newValue) setPending(JSON.parse(e.newValue))
         if (e.key === 'fno_solicitudes' && e.newValue) setSolicitudes(JSON.parse(e.newValue))
-        if (e.key === 'fno_empleados' && e.newValue) setEmpleados(JSON.parse(e.newValue))
-        if (e.key === 'fno_novedades' && e.newValue) setNovedades(JSON.parse(e.newValue))
         if (e.key === 'fno_recibos' && e.newValue) setRecibos(JSON.parse(e.newValue))
+        if (e.key === 'fno_novedades' && e.newValue) setNovedades(JSON.parse(e.newValue))
         if (e.key === 'fno_tickets' && e.newValue) setTickets(JSON.parse(e.newValue))
         if (e.key === 'fno_notifs' && e.newValue) setNotifications(JSON.parse(e.newValue))
       } catch { /* ignore parse errors */ }
@@ -212,8 +378,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('storage', onStorage)
   }, [])
 
+  // ── Notificaciones ─────────────────────────────────────────────────────────
   const addNotification = useCallback((n: Omit<AppNotification, 'id' | 'fecha' | 'leida'>) => {
-    setNotifications(prev => [{ ...n, id: uid(), fecha: new Date().toISOString().slice(0, 10), leida: false }, ...prev])
+    const notif: AppNotification = { ...n, id: uid(), fecha: new Date().toISOString().slice(0, 10), leida: false }
+    setNotifications(prev => [notif, ...prev])
+    if (supabase) supabase.from('fno_notifs').insert(mapNotifToSupabase(notif)).then()
   }, [])
 
   // ── Empleados ──────────────────────────────────────────────────────────────
@@ -222,11 +391,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const newEmp = { ...e, id }
     setEmpleados(prev => [...prev, newEmp])
     addNotification({ texto: `Nuevo empleado registrado: ${e.nombre} ${e.apellido}`, tipo: 'sistema' })
-    if (supabase) {
-      supabase.from('fno_empleados').insert(mapEmpleadoToSupabase(newEmp)).then(({ error }) => {
-        if (error) console.error('Supabase insert fno_empleados error:', error)
-      })
-    }
+    if (supabase) supabase.from('fno_empleados').insert(mapEmpleadoToSupabase(newEmp)).then(({ error }) => {
+      if (error) console.error('[supabase] insert fno_empleados:', error)
+    })
     return id
   }, [addNotification])
 
@@ -255,53 +422,42 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const nueva: Solicitud = { ...s, id: uid(), estado: 'pendiente', fechaCreacion: new Date().toISOString().slice(0, 10) }
     setSolicitudes(prev => [nueva, ...prev])
     addNotification({ texto: `Nueva solicitud de ${s.tipo.replace('_', ' ')}: requiere revisión`, tipo: 'solicitud', empleadoId: s.empleadoId })
+    if (supabase) supabase.from('fno_solicitudes').insert(mapSolicitudToSupabase(nueva)).then(({ error }) => {
+      if (error) console.error('[supabase] insert fno_solicitudes:', error)
+    })
   }, [addNotification])
 
-  // Llama a email cuando el admin aprueba/rechaza una solicitud
   const approveSolicitud = useCallback((id: string, comment: string) => {
+    const fechaRes = new Date().toISOString().slice(0, 10)
     setSolicitudes(prev => prev.map(s => s.id === id
-      ? { ...s, estado: 'aprobado', fechaResolucion: new Date().toISOString().slice(0, 10), comentarioAdmin: comment }
+      ? { ...s, estado: 'aprobado', fechaResolucion: fechaRes, comentarioAdmin: comment }
       : s
     ))
+    if (supabase) supabase.from('fno_solicitudes').update({ estado: 'aprobado', fecha_resolucion: fechaRes, comentario_admin: comment }).eq('id', id).then()
     const sol = solicitudes.find(s => s.id === id)
     if (sol) {
       addNotification({ texto: 'Tu solicitud fue aprobada', tipo: 'solicitud', empleadoId: sol.empleadoId })
-      // Buscar email del empleado para notificarlo
       setEmpleados(prev => {
         const emp = prev.find(e => e.id === sol.empleadoId)
-        if (emp?.email) {
-          sendEmail('solicitud_resuelta', {
-            email: emp.email,
-            nombre: `${emp.nombre} ${emp.apellido}`,
-            tipo: SOLICITUD_TIPO_LABEL[sol.tipo as keyof typeof SOLICITUD_TIPO_LABEL] ?? sol.tipo,
-            estado: 'aprobado',
-            comentario: comment,
-          })
-        }
+        if (emp?.email) sendEmail('solicitud_resuelta', { email: emp.email, nombre: `${emp.nombre} ${emp.apellido}`, tipo: SOLICITUD_TIPO_LABEL[sol.tipo as keyof typeof SOLICITUD_TIPO_LABEL] ?? sol.tipo, estado: 'aprobado', comentario: comment })
         return prev
       })
     }
   }, [solicitudes, addNotification])
 
   const rejectSolicitud = useCallback((id: string, comment: string) => {
+    const fechaRes = new Date().toISOString().slice(0, 10)
     setSolicitudes(prev => prev.map(s => s.id === id
-      ? { ...s, estado: 'rechazado', fechaResolucion: new Date().toISOString().slice(0, 10), comentarioAdmin: comment }
+      ? { ...s, estado: 'rechazado', fechaResolucion: fechaRes, comentarioAdmin: comment }
       : s
     ))
+    if (supabase) supabase.from('fno_solicitudes').update({ estado: 'rechazado', fecha_resolucion: fechaRes, comentario_admin: comment }).eq('id', id).then()
     const sol = solicitudes.find(s => s.id === id)
     if (sol) {
       addNotification({ texto: 'Tu solicitud fue rechazada', tipo: 'solicitud', empleadoId: sol.empleadoId })
       setEmpleados(prev => {
         const emp = prev.find(e => e.id === sol.empleadoId)
-        if (emp?.email) {
-          sendEmail('solicitud_resuelta', {
-            email: emp.email,
-            nombre: `${emp.nombre} ${emp.apellido}`,
-            tipo: SOLICITUD_TIPO_LABEL[sol.tipo as keyof typeof SOLICITUD_TIPO_LABEL] ?? sol.tipo,
-            estado: 'rechazado',
-            comentario: comment,
-          })
-        }
+        if (emp?.email) sendEmail('solicitud_resuelta', { email: emp.email, nombre: `${emp.nombre} ${emp.apellido}`, tipo: SOLICITUD_TIPO_LABEL[sol.tipo as keyof typeof SOLICITUD_TIPO_LABEL] ?? sol.tipo, estado: 'rechazado', comentario: comment })
         return prev
       })
     }
@@ -309,90 +465,76 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   // ── Novedades ──────────────────────────────────────────────────────────────
   const addNovedad = useCallback((n: Omit<Novedad, 'id'>) => {
-    setNovedades(prev => [{ ...n, id: uid() }, ...prev])
+    const nueva = { ...n, id: uid() }
+    setNovedades(prev => [nueva, ...prev])
     addNotification({ texto: `Nueva novedad publicada: ${n.titulo}`, tipo: 'novedad' })
+    if (supabase) supabase.from('fno_novedades').insert(mapNovedadToSupabase(nueva)).then(({ error }) => {
+      if (error) console.error('[supabase] insert fno_novedades:', error)
+    })
   }, [addNotification])
 
   const deleteNovedad = useCallback((id: string) => {
     setNovedades(prev => prev.filter(n => n.id !== id))
+    if (supabase) supabase.from('fno_novedades').delete().eq('id', id).then()
   }, [])
 
   // ── Recibos ────────────────────────────────────────────────────────────────
   const addRecibo = useCallback((r: Omit<Recibo, 'id'>) => {
-    setRecibos(prev => [{ ...r, id: uid() }, ...prev])
+    const nuevo = { ...r, id: uid() }
+    setRecibos(prev => [nuevo, ...prev])
     addNotification({ texto: `Nuevo recibo de sueldo disponible`, tipo: 'recibo', empleadoId: r.empleadoId })
+    if (supabase) supabase.from('fno_recibos').insert(mapReciboToSupabase(nuevo)).then(({ error }) => {
+      if (error) console.error('[supabase] insert fno_recibos:', error)
+    })
   }, [addNotification])
 
   // ── Tickets ────────────────────────────────────────────────────────────────
   const addTicket = useCallback((t: Omit<Ticket, 'id' | 'fechaCreacion' | 'fechaActualizacion' | 'estado'>) => {
     const hoy = new Date().toISOString().slice(0, 10)
-    setTickets(prev => [{ ...t, id: uid(), estado: 'abierto', fechaCreacion: hoy, fechaActualizacion: hoy }, ...prev])
+    const nuevo: Ticket = { ...t, id: uid(), estado: 'abierto', fechaCreacion: hoy, fechaActualizacion: hoy }
+    setTickets(prev => [nuevo, ...prev])
     addNotification({ texto: `Nuevo ticket de RRHH: ${t.asunto}`, tipo: 'ticket', empleadoId: t.empleadoId })
+    if (supabase) supabase.from('fno_tickets').insert(mapTicketToSupabase(nuevo)).then(({ error }) => {
+      if (error) console.error('[supabase] insert fno_tickets:', error)
+    })
   }, [addNotification])
 
   const respondTicket = useCallback((id: string, respuesta: string, estado: TicketEstado) => {
-    setTickets(prev => prev.map(t => t.id === id
-      ? { ...t, respuesta, estado, fechaActualizacion: new Date().toISOString().slice(0, 10) }
-      : t
-    ))
+    const hoy = new Date().toISOString().slice(0, 10)
+    setTickets(prev => prev.map(t => t.id === id ? { ...t, respuesta, estado, fechaActualizacion: hoy } : t))
+    if (supabase) supabase.from('fno_tickets').update({ respuesta, estado, fecha_actualizacion: hoy }).eq('id', id).then()
   }, [])
 
   // ── Usuarios ───────────────────────────────────────────────────────────────
   const addUser = useCallback((u: User) => {
     setUsers(prev => [...prev, u])
-    // Persist to Supabase for cross-device login
-    if (supabase) {
-      supabase.from('fno_users').insert({
-        id: u.id, email: u.email, password: u.password,
-        role: u.role, empleado_id: u.empleadoId,
-      }).then()
-    }
+    if (supabase) supabase.from('fno_users').insert({ id: u.id, email: u.email, password: u.password, role: u.role, empleado_id: u.empleadoId }).then()
   }, [])
 
   const updateUserPassword = useCallback((userId: string, newPassword: string) => {
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, password: newPassword } : u))
-    if (supabase) {
-      supabase.from('fno_users').update({ password: newPassword }).eq('id', userId).then()
-    }
+    if (supabase) supabase.from('fno_users').update({ password: newPassword }).eq('id', userId).then()
   }, [])
 
   const getUserByEmail = useCallback((email: string) =>
-    users.find(u => u.email === email.toLowerCase().trim()),
-  [users])
+    users.find(u => u.email === email.toLowerCase().trim()), [users])
 
   const getPendingByEmail = useCallback((email: string) =>
-    pendingRegistrations.find(p => p.email === email.toLowerCase().trim()),
-  [pendingRegistrations])
+    pendingRegistrations.find(p => p.email === email.toLowerCase().trim()), [pendingRegistrations])
 
   // ── Registro pendiente ─────────────────────────────────────────────────────
   const addPendingRegistration = useCallback((reg: Omit<PendingRegistration, 'id' | 'fechaSolicitud'>) => {
     const newReg: PendingRegistration = { ...reg, id: uid(), fechaSolicitud: new Date().toISOString().slice(0, 10) }
     setPending(prev => [...prev, newReg])
     addNotification({ texto: `Nueva solicitud de acceso: ${reg.nombre} ${reg.apellido}`, tipo: 'registro' })
-
-    // Persist to Supabase so admin sees it from any device
     if (supabase) {
       supabase.from('fno_pending').insert({
         id: newReg.id, nombre: reg.nombre, apellido: reg.apellido, dni: reg.dni,
         email: reg.email, password: reg.password, sector: reg.sector,
-        cargo: reg.cargo, telefono: reg.telefono || '',
-        fecha_solicitud: newReg.fechaSolicitud,
-      }).then(({ error }) => {
-        if (error) console.error('Supabase insert fno_pending error:', error)
-        else console.log('Supabase insert fno_pending OK')
-      })
+        cargo: reg.cargo, telefono: reg.telefono || '', fecha_solicitud: newReg.fechaSolicitud,
+      }).then(({ error }) => { if (error) console.error('[supabase] insert fno_pending:', error) })
     }
-
-    // Email to admin
-    sendEmail('new_registration', {
-      nombre: reg.nombre,
-      apellido: reg.apellido,
-      dni: reg.dni,
-      email: reg.email,
-      sector: reg.sector,
-      cargo: reg.cargo,
-      telefono: reg.telefono || '',
-    })
+    sendEmail('new_registration', { nombre: reg.nombre, apellido: reg.apellido, dni: reg.dni, email: reg.email, sector: reg.sector, cargo: reg.cargo, telefono: reg.telefono || '' })
   }, [addNotification])
 
   const approvePendingRegistration = useCallback((id: string) => {
@@ -405,31 +547,22 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       fechaNacimiento: '', email: reg.email, telefono: reg.telefono,
       direccion: '', foto: '', fotoCover: '', cuil: '',
       contactoEmergencia: { nombre: '', telefono: '', relacion: '' },
-      sector: reg.sector, cargo: reg.cargo,
-      fechaIngreso: hoy, tipoContrato: 'Contrato', jornada: 'Full Time',
-      supervisor: '', estado: 'activo', diasVacaciones: 14, diasVacacionesUsados: 0,
+      sector: reg.sector, cargo: reg.cargo, fechaIngreso: hoy,
+      tipoContrato: 'Contrato', jornada: 'Full Time', supervisor: '',
+      estado: 'activo', diasVacaciones: 14, diasVacacionesUsados: 0,
     }
     const nuevoUser: User = { id: uid(), email: reg.email, password: reg.password, role: 'employee', empleadoId }
-
     setEmpleados(prev => [...prev, nuevoEmpleado])
     setUsers(prev => [...prev, nuevoUser])
     setPending(prev => prev.filter(p => p.id !== id))
     addNotification({ texto: `Acceso aprobado para ${reg.nombre} ${reg.apellido}`, tipo: 'registro' })
-
-    // Persist approved user + employee to Supabase
     if (supabase) {
-      supabase.from('fno_users').insert({
-        id: nuevoUser.id, email: nuevoUser.email, password: nuevoUser.password,
-        role: nuevoUser.role, empleado_id: nuevoUser.empleadoId,
-      }).then()
       supabase.from('fno_empleados').insert(mapEmpleadoToSupabase(nuevoEmpleado)).then(({ error }) => {
-        if (error) console.error('Supabase insert fno_empleados (approve) error:', error)
-        else console.log('Supabase: empleado aprobado guardado OK')
+        if (error) console.error('[supabase] insert fno_empleados (approve):', error)
       })
+      supabase.from('fno_users').insert({ id: nuevoUser.id, email: nuevoUser.email, password: nuevoUser.password, role: nuevoUser.role, empleado_id: nuevoUser.empleadoId }).then()
       supabase.from('fno_pending').delete().eq('id', id).then()
     }
-
-    // Email to registrant
     sendEmail('registration_approved', { nombre: reg.nombre, email: reg.email })
   }, [pendingRegistrations, addNotification])
 
@@ -437,17 +570,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     if (!supabase) return
     try {
       const { data } = await supabase.from('fno_pending').select('*')
-      if (data && data.length > 0) {
+      if (data) {
         setPending(data.map((p: Record<string, string>) => ({
           id: p.id, nombre: p.nombre, apellido: p.apellido, dni: p.dni,
           email: p.email, password: p.password, sector: p.sector,
-          cargo: p.cargo, telefono: p.telefono ?? '',
-          fechaSolicitud: p.fecha_solicitud,
+          cargo: p.cargo, telefono: p.telefono ?? '', fechaSolicitud: p.fecha_solicitud,
         })))
       }
-    } catch (e) {
-      console.error('refreshPending error:', e)
-    }
+    } catch (e) { console.error('[sync] refreshPending error:', e) }
   }, [])
 
   const rejectPendingRegistration = useCallback((id: string) => {
@@ -456,7 +586,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     if (reg) {
       addNotification({ texto: `Solicitud de acceso rechazada: ${reg.nombre} ${reg.apellido}`, tipo: 'registro' })
       if (supabase) supabase.from('fno_pending').delete().eq('id', id).then()
-      // Email to registrant
       sendEmail('registration_rejected', { nombre: reg.nombre, email: reg.email })
     }
   }, [pendingRegistrations, addNotification])
@@ -464,10 +593,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   // ── Notificaciones ─────────────────────────────────────────────────────────
   const markNotificationRead = useCallback((id: string) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, leida: true } : n))
+    if (supabase) supabase.from('fno_notifs').update({ leida: true }).eq('id', id).then()
   }, [])
 
   const markAllRead = useCallback(() => {
     setNotifications(prev => prev.map(n => ({ ...n, leida: true })))
+    if (supabase) supabase.from('fno_notifs').update({ leida: true }).eq('leida', false).then()
   }, [])
 
   return (
