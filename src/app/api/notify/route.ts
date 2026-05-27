@@ -4,7 +4,7 @@ import nodemailer from 'nodemailer'
 export const runtime = 'nodejs'
 
 const ADMIN_EMAIL = 'rrhhfundacionnqnoeste@gmail.com'
-const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL ?? 'https://fno-rrhh.vercel.app'
+const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL ?? 'https://portalfundacion.vercel.app'
 
 const BRAND = '#1e3a5f'
 
@@ -37,8 +37,13 @@ export async function POST(req: NextRequest) {
   const gmailUser = process.env.GMAIL_USER
   const gmailPass = process.env.GMAIL_PASS
 
+  // Log env var status so we can diagnose in Vercel logs
+  console.log('[notify] GMAIL_USER:', gmailUser ? `${gmailUser.slice(0, 6)}***` : 'NO CONFIGURADO')
+  console.log('[notify] GMAIL_PASS:', gmailPass ? `${gmailPass.length} chars` : 'NO CONFIGURADO')
+
   // If email not configured, silently succeed (don't break UI)
   if (!gmailUser || !gmailPass) {
+    console.log('[notify] Abortando: variables de entorno no configuradas')
     return NextResponse.json({ ok: false, reason: 'Email no configurado' })
   }
 
@@ -50,6 +55,7 @@ export async function POST(req: NextRequest) {
   }
 
   const { type, data } = body
+  console.log('[notify] Enviando email tipo:', type, '→', data.email ?? ADMIN_EMAIL)
   const from = `"RRHH — Fundación Neuquén Oeste" <${gmailUser}>`
 
   const transporter = nodemailer.createTransport({
@@ -158,9 +164,10 @@ export async function POST(req: NextRequest) {
       })
     }
 
+    console.log('[notify] ✅ Email enviado correctamente, tipo:', type)
     return NextResponse.json({ ok: true })
   } catch (err) {
-    console.error('Email send error:', err)
+    console.error('[notify] ❌ Error al enviar email:', err)
     // Return 200 so UI doesn't break even if email fails
     return NextResponse.json({ ok: false, error: String(err) })
   }
