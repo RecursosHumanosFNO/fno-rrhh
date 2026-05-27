@@ -357,7 +357,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         console.log('[realtime] status:', status)
       })
 
-    return () => { supabase.removeChannel(channel) }
+    return () => { supabase?.removeChannel(channel) }
   }, [])
 
   // ── Sync entre pestañas del mismo navegador via storage event ──────────────
