@@ -91,51 +91,58 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { localStorage.setItem('fno_pending', JSON.stringify(pendingRegistrations)) }, [pendingRegistrations])
   useEffect(() => { localStorage.setItem('fno_notifs', JSON.stringify(notifications)) }, [notifications])
 
-  // ── Sincronización con Supabase (users + pending_registrations) ────────────
-  // Carga al iniciar — sobreescribe localStorage con datos del servidor
-  useEffect(() => {
+  // ── Sincronización con Supabase ────────────────────────────────────────────
+  const syncFromSupabase = useCallback(async () => {
     if (!supabase) return
-
-    async function syncFromSupabase() {
-      if (!supabase) return
-      try {
-        const [usersRes, pendingRes] = await Promise.all([
-          supabase.from('fno_users').select('*'),
-          supabase.from('fno_pending').select('*'),
-        ])
-
-        if (usersRes.data && usersRes.data.length > 0) {
-          const mapped: User[] = usersRes.data.map((u: Record<string, string>) => ({
-            id: u.id,
-            email: u.email,
-            password: u.password,
-            role: u.role as UserRole,
-            empleadoId: u.empleado_id,
-          }))
-          setUsers(mapped)
-        }
-
-        if (pendingRes.data) {
-          const mapped: PendingRegistration[] = pendingRes.data.map((p: Record<string, string>) => ({
-            id: p.id,
-            nombre: p.nombre,
-            apellido: p.apellido,
-            dni: p.dni,
-            email: p.email,
-            password: p.password,
-            sector: p.sector,
-            cargo: p.cargo,
-            telefono: p.telefono ?? '',
-            fechaSolicitud: p.fecha_solicitud,
-          }))
-          setPending(mapped)
-        }
-      } catch (e) {
-        console.error('Supabase sync error:', e)
+    try {
+      const [usersRes, pendingRes] = await Promise.all([
+        supabase.from('fno_users').select('*'),
+        supabase.from('fno_pending').select('*'),
+      ])
+      if (usersRes.data && usersRes.data.length > 0) {
+        const mapped: User[] = usersRes.data.map((u: Record<string, string>) => ({
+          id: u.id, email: u.email, password: u.password,
+          role: u.role as UserRole, empleadoId: u.empleado_id,
+        }))
+        setUsers(mapped)
       }
+      if (pendingRes.data) {
+        const mapped: PendingRegistration[] = pendingRes.data.map((p: Record<string, string>) => ({
+          id: p.id, nombre: p.nombre, apellido: p.apellido, dni: p.dni,
+          email: p.email, password: p.password, sector: p.sector,
+          cargo: p.cargo, telefono: p.telefono ?? '',
+          fechaSolicitud: p.fecha_solicitud,
+        }))
+        setPending(mapped)
+      }
+    } catch (e) {
+      console.error('Supabase sync error:', e)
     }
+  }, [])
 
+  // Sync al montar y cada 30s (cross-device)
+  useEffect(() => {
     syncFromSupabase()
+    const interval = setInterval(syncFromSupabase, 30_000)
+    return () => clearInterval(interval)
+  }, [syncFromSupabase])
+
+  // Sync entre pestañas del mismo navegador via storage event
+  useEffect(() => {
+    function onStorage(e: StorageEvent) {
+      try {
+        if (e.key === 'fno_users' && e.newValue) setUsers(JSON.parse(e.newValue))
+        if (e.key === 'fno_pending' && e.newValue) setPending(JSON.parse(e.newValue))
+        if (e.key === 'fno_solicitudes' && e.newValue) setSolicitudes(JSON.parse(e.newValue))
+        if (e.key === 'fno_empleados' && e.newValue) setEmpleados(JSON.parse(e.newValue))
+        if (e.key === 'fno_novedades' && e.newValue) setNovedades(JSON.parse(e.newValue))
+        if (e.key === 'fno_recibos' && e.newValue) setRecibos(JSON.parse(e.newValue))
+        if (e.key === 'fno_tickets' && e.newValue) setTickets(JSON.parse(e.newValue))
+        if (e.key === 'fno_notifs' && e.newValue) setNotifications(JSON.parse(e.newValue))
+      } catch { /* ignore parse errors */ }
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
   }, [])
 
   const addNotification = useCallback((n: Omit<AppNotification, 'id' | 'fecha' | 'leida'>) => {
