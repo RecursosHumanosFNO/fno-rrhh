@@ -5,12 +5,13 @@ import { useData } from '@/contexts/DataContext'
 import {
   SOLICITUD_ESTADO_COLOR, SOLICITUD_ESTADO_LABEL, SOLICITUD_TIPO_LABEL,
   NOVEDAD_CATEGORIA_COLOR, NOVEDAD_CATEGORIA_LABEL, formatFecha, formatMes,
-  getBirthdayThisYear, EVENTO_TIPO_LABEL, EVENTO_TIPO_DOT,
+  getBirthdayThisYear, EVENTO_TIPO_LABEL, EVENTO_TIPO_DOT, EVENTO_TIPO_COLOR,
 } from '@/lib/utils'
 import {
   Users, ClipboardList, CalendarCheck, TrendingUp, AlertTriangle,
   CheckCircle2, XCircle, Clock, Download, PartyPopper, Bell,
   ArrowRight, FileText, HeadphonesIcon, Plus, UserPlus, Calendar,
+  ExternalLink,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -297,74 +298,173 @@ function EmployeeDashboard({ saludo, fechaStr, empleadoId }: { saludo: string, f
 
   const misSolicitudes = solicitudes.filter(s => s.empleadoId === empleadoId)
   const misPendientes = misSolicitudes.filter(s => s.estado === 'pendiente')
-  const misRecibos = recibos.filter(r => r.empleadoId === empleadoId).sort((a, b) => b.anio - a.anio || b.mes - a.mes)
-  const ultimoRecibo = misRecibos[0]
+  const ultimoRecibo = recibos
+    .filter(r => r.empleadoId === empleadoId)
+    .sort((a, b) => b.anio - a.anio || b.mes - a.mes)[0]
 
   // Eventos próximos 30 días
   const hoy = new Date()
-  const en30 = new Date(hoy); en30.setDate(hoy.getDate() + 30)
-  const hoyStr = hoy.toISOString().slice(0, 10)
+  const hoyMidnight = new Date(hoy); hoyMidnight.setHours(0, 0, 0, 0)
+  const en30 = new Date(hoyMidnight); en30.setDate(hoyMidnight.getDate() + 30)
+  const hoyStr = hoyMidnight.toISOString().slice(0, 10)
   const en30Str = en30.toISOString().slice(0, 10)
   const proximosEventos = eventos
     .filter(ev => ev.fecha >= hoyStr && ev.fecha <= en30Str)
     .sort((a, b) => a.fecha.localeCompare(b.fecha))
-    .slice(0, 5)
 
   return (
     <div className="page-container">
-      {/* Welcome banner */}
+
+      {/* ── Welcome banner ─────────────────────────────────────────────────── */}
       <div className="bg-gradient-to-r from-brand-700 to-brand-500 rounded-2xl p-6 text-white">
         <p className="text-blue-200 text-sm font-medium capitalize">{fechaStr}</p>
         <h1 className="text-2xl font-bold mt-1">
           {saludo}, <span className="text-white">{empleado?.nombre}</span> 👋
         </h1>
         <p className="text-blue-100/80 text-sm mt-1">{empleado?.cargo} · {empleado?.sector}</p>
+        {/* Mini stats inline */}
+        <div className="flex gap-4 mt-4 flex-wrap">
+          <div className="bg-white/15 backdrop-blur rounded-xl px-3 py-2 flex items-center gap-2">
+            <Clock className="w-4 h-4 text-white/70" />
+            <span className="text-sm font-medium text-white">
+              {misPendientes.length} solicitud{misPendientes.length !== 1 ? 'es' : ''} pendiente{misPendientes.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+          <div className="bg-white/15 backdrop-blur rounded-xl px-3 py-2 flex items-center gap-2">
+            <FileText className="w-4 h-4 text-white/70" />
+            <span className="text-sm font-medium text-white">
+              {ultimoRecibo ? `Último recibo: ${formatMes(ultimoRecibo.mes, ultimoRecibo.anio)}` : 'Sin recibos aún'}
+            </span>
+          </div>
+        </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <StatCard icon={ClipboardList} label="Solicitudes pendientes" value={misPendientes.length}
-          sub="En espera de resolución" color="bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400" />
-        <StatCard icon={FileText} label="Último recibo" value={ultimoRecibo ? formatMes(ultimoRecibo.mes, ultimoRecibo.anio) : 'N/A'}
-          sub={ultimoRecibo ? `Subido el ${formatFecha(ultimoRecibo.fechaSubida)}` : 'Sin recibos disponibles'} color="bg-blue-50 dark:bg-blue-900/20 text-brand-700 dark:text-brand-400" />
+      {/* ── Próximos eventos — sección protagonista ────────────────────────── */}
+      <div className="card overflow-hidden">
+        <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-brand-600 dark:text-brand-400" />
+            <div>
+              <p className="section-title">📅 Próximos eventos</p>
+              <p className="section-subtitle">Próximos 30 días</p>
+            </div>
+          </div>
+          <Link href="/dashboard/eventos" className="text-sm text-brand-600 dark:text-brand-400 hover:underline font-medium flex items-center gap-1">
+            Ver calendario <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+        {proximosEventos.length === 0 ? (
+          <div className="p-8 text-center">
+            <Calendar className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+            <p className="text-slate-500 text-sm">Sin eventos en los próximos 30 días</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 dark:divide-slate-800">
+            {proximosEventos.slice(0, 6).map(ev => {
+              const evDate = new Date(ev.fecha + 'T00:00:00')
+              const diffDays = Math.round((evDate.getTime() - hoyMidnight.getTime()) / (1000 * 60 * 60 * 24))
+              const isHoy = diffDays === 0
+              const esMañana = diffDays === 1
+              return (
+                <div key={ev.id} className={`p-4 flex items-start gap-3 ${isHoy ? 'bg-brand-50 dark:bg-brand-900/10' : ''}`}>
+                  {/* Fecha visual */}
+                  <div className={`shrink-0 w-12 h-12 rounded-xl flex flex-col items-center justify-center text-center border-2 ${
+                    isHoy ? 'border-brand-500 bg-brand-700 text-white' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800'
+                  }`}>
+                    <span className={`text-lg font-bold leading-none ${isHoy ? 'text-white' : 'text-slate-700 dark:text-slate-200'}`}>
+                      {evDate.getDate()}
+                    </span>
+                    <span className={`text-[10px] uppercase font-medium ${isHoy ? 'text-blue-200' : 'text-slate-400'}`}>
+                      {evDate.toLocaleDateString('es-AR', { month: 'short' })}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className={`badge text-xs mb-1 ${EVENTO_TIPO_COLOR[ev.tipo]}`}>
+                      {EVENTO_TIPO_LABEL[ev.tipo]}
+                    </span>
+                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 leading-snug">{ev.titulo}</p>
+                    <p className={`text-xs font-medium mt-0.5 ${isHoy ? 'text-brand-600 dark:text-brand-400' : esMañana ? 'text-amber-600' : 'text-slate-400'}`}>
+                      {isHoy ? '🔴 Hoy' : esMañana ? '🟡 Mañana' : `en ${diffDays} días`}
+                    </p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Mis solicitudes */}
-        <div className="lg:col-span-2 card overflow-hidden">
-          <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-            <p className="section-title">Mis Solicitudes Recientes</p>
-            <Link href="/dashboard/solicitudes" className="text-sm text-brand-600 dark:text-brand-400 hover:underline font-medium flex items-center gap-1">
-              Ver todas <ArrowRight className="w-3.5 h-3.5" />
+      {/* ── Acciones rápidas — una por acción ─────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: 'Nueva solicitud',   href: '/dashboard/solicitudes',  icon: Plus,           bg: 'bg-brand-700 hover:bg-brand-600 text-white',                         desc: 'Permisos, licencias...' },
+          { label: 'Mis recibos',        href: '/dashboard/recibos',       icon: FileText,       bg: 'bg-emerald-600 hover:bg-emerald-500 text-white',                      desc: 'Ver y descargar PDF' },
+          { label: 'Soporte RRHH',       href: '/dashboard/portal-rrhh',   icon: HeadphonesIcon, bg: 'bg-slate-700 hover:bg-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 text-white', desc: 'Consultas y tickets' },
+          { label: 'La Fundación',       href: 'https://fundacionnqnoeste.com/', icon: ExternalLink, bg: 'bg-sky-600 hover:bg-sky-500 text-white', desc: 'Sitio institucional', external: true },
+        ].map(({ label, href, icon: Icon, bg, desc, external }) => (
+          external
+            ? (
+              <a key={href} href={href} target="_blank" rel="noopener noreferrer"
+                className={`${bg} rounded-2xl p-4 flex flex-col items-center text-center gap-2 transition-colors shadow-sm`}>
+                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                  <Icon className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">{label}</p>
+                  <p className="text-xs opacity-75 mt-0.5">{desc}</p>
+                </div>
+              </a>
+            ) : (
+              <Link key={href} href={href}
+                className={`${bg} rounded-2xl p-4 flex flex-col items-center text-center gap-2 transition-colors shadow-sm`}>
+                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                  <Icon className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">{label}</p>
+                  <p className="text-xs opacity-75 mt-0.5">{desc}</p>
+                </div>
+              </Link>
+            )
+        ))}
+      </div>
+
+      {/* ── Solicitudes recientes + Novedades ─────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Solicitudes — compacto */}
+        <div className="card overflow-hidden">
+          <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <p className="font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+              <ClipboardList className="w-4 h-4 text-amber-500" /> Mis solicitudes
+              {misPendientes.length > 0 && (
+                <span className="bg-amber-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                  {misPendientes.length}
+                </span>
+              )}
+            </p>
+            <Link href="/dashboard/solicitudes" className="text-xs text-brand-600 dark:text-brand-400 hover:underline font-medium flex items-center gap-1">
+              Ver todas <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
           <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {misSolicitudes.length === 0 ? (
-              <div className="p-8 text-center">
-                <ClipboardList className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-                <p className="text-slate-500 text-sm">No tenés solicitudes aún.</p>
-                <Link href="/dashboard/solicitudes" className="btn-primary mt-3 inline-flex">
-                  <Plus className="w-4 h-4" /> Nueva solicitud
+              <div className="p-6 text-center">
+                <p className="text-slate-400 text-sm">Sin solicitudes. ¿Necesitás algo?</p>
+                <Link href="/dashboard/solicitudes" className="text-xs text-brand-600 dark:text-brand-400 hover:underline mt-1 inline-block">
+                  Crear una solicitud →
                 </Link>
               </div>
-            ) : misSolicitudes.slice(0, 4).map(sol => (
-              <div key={sol.id} className="p-4 flex items-center gap-3">
-                <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
-                  sol.estado === 'aprobado' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' :
-                  sol.estado === 'rechazado' ? 'bg-red-100 dark:bg-red-900/30 text-red-600' :
-                  'bg-amber-100 dark:bg-amber-900/30 text-amber-600'
-                }`}>
-                  {sol.estado === 'aprobado' ? <CheckCircle2 className="w-5 h-5" /> :
-                   sol.estado === 'rechazado' ? <XCircle className="w-5 h-5" /> :
-                   <Clock className="w-5 h-5" />}
-                </div>
+            ) : misSolicitudes.slice(0, 3).map(sol => (
+              <div key={sol.id} className="px-4 py-3 flex items-center gap-3">
+                <div className={`w-2 h-2 rounded-full shrink-0 ${
+                  sol.estado === 'aprobado' ? 'bg-emerald-500' :
+                  sol.estado === 'rechazado' ? 'bg-red-500' : 'bg-amber-500'
+                }`} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">
-                    {SOLICITUD_TIPO_LABEL[sol.tipo]}
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{formatFecha(sol.fechaInicio)}</p>
+                  <p className="text-sm text-slate-700 dark:text-slate-200 truncate">{SOLICITUD_TIPO_LABEL[sol.tipo]}</p>
+                  <p className="text-xs text-slate-400">{formatFecha(sol.fechaInicio)}</p>
                 </div>
-                <span className={`badge ${SOLICITUD_ESTADO_COLOR[sol.estado]}`}>
+                <span className={`badge text-xs ${SOLICITUD_ESTADO_COLOR[sol.estado]}`}>
                   {SOLICITUD_ESTADO_LABEL[sol.estado]}
                 </span>
               </div>
@@ -372,127 +472,34 @@ function EmployeeDashboard({ saludo, fechaStr, empleadoId }: { saludo: string, f
           </div>
         </div>
 
-        {/* Acciones rápidas */}
-        <div className="space-y-6">
-          <div className="card p-5">
-            <p className="section-title text-base mb-4">Acciones Rápidas</p>
-            <div className="space-y-2">
-              {[
-                { label: 'Nueva solicitud', href: '/dashboard/solicitudes', icon: Plus, color: 'btn-primary' },
-                { label: 'Ver mis recibos', href: '/dashboard/recibos', icon: Download, color: 'btn-secondary' },
-                { label: 'Portal RRHH', href: '/dashboard/portal-rrhh', icon: HeadphonesIcon, color: 'btn-secondary' },
-              ].map(({ label, href, icon: Icon, color }) => (
-                <Link key={href} href={href} className={`${color} w-full justify-center`}>
-                  <Icon className="w-4 h-4" /> {label}
-                </Link>
-              ))}
-            </div>
+        {/* Novedades — compacto */}
+        <div className="card overflow-hidden">
+          <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <p className="font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+              <Bell className="w-4 h-4 text-brand-500" /> Novedades
+            </p>
+            <Link href="/dashboard/comunicaciones" className="text-xs text-brand-600 dark:text-brand-400 hover:underline font-medium flex items-center gap-1">
+              Ver todas <ArrowRight className="w-3 h-3" />
+            </Link>
           </div>
-
-          {/* Últimos recibos */}
-          <div className="card p-5">
-            <p className="section-title text-base mb-3">Últimos Recibos</p>
-            <div className="space-y-2">
-              {misRecibos.length === 0
-                ? <p className="text-slate-400 text-sm text-center py-2">Sin recibos disponibles</p>
-                : misRecibos.slice(0, 3).map(r => (
-                  <div key={r.id} className="flex items-center justify-between py-1.5">
-                    <span className="text-sm text-slate-600 dark:text-slate-400">{formatMes(r.mes, r.anio)}</span>
-                    {r.archivoUrl
-                      ? (
-                        <button
-                          onClick={async () => {
-                            const res = await fetch('/api/recibo-url', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ path: r.archivoUrl, empleadoId }),
-                            })
-                            const d = await res.json()
-                            if (d.url) window.open(d.url, '_blank', 'noopener,noreferrer')
-                          }}
-                          className="flex items-center gap-1 text-brand-600 dark:text-brand-400 text-xs font-medium hover:underline"
-                        >
-                          <Download className="w-3.5 h-3.5" /> Ver PDF
-                        </button>
-                      ) : (
-                        <span className="text-xs text-slate-400">Sin archivo</span>
-                      )
-                    }
-                  </div>
-                ))
-              }
-            </div>
-          </div>
-
-          {/* Próximos eventos — 30 días */}
-          <div className="card p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <Calendar className="w-4 h-4 text-brand-600 dark:text-brand-400" />
-              <p className="section-title text-base">Próximos eventos</p>
-            </div>
-            {proximosEventos.length === 0 ? (
-              <p className="text-slate-400 text-sm text-center py-2">Sin eventos en los próximos 30 días</p>
-            ) : (
-              <div className="space-y-2.5">
-                {proximosEventos.map(ev => {
-                  const evDate = new Date(ev.fecha + 'T00:00:00')
-                  const diffDays = Math.round((evDate.getTime() - hoy.setHours(0,0,0,0)) / (1000*60*60*24))
-                  return (
-                    <div key={ev.id} className="flex items-start gap-2.5">
-                      <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${EVENTO_TIPO_DOT[ev.tipo]}`} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{ev.titulo}</p>
-                        <p className="text-xs text-slate-400">
-                          {evDate.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
-                          {' · '}
-                          <span className={diffDays === 0 ? 'text-brand-600 font-semibold' : 'text-slate-400'}>
-                            {diffDays === 0 ? 'Hoy' : diffDays === 1 ? 'Mañana' : `en ${diffDays} días`}
-                          </span>
-                        </p>
-                      </div>
-                    </div>
-                  )
-                })}
-                <Link href="/dashboard/eventos" className="text-xs text-brand-600 dark:text-brand-400 hover:underline font-medium block pt-1">
-                  Ver calendario →
-                </Link>
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            {novedades.length === 0 ? (
+              <div className="p-6 text-center">
+                <p className="text-slate-400 text-sm">Sin novedades publicadas</p>
               </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Novedades */}
-      <div className="card overflow-hidden">
-        <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-          <p className="section-title">Novedades Institucionales</p>
-          <Link href="/dashboard/comunicaciones" className="text-sm text-brand-600 dark:text-brand-400 hover:underline font-medium flex items-center gap-1">
-            Ver todas <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-        <div className="divide-y divide-slate-100 dark:divide-slate-800">
-          {novedades.length === 0 ? (
-            <div className="p-8 text-center">
-              <Bell className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-              <p className="text-slate-500 dark:text-slate-400 text-sm">Sin novedades</p>
-            </div>
-          ) : novedades.slice(0, 3).map(n => (
-            <div key={n.id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-              <div className="flex items-start gap-2">
-                {n.importante && <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />}
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{n.titulo}</p>
-                    <span className={`badge ${NOVEDAD_CATEGORIA_COLOR[n.categoria]}`}>
-                      {NOVEDAD_CATEGORIA_LABEL[n.categoria]}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">{n.contenido}</p>
-                  <p className="text-xs text-slate-400 mt-1">{formatFecha(n.fechaPublicacion)}</p>
+            ) : novedades.slice(0, 3).map(n => (
+              <div key={n.id} className="px-4 py-3">
+                <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                  {n.importante && <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate flex-1">{n.titulo}</p>
+                  <span className={`badge text-xs shrink-0 ${NOVEDAD_CATEGORIA_COLOR[n.categoria]}`}>
+                    {NOVEDAD_CATEGORIA_LABEL[n.categoria]}
+                  </span>
                 </div>
+                <p className="text-xs text-slate-400 mt-0.5">{formatFecha(n.fechaPublicacion)}</p>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </div>
