@@ -6,14 +6,84 @@ import { useData } from '@/contexts/DataContext'
 import { useRouter } from 'next/navigation'
 import { SECTORES } from '@/lib/mockData'
 import {
-  EMPLEADO_ESTADO_COLOR, EMPLEADO_ESTADO_LABEL, formatFecha, calcularAntiguedad, uid,
+  EMPLEADO_ESTADO_COLOR, EMPLEADO_ESTADO_LABEL, formatFecha, calcularAntiguedad, calcularEdad, uid,
 } from '@/lib/utils'
 import {
   Search, Users, Plus, Download, LayoutGrid, List,
   Mail, Building2, Calendar, ChevronRight, X, CheckCircle2, XCircle,
 } from 'lucide-react'
 import Link from 'next/link'
-import type { EmpleadoEstado } from '@/types'
+import type { EmpleadoEstado, Empleado } from '@/types'
+import * as XLSX from 'xlsx'
+
+// ── Excel export ──────────────────────────────────────────────────────────────
+function exportarExcel(empleados: Empleado[]) {
+  const ESTADO: Record<string, string> = {
+    activo: 'Activo', inactivo: 'Inactivo',
+    licencia: 'En Licencia', vacaciones: 'De Vacaciones',
+  }
+
+  const headers = [
+    'Apellido', 'Nombre', 'DNI', 'CUIL', 'Email', 'Teléfono',
+    'Fecha Nacimiento', 'Edad',
+    'Sector', 'Cargo', 'Tipo Contrato', 'Jornada',
+    'Fecha Ingreso', 'Antigüedad', 'Estado', 'Supervisor',
+    'Dirección', 'CBU', 'Banco',
+    'Emergencia — Nombre', 'Emergencia — Teléfono', 'Emergencia — Relación',
+    'Días Vacaciones', 'Días Usados',
+  ]
+
+  const rows = [...empleados]
+    .sort((a, b) => a.apellido.localeCompare(b.apellido, 'es'))
+    .map(e => [
+      e.apellido,
+      e.nombre,
+      e.dni || '',
+      e.cuil || '',
+      e.email,
+      e.telefono || '',
+      e.fechaNacimiento ? formatFecha(e.fechaNacimiento) : '',
+      e.fechaNacimiento ? `${calcularEdad(e.fechaNacimiento)} años` : '',
+      e.sector,
+      e.cargo,
+      e.tipoContrato,
+      e.jornada,
+      formatFecha(e.fechaIngreso),
+      calcularAntiguedad(e.fechaIngreso),
+      ESTADO[e.estado] ?? e.estado,
+      e.supervisor || '',
+      e.direccion || '',
+      e.cbu || '',
+      e.banco || '',
+      e.contactoEmergencia?.nombre || '',
+      e.contactoEmergencia?.telefono || '',
+      e.contactoEmergencia?.relacion || '',
+      e.diasVacaciones,
+      e.diasVacacionesUsados,
+    ])
+
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows])
+
+  // Anchos de columna (en caracteres)
+  ws['!cols'] = [
+    { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 16 }, { wch: 32 }, { wch: 16 },
+    { wch: 16 }, { wch: 8  },
+    { wch: 22 }, { wch: 28 }, { wch: 20 }, { wch: 12 },
+    { wch: 14 }, { wch: 14 }, { wch: 13 }, { wch: 20 },
+    { wch: 28 }, { wch: 24 }, { wch: 16 },
+    { wch: 24 }, { wch: 18 }, { wch: 20 },
+    { wch: 9  }, { wch: 9  },
+  ]
+
+  // Fila de encabezado congelada (no se mueve al hacer scroll)
+  ws['!views'] = [{ state: 'frozen', ySplit: 1 }]
+
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Empleados FNO')
+
+  const hoy = new Date().toISOString().slice(0, 10)
+  XLSX.writeFile(wb, `empleados_fno_${hoy}.xlsx`)
+}
 
 export default function EmpleadosPage() {
   const { user } = useAuth()
@@ -105,8 +175,13 @@ function EmpleadosContent() {
           </p>
         </div>
         <div className="flex gap-2">
-          <button className="btn-secondary">
-            <Download className="w-4 h-4" /> Exportar
+          <button
+            onClick={() => exportarExcel(filtered)}
+            className="btn-secondary"
+            title={hasFilters ? `Exportar ${filtered.length} empleados (filtrados)` : `Exportar todos (${allEmpleados.length})`}
+          >
+            <Download className="w-4 h-4" />
+            Exportar{hasFilters ? ` (${filtered.length})` : ''}
           </button>
           <button onClick={() => setShowNuevo(true)} className="btn-primary">
             <Plus className="w-4 h-4" /> Nuevo empleado
