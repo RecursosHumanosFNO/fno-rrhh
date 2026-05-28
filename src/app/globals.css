@@ -16,7 +16,8 @@
   }
 
   body {
-    @apply bg-[#eef2f7] text-slate-900 font-sans antialiased;
+    background-color: #eef2f7;
+    @apply text-slate-900 font-sans antialiased;
     @apply dark:bg-[#080d14] dark:text-slate-100;
   }
 
