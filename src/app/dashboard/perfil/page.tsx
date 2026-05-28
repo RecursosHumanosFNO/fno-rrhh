@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { formatFecha, calcularAntiguedad, calcularEdad } from '@/lib/utils'
 import type { Empleado } from '@/types'
-import { SECTORES } from '@/lib/mockData'
+import { SECTORES, CARGOS_POR_SECTOR } from '@/lib/mockData'
 import {
   User, Edit2, Save, X, Lock, Building2, Phone, Mail,
   Clock, CheckCircle2, Eye, EyeOff, Camera, Image as ImageIcon,
@@ -287,7 +287,7 @@ export default function PerfilPage() {
               <div className="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-800">
                 <span className="text-xs text-slate-500 dark:text-slate-400">Sector</span>
                 {editMode
-                  ? <select className="form-select text-sm max-w-[55%]" value={form.sector} onChange={e => setForm(f => ({ ...f, sector: e.target.value }))}>
+                  ? <select className="form-select text-sm max-w-[55%]" value={form.sector} onChange={e => setForm(f => ({ ...f, sector: e.target.value, cargo: '' }))}>
                       {SECTORES.map(s => <option key={s}>{s}</option>)}
                     </select>
                   : <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.sector}</span>}
@@ -295,7 +295,10 @@ export default function PerfilPage() {
               <div className="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-800">
                 <span className="text-xs text-slate-500 dark:text-slate-400">Cargo</span>
                 {editMode
-                  ? <input className="form-input text-sm max-w-[55%]" value={form.cargo} onChange={e => setForm(f => ({ ...f, cargo: e.target.value }))} />
+                  ? <select className="form-select text-sm max-w-[55%]" value={form.cargo} onChange={e => setForm(f => ({ ...f, cargo: e.target.value }))}>
+                      <option value="">Seleccionar</option>
+                      {(CARGOS_POR_SECTOR[form.sector] ?? []).map(c => <option key={c}>{c}</option>)}
+                    </select>
                   : <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.cargo}</span>}
               </div>
               <div className="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-800">

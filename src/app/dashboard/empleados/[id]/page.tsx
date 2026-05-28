@@ -4,7 +4,7 @@ import { useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
-import { SECTORES } from '@/lib/mockData'
+import { SECTORES, CARGOS_POR_SECTOR } from '@/lib/mockData'
 import {
   EMPLEADO_ESTADO_COLOR, EMPLEADO_ESTADO_LABEL, SOLICITUD_TIPO_LABEL,
   SOLICITUD_ESTADO_COLOR, SOLICITUD_ESTADO_LABEL, formatFecha, formatMes,
@@ -390,9 +390,12 @@ export default function EmpleadoDetailPage() {
           <p className="section-title mb-4 flex items-center gap-2"><Building2 className="w-4 h-4" /> Datos Laborales</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
             <EditField label="Sector" value={form.sector} editMode={isAdmin && editMode}
-              editor={<select className="form-select text-sm" value={form.sector} onChange={e => setForm(f => ({ ...f, sector: e.target.value }))}>{SECTORES.map(s => <option key={s}>{s}</option>)}</select>} />
+              editor={<select className="form-select text-sm" value={form.sector} onChange={e => setForm(f => ({ ...f, sector: e.target.value, cargo: '' }))}>{SECTORES.map(s => <option key={s}>{s}</option>)}</select>} />
             <EditField label="Cargo" value={form.cargo} editMode={isAdmin && editMode}
-              editor={<input className="form-input text-sm" value={form.cargo} onChange={e => setForm(f => ({ ...f, cargo: e.target.value }))} />} />
+              editor={<select className="form-select text-sm" value={form.cargo} onChange={e => setForm(f => ({ ...f, cargo: e.target.value }))}>
+                <option value="">Seleccionar</option>
+                {(CARGOS_POR_SECTOR[form.sector] ?? []).map(c => <option key={c}>{c}</option>)}
+              </select>} />
             <EditField label="Fecha de ingreso" value={formatFecha(emp.fechaIngreso)} editMode={isAdmin && editMode}
               editor={<input className="form-input text-sm" type="date" value={form.fechaIngreso} onChange={e => setForm(f => ({ ...f, fechaIngreso: e.target.value }))} />} />
             <EditField label="Antigüedad" value={antiguedad} editMode={false} editor={null} />

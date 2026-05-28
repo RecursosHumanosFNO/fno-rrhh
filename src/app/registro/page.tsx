@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useData } from '@/contexts/DataContext'
-import { SECTORES } from '@/lib/mockData'
+import { SECTORES, CARGOS_POR_SECTOR } from '@/lib/mockData'
 import { Eye, EyeOff, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -22,8 +22,14 @@ export default function RegistroPage() {
   const [success, setSuccess] = useState(false)
 
   function update(field: string, value: string) {
-    setForm(prev => ({ ...prev, [field]: value }))
+    if (field === 'sector') {
+      setForm(prev => ({ ...prev, sector: value, cargo: '' }))
+    } else {
+      setForm(prev => ({ ...prev, [field]: value }))
+    }
   }
+
+  const cargosDisponibles = form.sector ? CARGOS_POR_SECTOR[form.sector] ?? [] : []
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -149,7 +155,15 @@ export default function RegistroPage() {
               </div>
               <div>
                 <label className="form-label">Cargo *</label>
-                <input className="form-input" placeholder="Docente" value={form.cargo} onChange={e => update('cargo', e.target.value)} />
+                <select
+                  className="form-select"
+                  value={form.cargo}
+                  onChange={e => update('cargo', e.target.value)}
+                  disabled={!form.sector}
+                >
+                  <option value="">{form.sector ? 'Seleccionar' : 'Primero elegí sector'}</option>
+                  {cargosDisponibles.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
               </div>
             </div>
 

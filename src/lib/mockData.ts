@@ -2,16 +2,97 @@ import type { User, Empleado, Recibo, Solicitud, Novedad, Evento, Ticket } from 
 
 export const SECTORES = [
   'Dirección General',
-  'Educación',
-  'Programas Sociales',
   'Administración',
-  'Comunicación',
-  'Mantenimiento',
-  'Salud Comunitaria',
-  'Tecnología',
-  'Deportes',
-  'Prácticas Restaurativas',
+  'Colegio Primario',
+  'Secundario',
+  'Secundario Adultos',
+  'Kinesiología',
+  'Radio',
+  'CPREM',
+  'Espacio Cultural',
+  'Área de Deportes',
+  'Buffet',
+  'Hidroponía',
 ]
+
+export const CARGOS_POR_SECTOR: Record<string, string[]> = {
+  'Dirección General': [
+    'Director/a General',
+    'Jefe/a de Recursos Humanos',
+    'Coordinador/a General',
+    'Asistente de Dirección',
+  ],
+  'Administración': [
+    'Administrativo/a',
+    'Contador/a',
+    'Tesorero/a',
+    'Secretario/a',
+    'Recepcionista',
+    'Auxiliar Administrativo/a',
+  ],
+  'Colegio Primario': [
+    'Maestro/a de Grado',
+    'Docente',
+    'Coordinador/a Pedagógico/a',
+    'Preceptor/a',
+    'Auxiliar Docente',
+    'Psicopedagogo/a',
+  ],
+  'Secundario': [
+    'Profesor/a',
+    'Preceptor/a',
+    'Coordinador/a Pedagógico/a',
+    'Auxiliar Docente',
+    'Orientador/a Escolar',
+  ],
+  'Secundario Adultos': [
+    'Profesor/a',
+    'Preceptor/a',
+    'Coordinador/a',
+    'Auxiliar Docente',
+  ],
+  'Kinesiología': [
+    'Kinesiólogo/a',
+    'Asistente de Kinesiología',
+    'Coordinador/a de Salud',
+  ],
+  'Radio': [
+    'Locutor/a',
+    'Operador/a Técnico/a',
+    'Productor/a',
+    'Periodista',
+    'Coordinador/a de Radio',
+  ],
+  'CPREM': [
+    'Coordinador/a',
+    'Técnico/a en Comunicación',
+    'Facilitador/a',
+    'Operador/a Multimedia',
+  ],
+  'Espacio Cultural': [
+    'Coordinador/a Cultural',
+    'Tallerista',
+    'Animador/a Sociocultural',
+    'Instructor/a',
+  ],
+  'Área de Deportes': [
+    'Profesor/a de Educación Física',
+    'Entrenador/a',
+    'Coordinador/a Deportivo/a',
+    'Auxiliar Deportivo/a',
+  ],
+  'Buffet': [
+    'Encargado/a de Buffet',
+    'Cocinero/a',
+    'Ayudante de Cocina',
+    'Cajero/a',
+  ],
+  'Hidroponía': [
+    'Técnico/a en Hidroponía',
+    'Operario/a',
+    'Coordinador/a de Huerta',
+  ],
+}
 
 export const empleados: Empleado[] = [
   {
