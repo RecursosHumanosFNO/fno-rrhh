@@ -259,7 +259,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     if (!supabase) return
     try {
       const [usersRes, pendingRes, empRes, solRes, recRes, novRes, tickRes, notifRes] = await Promise.all([
-        supabase.from('fno_users').select('*'),
+        supabase.from('fno_users').select('id, email, role, empleado_id'),
         supabase.from('fno_pending').select('*'),
         supabase.from('fno_empleados').select('*'),
         supabase.from('fno_solicitudes').select('*'),
@@ -271,7 +271,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
       if (usersRes.data && usersRes.data.length > 0)
         setUsers(usersRes.data.map((u: Record<string, string>) => ({
-          id: u.id, email: u.email, password: u.password,
+          id: u.id, email: u.email,
+          // password NO se carga del servidor — validación via /api/auth/login
           role: u.role as UserRole, empleadoId: u.empleado_id,
         })))
 
@@ -328,7 +329,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (eventType === 'DELETE') setUsers(prev => prev.filter(u => u.id !== (o as { id: string }).id))
         else {
           const u = n as Record<string, string>
-          setUsers(prev => upsert(prev, { id: u.id, email: u.email, password: u.password, role: u.role as UserRole, empleadoId: u.empleado_id }))
+          setUsers(prev => upsert(prev, { id: u.id, email: u.email, role: u.role as UserRole, empleadoId: u.empleado_id }))
         }
       })
       // Pendientes

@@ -172,6 +172,8 @@ export const EVENTO_TIPO_LABEL: Record<EventoTipo, string> = {
   acto:        '🎗️ Acto Escolar',
   capacitacion:'📚 Capacitación',
   reunion:     '🤝 Reunión de Personal',
+  receso:      '🏖️ Receso Escolar',
+  proyecto:    '🔬 Semana de Proyectos',
   otro:        '📌 Otro',
 }
 
@@ -181,6 +183,8 @@ export const EVENTO_TIPO_COLOR: Record<EventoTipo, string> = {
   acto:        'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
   capacitacion:'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
   reunion:     'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
+  receso:      'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300',
+  proyecto:    'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
   otro:        'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300',
 }
 
@@ -190,6 +194,8 @@ export const EVENTO_TIPO_DOT: Record<EventoTipo, string> = {
   acto:        'bg-amber-500',
   capacitacion:'bg-emerald-500',
   reunion:     'bg-orange-500',
+  receso:      'bg-cyan-500',
+  proyecto:    'bg-green-500',
   otro:        'bg-slate-400',
 }
 

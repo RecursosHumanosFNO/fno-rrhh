@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Next.js Dev Server",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "C:/Users/PC10/fno-rrhh-fresh", "run", "dev"],
+      "port": 3000
+    }
+  ]
+}

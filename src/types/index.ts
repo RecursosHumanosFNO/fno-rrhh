@@ -49,7 +49,8 @@ export type TicketTipo =
 export interface User {
   id: string
   email: string
-  password: string
+  /** Nunca se carga desde el servidor. Solo se usa localmente al aprobar un registro. */
+  password?: string
   role: UserRole
   empleadoId: string
 }
@@ -135,7 +136,7 @@ export interface Novedad {
   imagen?: string
 }
 
-export type EventoTipo = 'feriado' | 'jornada' | 'acto' | 'capacitacion' | 'reunion' | 'otro'
+export type EventoTipo = 'feriado' | 'jornada' | 'acto' | 'capacitacion' | 'reunion' | 'receso' | 'proyecto' | 'otro'
 
 export interface Evento {
   id: string

@@ -210,18 +210,28 @@ export const jornadasInstitucionales2026: Evento[] = [
 ]
 
 // ─── Actos escolares nivel secundario 2026 ────────────────────────────────
-// (fechas estándar calendario escolar argentino — ajustar según el adjunto)
+// Fechas extraídas del Padlet CNO 2026 (eventosPadlet-CNO-2026.pdf)
 export const actosEscolares2026: Evento[] = [
-  { id: 'a1',  titulo: 'Acto Día de la Memoria',              fecha: '2026-03-23', tipo: 'acto', descripcion: 'Acto por el Día Nacional de la Memoria por la Verdad y la Justicia' },
-  { id: 'a2',  titulo: 'Acto Día del Veterano y los Caídos',  fecha: '2026-04-01', tipo: 'acto', descripcion: 'Acto conmemorativo — Guerra de Malvinas' },
-  { id: 'a3',  titulo: 'Acto Revolución de Mayo',             fecha: '2026-05-22', tipo: 'acto', descripcion: 'Acto escolar por el 25 de Mayo — Nivel Secundario' },
-  { id: 'a4',  titulo: 'Acto Día de la Bandera',              fecha: '2026-06-19', tipo: 'acto', descripcion: 'Acto en honor al Gral. Belgrano y la Bandera Nacional' },
-  { id: 'a5',  titulo: 'Acto Día de la Independencia',        fecha: '2026-07-08', tipo: 'acto', descripcion: 'Acto escolar por el 9 de Julio — Nivel Secundario' },
-  { id: 'a6',  titulo: 'Acto Paso a la Inmortalidad San Martín', fecha: '2026-08-14', tipo: 'acto', descripcion: 'Acto en honor al Libertador General San Martín' },
-  { id: 'a7',  titulo: 'Acto Día del Maestro',                fecha: '2026-09-11', tipo: 'acto', descripcion: 'Acto en homenaje a Domingo Faustino Sarmiento' },
-  { id: 'a8',  titulo: 'Acto Diversidad Cultural',            fecha: '2026-10-09', tipo: 'acto', descripcion: 'Acto por el Día del Respeto a la Diversidad Cultural' },
-  { id: 'a9',  titulo: 'Acto Soberanía Nacional',             fecha: '2026-11-19', tipo: 'acto', descripcion: 'Acto por el Día de la Soberanía Nacional' },
-  { id: 'a10', titulo: 'Acto de Colación / Cierre',           fecha: '2026-12-04', tipo: 'acto', descripcion: 'Acto de cierre y reconocimiento — Nivel Secundario' },
+  // ── Inicio del ciclo lectivo ──────────────────────────────────────────────
+  { id: 'a0',  titulo: 'Inicio de Clases 2026',                fecha: '2026-03-02', tipo: 'acto',     descripcion: 'Primer día del ciclo lectivo 2026 — Nivel Secundario' },
+  // ── Actos patrióticos ────────────────────────────────────────────────────
+  { id: 'a1',  titulo: 'Acto Día de la Memoria',               fecha: '2026-03-24', tipo: 'acto',     descripcion: 'Acto por el Día Nacional de la Memoria por la Verdad y la Justicia' },
+  { id: 'a2',  titulo: 'Acto Día del Veterano y los Caídos',   fecha: '2026-04-01', tipo: 'acto',     descripcion: 'Acto conmemorativo — Guerra de Malvinas (previo al feriado del 2/4)' },
+  { id: 'a3',  titulo: 'Acto Revolución de Mayo',              fecha: '2026-05-22', tipo: 'acto',     descripcion: 'Acto escolar por el 25 de Mayo — Nivel Secundario' },
+  { id: 'a4',  titulo: 'Acto Día de la Bandera',               fecha: '2026-06-19', tipo: 'acto',     descripcion: 'Acto en honor al Gral. Belgrano y la Bandera Nacional' },
+  { id: 'a5',  titulo: 'Acto Día de la Independencia',         fecha: '2026-07-08', tipo: 'acto',     descripcion: 'Acto escolar por el 9 de Julio — Nivel Secundario' },
+  // ── Receso invernal ──────────────────────────────────────────────────────
+  { id: 'r1',  titulo: 'Receso Escolar de Invierno',           fecha: '2026-07-13', tipo: 'receso',   descripcion: 'Inicio del receso invernal. Retorno a clases: lunes 27 de julio' },
+  // ── Semanas de Proyectos ─────────────────────────────────────────────────
+  { id: 'p1',  titulo: 'Semana de Proyectos — 1.ª instancia',  fecha: '2026-04-13', tipo: 'proyecto', descripcion: 'Presentación y evaluación de proyectos interdisciplinarios (13 al 17 de abril)' },
+  { id: 'p2',  titulo: 'Semana de Proyectos — 2.ª instancia',  fecha: '2026-08-18', tipo: 'proyecto', descripcion: 'Presentación y evaluación de proyectos interdisciplinarios (18 al 21 de agosto)' },
+  // ── Actos segundo semestre ───────────────────────────────────────────────
+  { id: 'a6',  titulo: 'Acto Paso a la Inmortalidad San Martín', fecha: '2026-08-14', tipo: 'acto',   descripcion: 'Acto en honor al Libertador General San Martín' },
+  { id: 'a7',  titulo: 'Acto Día del Maestro',                  fecha: '2026-09-11', tipo: 'acto',    descripcion: 'Acto en homenaje a Domingo Faustino Sarmiento' },
+  { id: 'a8',  titulo: 'Acto Diversidad Cultural',              fecha: '2026-10-09', tipo: 'acto',    descripcion: 'Acto por el Día del Respeto a la Diversidad Cultural' },
+  { id: 'a9',  titulo: 'Acto Soberanía Nacional',               fecha: '2026-11-19', tipo: 'acto',    descripcion: 'Acto por el Día de la Soberanía Nacional' },
+  // ── Cierre del ciclo lectivo ─────────────────────────────────────────────
+  { id: 'a10', titulo: 'Acto de Colación y Cierre',             fecha: '2026-12-04', tipo: 'acto',    descripcion: 'Acto de cierre del ciclo lectivo y reconocimiento — Nivel Secundario' },
 ]
 
 export const eventos: Evento[] = [
