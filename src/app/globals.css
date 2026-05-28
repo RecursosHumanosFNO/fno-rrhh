@@ -16,7 +16,7 @@
   }
 
   body {
-    background-color: #eef2f7;
+    background-color: #e8f5f2;
     @apply text-slate-900 font-sans antialiased;
     @apply dark:bg-[#080d14] dark:text-slate-100;
   }
@@ -43,7 +43,7 @@
 
   /* ── Card: dark con borde teal sutil ───────────────────── */
   .card {
-    @apply bg-white rounded-xl shadow-card border border-slate-100;
+    @apply bg-white rounded-xl shadow-card border border-teal-100/80;
     @apply dark:bg-slate-900/80 dark:border-teal-900/50 dark:shadow-[0_1px_3px_rgba(0,0,0,0.4),0_0_0_1px_rgba(20,184,166,0.08)];
   }
 
