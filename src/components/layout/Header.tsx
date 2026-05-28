@@ -63,7 +63,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
   }
 
   return (
-    <header className="h-16 bg-white/80 backdrop-blur-sm dark:bg-slate-900 border-b border-teal-100 dark:border-slate-800 flex items-center px-4 gap-3 sticky top-0 z-20 shadow-sm">
+    <header className="h-16 bg-[#e8f5fb]/95 backdrop-blur-sm dark:bg-slate-900 border-b border-sky-200/60 dark:border-slate-800 flex items-center px-4 gap-3 sticky top-0 z-20 shadow-sm">
       <button
         onClick={onMenuToggle}
         className="lg:hidden w-9 h-9 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
@@ -73,11 +73,11 @@ export default function Header({ onMenuToggle }: HeaderProps) {
 
       {/* Search */}
       <div ref={searchRef} className="flex-1 max-w-sm hidden md:block relative">
-        <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 rounded-lg px-3 py-2">
-          <Search className="w-4 h-4 text-slate-400 shrink-0" />
+        <div className="flex items-center gap-2 bg-[#d9eef7] dark:bg-slate-800 rounded-lg px-3 py-2">
+          <Search className="w-4 h-4 text-sky-400 dark:text-slate-400 shrink-0" />
           <input
             type="text"
-            placeholder="Buscar empleados, novedades..."
+            placeholder={isAdmin ? 'Buscar empleados, comunicaciones...' : 'Buscar comunicaciones...'}
             className="bg-transparent text-sm text-slate-600 dark:text-slate-300 placeholder-slate-400 focus:outline-none w-full"
             value={query}
             autoComplete="new-password"

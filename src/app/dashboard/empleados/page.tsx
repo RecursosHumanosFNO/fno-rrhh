@@ -198,7 +198,7 @@ function EmpleadosContent() {
           </div>
           <div className="space-y-3">
             {pendingRegistrations.map(reg => (
-              <div key={reg.id} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+              <div key={reg.id} className="flex items-center gap-3 p-3 bg-[#e8f5fb] dark:bg-slate-800/50 rounded-xl">
                 <div className="w-9 h-9 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-700 dark:text-amber-400 text-xs font-bold shrink-0">
                   {reg.nombre.charAt(0)}{reg.apellido.charAt(0)}
                 </div>
@@ -230,7 +230,7 @@ function EmpleadosContent() {
 
       {/* Filters */}
       <div className="card p-4 flex flex-wrap gap-3 items-center">
-        <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 rounded-lg px-3 py-2 flex-1 min-w-48">
+        <div className="flex items-center gap-2 bg-[#d9eef7] dark:bg-slate-800 rounded-lg px-3 py-2 flex-1 min-w-48">
           <Search className="w-4 h-4 text-slate-400 shrink-0" />
           <input
             type="text"
@@ -341,7 +341,7 @@ function EmpleadosContent() {
             </thead>
             <tbody>
               {filtered.map(emp => (
-                <tr key={emp.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                <tr key={emp.id} className="hover:bg-[#e2f2f9] dark:hover:bg-slate-800/50 transition-colors">
                   <td className="table-cell">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full bg-brand-700 flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden">
