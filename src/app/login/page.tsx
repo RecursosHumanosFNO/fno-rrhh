@@ -143,6 +143,7 @@ export default function LoginPage() {
                   className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" />
                 <span className="text-sm text-slate-600 dark:text-slate-400">Recordar sesión</span>
               </label>
+              <ForgotPasswordLink />
             </div>
 
             <button type="submit" className="btn-primary w-full justify-center py-3" disabled={loading}>
@@ -161,17 +162,83 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <div className="mt-6 p-3.5 bg-slate-100 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
-            <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
-              ¿Olvidaste tu contraseña? Contactá al área de RRHH para restablecerla.
-            </p>
-          </div>
-
           <p className="text-center text-xs text-slate-400 dark:text-slate-600 mt-8">
             © 2026 Fundación Neuquén Oeste — Portal Interno RRHH v2.0
           </p>
         </div>
       </div>
     </div>
+  )
+}
+
+// ── Componente "Olvidé mi contraseña" ─────────────────────────────────────────
+function ForgotPasswordLink() {
+  const [open, setOpen] = useState(false)
+  const [email, setEmail] = useState('')
+  const [status, setStatus] = useState<'idle' | 'loading' | 'sent' | 'error'>('idle')
+
+  async function handleSend(e: React.FormEvent) {
+    e.preventDefault()
+    if (!email) return
+    setStatus('loading')
+    const res = await fetch('/api/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    }).then(r => r.json()).catch(() => ({ ok: false }))
+    setStatus(res.ok ? 'sent' : 'error')
+  }
+
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)} className="text-sm text-brand-600 dark:text-brand-400 hover:underline font-medium">
+        ¿Olvidaste tu contraseña?
+      </button>
+
+      {open && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { setOpen(false); setStatus('idle'); setEmail('') }}>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1">Recuperar contraseña</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">
+              Ingresá tu email y te enviaremos un link para crear una nueva contraseña.
+            </p>
+            {status === 'sent' ? (
+              <div className="text-center py-4">
+                <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <span className="text-2xl">✉️</span>
+                </div>
+                <p className="font-medium text-slate-800 dark:text-slate-100 mb-1">¡Email enviado!</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Revisá tu bandeja de entrada. El link es válido por 30 minutos.</p>
+                <button onClick={() => { setOpen(false); setStatus('idle') }} className="mt-4 text-sm text-brand-600 dark:text-brand-400 hover:underline">Cerrar</button>
+              </div>
+            ) : (
+              <form onSubmit={handleSend} className="space-y-4">
+                {status === 'error' && (
+                  <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">
+                    Ocurrió un error. Intentá de nuevo o contactá a RRHH.
+                  </p>
+                )}
+                <input
+                  type="email"
+                  className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-lg text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500"
+                  placeholder="tu@email.com"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
+                />
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => { setOpen(false); setStatus('idle') }} className="flex-1 px-4 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                    Cancelar
+                  </button>
+                  <button type="submit" disabled={status === 'loading'} className="flex-1 bg-brand-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-brand-600 transition-colors disabled:opacity-60">
+                    {status === 'loading' ? 'Enviando...' : 'Enviar link'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   )
 }

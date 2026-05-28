@@ -34,12 +34,15 @@ const TIPO_GRUPOS = [
 
 export default function SolicitudesPage() {
   const { user } = useAuth()
-  const { empleados, solicitudes, addSolicitud, approveSolicitud, rejectSolicitud } = useData()
+  const { empleados, solicitudes, addSolicitud, approveSolicitud, rejectSolicitud, cancelSolicitud } = useData()
   const isAdmin = user?.role === 'admin'
 
   const [estadoFilter, setEstadoFilter] = useState('')
   const [tipoFilter, setTipoFilter] = useState('')
   const [query, setQuery] = useState('')
+  const [fechaDesdeFilter, setFechaDesdeFilter] = useState('')
+  const [fechaHastaFilter, setFechaHastaFilter] = useState('')
+  const [confirmCancel, setConfirmCancel] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showNueva, setShowNueva] = useState(false)
   const [comments, setComments] = useState<Record<string, string>>({})
@@ -62,7 +65,9 @@ export default function SolicitudesPage() {
     const matchQuery = !query || (emp ? `${emp.nombre} ${emp.apellido}`.toLowerCase().includes(query.toLowerCase()) : false)
     const matchEstado = !estadoFilter || s.estado === estadoFilter
     const matchTipo = !tipoFilter || s.tipo === tipoFilter
-    return matchQuery && matchEstado && matchTipo
+    const matchDesde = !fechaDesdeFilter || s.fechaInicio >= fechaDesdeFilter
+    const matchHasta = !fechaHastaFilter || s.fechaInicio <= fechaHastaFilter
+    return matchQuery && matchEstado && matchTipo && matchDesde && matchHasta
   }).sort((a, b) => b.fechaCreacion.localeCompare(a.fechaCreacion))
 
   const pendientes = base.filter(s => s.estado === 'pendiente').length
@@ -166,8 +171,27 @@ export default function SolicitudesPage() {
             </optgroup>
           ))}
         </select>
-        {(query || estadoFilter || tipoFilter) && (
-          <button onClick={() => { setQuery(''); setEstadoFilter(''); setTipoFilter('') }} className="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1">
+        {isAdmin && (
+          <>
+            <input
+              type="date"
+              className="form-input w-auto text-sm"
+              value={fechaDesdeFilter}
+              onChange={e => setFechaDesdeFilter(e.target.value)}
+              title="Desde"
+            />
+            <span className="text-slate-400 text-sm self-center">—</span>
+            <input
+              type="date"
+              className="form-input w-auto text-sm"
+              value={fechaHastaFilter}
+              onChange={e => setFechaHastaFilter(e.target.value)}
+              title="Hasta"
+            />
+          </>
+        )}
+        {(query || estadoFilter || tipoFilter || fechaDesdeFilter || fechaHastaFilter) && (
+          <button onClick={() => { setQuery(''); setEstadoFilter(''); setTipoFilter(''); setFechaDesdeFilter(''); setFechaHastaFilter('') }} className="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1">
             <X className="w-3.5 h-3.5" /> Limpiar
           </button>
         )}
@@ -282,11 +306,54 @@ export default function SolicitudesPage() {
                         </div>
                       </div>
                     )}
+
+                    {/* Employee cancel */}
+                    {!isAdmin && sol.estado === 'pendiente' && (
+                      <div className="flex justify-end">
+                        <button
+                          onClick={() => setConfirmCancel(sol.id)}
+                          className="text-sm text-red-500 hover:text-red-600 flex items-center gap-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 px-3 py-1.5 rounded-lg transition-colors"
+                        >
+                          <XCircle className="w-4 h-4" /> Cancelar solicitud
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Confirmar cancelación */}
+      {confirmCancel && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setConfirmCancel(null)}>
+          <div className="card w-full max-w-sm animate-scale-in" onClick={e => e.stopPropagation()}>
+            <div className="p-6 text-center">
+              <div className="w-14 h-14 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                <XCircle className="w-7 h-7 text-red-500" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">¿Cancelar solicitud?</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+                Esta acción eliminará la solicitud. No se puede deshacer.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setConfirmCancel(null)}
+                  className="btn-secondary flex-1 justify-center"
+                >
+                  Volver
+                </button>
+                <button
+                  onClick={() => { cancelSolicitud(confirmCancel); setConfirmCancel(null); setExpandedId(null) }}
+                  className="btn-danger flex-1 justify-center"
+                >
+                  Sí, cancelar
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

@@ -29,10 +29,10 @@ export default function EmpleadoDetailPage() {
 
   const [tab, setTab] = useState(0)
   const [editMode, setEditMode] = useState(false)
-  const [showPass, setShowPass] = useState(false)
   const [showNewPass, setShowNewPass] = useState(false)
   const [newPassword, setNewPassword] = useState('')
   const [passMsg, setPassMsg] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null)
+  const [resetStatus, setResetStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
   const fotoRef = useRef<HTMLInputElement>(null)
 
   const isAdmin = user?.role === 'admin'
@@ -120,6 +120,22 @@ export default function EmpleadoDetailPage() {
     setPassMsg({ type: 'ok', msg: 'Contraseña actualizada correctamente.' })
     setNewPassword('')
     setTimeout(() => setPassMsg(null), 3000)
+  }
+
+  async function handleSendResetEmail() {
+    if (!empUser?.email) return
+    setResetStatus('sending')
+    try {
+      const res = await fetch('/api/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: empUser.email }),
+      }).then(r => r.json()).catch(() => ({ ok: false }))
+      setResetStatus(res.ok ? 'sent' : 'error')
+    } catch {
+      setResetStatus('error')
+    }
+    setTimeout(() => setResetStatus('idle'), 5000)
   }
 
   return (
@@ -333,49 +349,74 @@ export default function EmpleadoDetailPage() {
             {isAdmin && (
               <div className="card p-5">
                 <p className="section-title mb-4 flex items-center gap-2"><Lock className="w-4 h-4" /> Gestión de Contraseña</p>
-                {empUser && (
-                  <div className="space-y-3">
-                    <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 flex items-center justify-between">
-                      <span className="text-xs text-slate-500 dark:text-slate-400">Contraseña actual</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-mono font-medium text-slate-700 dark:text-slate-300">
-                          {showPass ? empUser.password : '•'.repeat(Math.min(empUser.password.length, 10))}
-                        </span>
-                        <button onClick={() => setShowPass(!showPass)} className="text-slate-400 hover:text-slate-600">
-                          {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
-                      </div>
-                    </div>
-                    {passMsg && (
-                      <div className={`rounded-lg px-3 py-2 text-sm flex items-center gap-2 ${
-                        passMsg.type === 'ok'
-                          ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
-                          : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'
-                      }`}>
-                        {passMsg.type === 'ok' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-                        {passMsg.msg}
-                      </div>
-                    )}
-                    <div className="flex gap-2">
-                      <div className="relative flex-1">
-                        <input
-                          type={showNewPass ? 'text' : 'password'}
-                          className="form-input text-sm pr-10 w-full"
-                          placeholder="Nueva contraseña..."
-                          value={newPassword}
-                          onChange={e => setNewPassword(e.target.value)}
-                        />
-                        <button onClick={() => setShowNewPass(!showNewPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
-                          {showNewPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
-                      </div>
-                      <button onClick={handlePasswordReset} className="btn-primary shrink-0">
-                        Resetear
+                {empUser ? (
+                  <div className="space-y-4">
+                    {/* Secure reset via email */}
+                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-100 dark:border-blue-800">
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Enviar link de recuperación</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+                        Se enviará un enlace seguro a <strong>{empUser.email}</strong> para que el empleado establezca su propia contraseña. Válido por 30 minutos.
+                      </p>
+                      {resetStatus === 'sent' && (
+                        <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 rounded-lg px-3 py-2 text-xs flex items-center gap-2 mb-2">
+                          <CheckCircle2 className="w-4 h-4 shrink-0" /> Link enviado correctamente al email del empleado.
+                        </div>
+                      )}
+                      {resetStatus === 'error' && (
+                        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-400 rounded-lg px-3 py-2 text-xs flex items-center gap-2 mb-2">
+                          <AlertCircle className="w-4 h-4 shrink-0" /> No se pudo enviar. Verificá que el email esté configurado.
+                        </div>
+                      )}
+                      <button
+                        onClick={handleSendResetEmail}
+                        disabled={resetStatus === 'sending' || resetStatus === 'sent'}
+                        className="btn-primary text-sm disabled:opacity-50"
+                      >
+                        {resetStatus === 'sending' ? (
+                          <><Shield className="w-4 h-4 animate-pulse" /> Enviando...</>
+                        ) : resetStatus === 'sent' ? (
+                          <><CheckCircle2 className="w-4 h-4" /> Enviado</>
+                        ) : (
+                          <><Mail className="w-4 h-4" /> Enviar link de reset</>
+                        )}
                       </button>
                     </div>
+
+                    {/* Manual override (admin force-set) */}
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wide">
+                        O establecer contraseña manualmente
+                      </p>
+                      {passMsg && (
+                        <div className={`rounded-lg px-3 py-2 text-sm flex items-center gap-2 mb-2 ${
+                          passMsg.type === 'ok'
+                            ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
+                            : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'
+                        }`}>
+                          {passMsg.type === 'ok' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+                          {passMsg.msg}
+                        </div>
+                      )}
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <input
+                            type={showNewPass ? 'text' : 'password'}
+                            className="form-input text-sm pr-10 w-full"
+                            placeholder="Nueva contraseña (mín. 6 caracteres)"
+                            value={newPassword}
+                            onChange={e => setNewPassword(e.target.value)}
+                          />
+                          <button onClick={() => setShowNewPass(!showNewPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                            {showNewPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                        <button onClick={handlePasswordReset} className="btn-secondary shrink-0">
+                          Guardar
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                )}
-                {!empUser && (
+                ) : (
                   <p className="text-sm text-slate-400">Este empleado no tiene cuenta de acceso creada.</p>
                 )}
               </div>
@@ -441,9 +482,18 @@ export default function EmpleadoDetailPage() {
                     <p className="font-medium text-slate-700 dark:text-slate-200">{formatMes(r.mes, r.anio)}</p>
                     <p className="text-xs text-slate-400">Subido: {formatFecha(r.fechaSubida)} · {formatMonto(r.monto)}</p>
                   </div>
-                  <button className="btn-secondary text-sm py-1.5">
-                    <Download className="w-4 h-4" /> Descargar
-                  </button>
+                  {r.archivoUrl ? (
+                    <a
+                      href={r.archivoUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-secondary text-sm py-1.5 inline-flex items-center gap-1.5"
+                    >
+                      <Download className="w-4 h-4" /> Ver PDF
+                    </a>
+                  ) : (
+                    <span className="text-xs text-slate-400 px-2">Sin archivo</span>
+                  )}
                 </div>
               ))}
             </div>

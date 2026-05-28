@@ -202,16 +202,32 @@ export const feriados2026: Evento[] = [
 
 // ─── Jornadas institucionales 2026 ────────────────────────────────────────
 export const jornadasInstitucionales2026: Evento[] = [
-  { id: 'j1', titulo: 'Jornada Institucional',  fecha: '2026-06-25', tipo: 'evento', descripcion: 'Jornada institucional obligatoria — Fundación Neuquén Oeste' },
-  { id: 'j2', titulo: 'Jornada Institucional',  fecha: '2026-08-12', tipo: 'evento', descripcion: 'Jornada institucional obligatoria — Fundación Neuquén Oeste' },
-  { id: 'j3', titulo: 'Jornada Institucional',  fecha: '2026-09-17', tipo: 'evento', descripcion: 'Jornada institucional obligatoria — Fundación Neuquén Oeste' },
-  { id: 'j4', titulo: 'Jornada Institucional',  fecha: '2026-10-20', tipo: 'evento', descripcion: 'Jornada institucional obligatoria — Fundación Neuquén Oeste' },
-  { id: 'j5', titulo: 'Jornada Institucional',  fecha: '2026-11-25', tipo: 'evento', descripcion: 'Jornada institucional obligatoria — Fundación Neuquén Oeste' },
+  { id: 'j1', titulo: 'Jornada Institucional',  fecha: '2026-06-25', tipo: 'jornada', descripcion: 'Jornada institucional obligatoria — Fundación Neuquén Oeste' },
+  { id: 'j2', titulo: 'Jornada Institucional',  fecha: '2026-08-12', tipo: 'jornada', descripcion: 'Jornada institucional obligatoria — Fundación Neuquén Oeste' },
+  { id: 'j3', titulo: 'Jornada Institucional',  fecha: '2026-09-17', tipo: 'jornada', descripcion: 'Jornada institucional obligatoria — Fundación Neuquén Oeste' },
+  { id: 'j4', titulo: 'Jornada Institucional',  fecha: '2026-10-20', tipo: 'jornada', descripcion: 'Jornada institucional obligatoria — Fundación Neuquén Oeste' },
+  { id: 'j5', titulo: 'Jornada Institucional',  fecha: '2026-11-25', tipo: 'jornada', descripcion: 'Jornada institucional obligatoria — Fundación Neuquén Oeste' },
+]
+
+// ─── Actos escolares nivel secundario 2026 ────────────────────────────────
+// (fechas estándar calendario escolar argentino — ajustar según el adjunto)
+export const actosEscolares2026: Evento[] = [
+  { id: 'a1',  titulo: 'Acto Día de la Memoria',              fecha: '2026-03-23', tipo: 'acto', descripcion: 'Acto por el Día Nacional de la Memoria por la Verdad y la Justicia' },
+  { id: 'a2',  titulo: 'Acto Día del Veterano y los Caídos',  fecha: '2026-04-01', tipo: 'acto', descripcion: 'Acto conmemorativo — Guerra de Malvinas' },
+  { id: 'a3',  titulo: 'Acto Revolución de Mayo',             fecha: '2026-05-22', tipo: 'acto', descripcion: 'Acto escolar por el 25 de Mayo — Nivel Secundario' },
+  { id: 'a4',  titulo: 'Acto Día de la Bandera',              fecha: '2026-06-19', tipo: 'acto', descripcion: 'Acto en honor al Gral. Belgrano y la Bandera Nacional' },
+  { id: 'a5',  titulo: 'Acto Día de la Independencia',        fecha: '2026-07-08', tipo: 'acto', descripcion: 'Acto escolar por el 9 de Julio — Nivel Secundario' },
+  { id: 'a6',  titulo: 'Acto Paso a la Inmortalidad San Martín', fecha: '2026-08-14', tipo: 'acto', descripcion: 'Acto en honor al Libertador General San Martín' },
+  { id: 'a7',  titulo: 'Acto Día del Maestro',                fecha: '2026-09-11', tipo: 'acto', descripcion: 'Acto en homenaje a Domingo Faustino Sarmiento' },
+  { id: 'a8',  titulo: 'Acto Diversidad Cultural',            fecha: '2026-10-09', tipo: 'acto', descripcion: 'Acto por el Día del Respeto a la Diversidad Cultural' },
+  { id: 'a9',  titulo: 'Acto Soberanía Nacional',             fecha: '2026-11-19', tipo: 'acto', descripcion: 'Acto por el Día de la Soberanía Nacional' },
+  { id: 'a10', titulo: 'Acto de Colación / Cierre',           fecha: '2026-12-04', tipo: 'acto', descripcion: 'Acto de cierre y reconocimiento — Nivel Secundario' },
 ]
 
 export const eventos: Evento[] = [
   ...feriados2026,
   ...jornadasInstitucionales2026,
+  ...actosEscolares2026,
 ]
 
 export const estadisticasMensuales = [

@@ -1,22 +1,26 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useMemo, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useRouter } from 'next/navigation'
-import { estadisticasMensuales } from '@/lib/mockData'
 import { SOLICITUD_TIPO_LABEL } from '@/lib/utils'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, Legend,
 } from 'recharts'
 import { TrendingUp, Users, ClipboardList, CalendarCheck, Download, BarChart3 } from 'lucide-react'
+import * as XLSX from 'xlsx'
 
 const COLORS = ['#1e3a5f', '#3b73b8', '#5988c3', '#9eb9dc', '#c5d5ea', '#10b981', '#f59e0b', '#ef4444']
 
+const MESES_CORTOS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+const MESES_COMPLETOS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+
 export default function EstadisticasPage() {
   const { user } = useAuth()
-  const { empleados, solicitudes } = useData()
+  const { empleados, solicitudes, recibos } = useData()
   const router = useRouter()
 
   useEffect(() => {
@@ -31,14 +35,16 @@ export default function EstadisticasPage() {
   const aprobadas = solicitudes.filter(s => s.estado === 'aprobado').length
   const sectoresActivos = new Set(empleados.map(e => e.sector).filter(Boolean)).size
 
+  // ── Item 16: Sector labels sin truncar ─────────────────────────────────────
   const empleadosPorSector = Array.from(
     empleados.reduce((map, e) => {
       if (!e.sector) return map
-      const sector = e.sector.split(' ')[0]
-      map.set(sector, (map.get(sector) || 0) + 1)
+      // Usar nombre completo del sector (ya no ".split(' ')[0]")
+      map.set(e.sector, (map.get(e.sector) || 0) + 1)
       return map
     }, new Map<string, number>())
   ).map(([sector, cantidad]) => ({ sector, cantidad }))
+    .sort((a, b) => b.cantidad - a.cantidad)
 
   const solicitudesPorTipo = Object.entries(
     solicitudes.reduce((acc, s) => {
@@ -48,11 +54,140 @@ export default function EstadisticasPage() {
   ).map(([tipo, cantidad]) => ({
     tipo: SOLICITUD_TIPO_LABEL[tipo as keyof typeof SOLICITUD_TIPO_LABEL] ?? tipo,
     cantidad,
-  }))
+  })).sort((a, b) => b.cantidad - a.cantidad)
 
   const tasaAprobacion = solicitudes.length > 0
     ? Math.round(aprobadas / solicitudes.length * 100)
     : 0
+
+  // ── Item 15: Evolución mensual con datos reales ─────────────────────────────
+  const estadisticasMensuales = useMemo(() => {
+    const currentYear = new Date().getFullYear()
+    return MESES_CORTOS.map((mes, idx) => {
+      const monthNum = idx + 1
+      // Empleados activos al mes (empleados cuyo ingreso es <= ese mes)
+      const empActivos = empleados.filter(e => {
+        if (!e.fechaIngreso) return true
+        const [y, m] = e.fechaIngreso.split('-').map(Number)
+        return y < currentYear || (y === currentYear && m <= monthNum)
+      }).length
+
+      // Solicitudes creadas ese mes/año
+      const solMes = solicitudes.filter(s => {
+        const [y, m] = s.fechaCreacion.split('-').map(Number)
+        return y === currentYear && m === monthNum
+      }).length
+
+      // Ausencias = solicitudes de tipo ausencia/licencia aprobadas ese mes
+      const ausenciasMes = solicitudes.filter(s => {
+        const [y, m] = s.fechaCreacion.split('-').map(Number)
+        return y === currentYear && m === monthNum && s.estado === 'aprobado' &&
+          ['ausencia', 'licencia_medica', 'licencia_duelo', 'licencia_estudio', 'licencia_maternidad_paternidad'].includes(s.tipo)
+      }).length
+
+      return { mes, empleados: empActivos, solicitudes: solMes, ausencias: ausenciasMes }
+    })
+  }, [empleados, solicitudes])
+
+  // ── Item 13: Exportar informe Excel ────────────────────────────────────────
+  function exportarInforme() {
+    const wb = XLSX.utils.book_new()
+
+    // Hoja 1: KPIs
+    const kpiData = [
+      ['Indicador', 'Valor'],
+      ['Total Empleados', totalEmpleados],
+      ['Empleados Activos', activos],
+      ['Total Solicitudes', solicitudes.length],
+      ['Solicitudes Pendientes', pendientes],
+      ['Solicitudes Aprobadas', aprobadas],
+      ['Tasa de Aprobación', `${tasaAprobacion}%`],
+      ['Sectores Activos', sectoresActivos],
+    ]
+    const wsKpi = XLSX.utils.aoa_to_sheet(kpiData)
+    XLSX.utils.book_append_sheet(wb, wsKpi, 'Resumen KPIs')
+
+    // Hoja 2: Empleados por sector
+    const sectorData = [
+      ['Sector', 'Cantidad'],
+      ...empleadosPorSector.map(r => [r.sector, r.cantidad]),
+    ]
+    const wsSector = XLSX.utils.aoa_to_sheet(sectorData)
+    XLSX.utils.book_append_sheet(wb, wsSector, 'Por Sector')
+
+    // Hoja 3: Solicitudes por tipo
+    const tipoData = [
+      ['Tipo', 'Cantidad'],
+      ...solicitudesPorTipo.map(r => [r.tipo, r.cantidad]),
+    ]
+    const wsTipo = XLSX.utils.aoa_to_sheet(tipoData)
+    XLSX.utils.book_append_sheet(wb, wsTipo, 'Por Tipo')
+
+    // Hoja 4: Evolución mensual
+    const mensualData = [
+      ['Mes', 'Empleados', 'Solicitudes', 'Ausencias'],
+      ...estadisticasMensuales.map(r => [r.mes, r.empleados, r.solicitudes, r.ausencias]),
+    ]
+    const wsMensual = XLSX.utils.aoa_to_sheet(mensualData)
+    XLSX.utils.book_append_sheet(wb, wsMensual, 'Evolución Mensual')
+
+    // Hoja 5: Detalle empleados
+    const empData = [
+      ['Apellido', 'Nombre', 'DNI', 'Cargo', 'Sector', 'Estado', 'Ingreso', 'Solicitudes', 'Aprobadas'],
+      ...empleados.filter(e => e.id !== '1').map(emp => {
+        const mSol = solicitudes.filter(s => s.empleadoId === emp.id)
+        return [
+          emp.apellido, emp.nombre, emp.dni ?? '', emp.cargo, emp.sector,
+          emp.estado, emp.fechaIngreso ?? '',
+          mSol.length, mSol.filter(s => s.estado === 'aprobado').length,
+        ]
+      }),
+    ]
+    const wsEmp = XLSX.utils.aoa_to_sheet(empData)
+    XLSX.utils.book_append_sheet(wb, wsEmp, 'Detalle Empleados')
+
+    const fecha = new Date().toISOString().slice(0, 10)
+    XLSX.writeFile(wb, `informe_rrhh_${fecha}.xlsx`)
+  }
+
+  // ── Item 14: Exportar CSV de empleados ─────────────────────────────────────
+  function exportarCSV() {
+    const headers = ['Apellido', 'Nombre', 'DNI', 'CUIL', 'Cargo', 'Sector', 'Estado', 'Fecha Ingreso', 'Email', 'Teléfono', 'Solicitudes', 'Solicitudes Aprobadas']
+    const rows = empleados.filter(e => e.id !== '1').map(emp => {
+      const mSol = solicitudes.filter(s => s.empleadoId === emp.id)
+      return [
+        emp.apellido,
+        emp.nombre,
+        emp.dni ?? '',
+        emp.cuil ?? '',
+        emp.cargo,
+        emp.sector,
+        emp.estado,
+        emp.fechaIngreso ?? '',
+        emp.email ?? '',
+        emp.telefono ?? '',
+        mSol.length,
+        mSol.filter(s => s.estado === 'aprobado').length,
+      ]
+    })
+
+    const csv = [headers, ...rows]
+      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n')
+
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `empleados_${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  // Acortar label del sector para el eje X del chart (máx 12 chars)
+  function shortSector(s: string) {
+    return s.length > 12 ? s.slice(0, 11) + '…' : s
+  }
 
   return (
     <div className="page-container">
@@ -61,11 +196,11 @@ export default function EstadisticasPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Estadísticas e Indicadores</h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-0.5">
-            Métricas clave de Recursos Humanos — 2026
+            Métricas clave de Recursos Humanos — {new Date().getFullYear()}
           </p>
         </div>
-        <button className="btn-secondary">
-          <Download className="w-4 h-4" /> Exportar informe
+        <button onClick={exportarInforme} className="btn-primary">
+          <Download className="w-4 h-4" /> Exportar informe (.xlsx)
         </button>
       </div>
 
@@ -106,14 +241,27 @@ export default function EstadisticasPage() {
               </div>
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={empleadosPorSector} margin={{ top: 4, right: 4, left: -20, bottom: 4 }}>
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart
+                data={empleadosPorSector.map(d => ({ ...d, sectorCorto: shortSector(d.sector) }))}
+                margin={{ top: 4, right: 4, left: -20, bottom: 60 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="sector" tick={{ fontSize: 11, fill: '#94a3b8' }} />
+                <XAxis
+                  dataKey="sectorCorto"
+                  tick={{ fontSize: 10, fill: '#94a3b8' }}
+                  angle={-35}
+                  textAnchor="end"
+                  interval={0}
+                />
                 <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} allowDecimals={false} />
                 <Tooltip
                   contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 12 }}
                   formatter={(v: number) => [v, 'Empleados']}
+                  labelFormatter={(label) => {
+                    const orig = empleadosPorSector.find(d => shortSector(d.sector) === label)
+                    return orig?.sector ?? label
+                  }}
                 />
                 <Bar dataKey="cantidad" fill="#1e3a5f" radius={[6, 6, 0, 0]} />
               </BarChart>
@@ -135,8 +283,8 @@ export default function EstadisticasPage() {
               </div>
             </div>
           ) : (
-            <div className="flex items-center justify-between">
-              <ResponsiveContainer width="55%" height={220}>
+            <div className="flex items-center justify-between gap-2">
+              <ResponsiveContainer width="50%" height={240}>
                 <PieChart>
                   <Pie
                     data={solicitudesPorTipo}
@@ -156,14 +304,12 @@ export default function EstadisticasPage() {
                   />
                 </PieChart>
               </ResponsiveContainer>
-              <div className="space-y-2 flex-1">
-                {solicitudesPorTipo.map((item, i) => (
+              <div className="space-y-1.5 flex-1 overflow-hidden">
+                {solicitudesPorTipo.slice(0, 8).map((item, i) => (
                   <div key={item.tipo} className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full shrink-0" style={{ background: COLORS[i % COLORS.length] }} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-slate-600 dark:text-slate-400 truncate">{item.tipo}</p>
-                    </div>
-                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{item.cantidad}</span>
+                    <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: COLORS[i % COLORS.length] }} />
+                    <p className="text-xs text-slate-600 dark:text-slate-400 truncate flex-1" title={item.tipo}>{item.tipo}</p>
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300 shrink-0">{item.cantidad}</span>
                   </div>
                 ))}
               </div>
@@ -172,11 +318,11 @@ export default function EstadisticasPage() {
         </div>
       </div>
 
-      {/* Charts row 2 */}
+      {/* Charts row 2: Evolución mensual con datos reales */}
       <div className="card p-5">
         <div className="mb-5">
-          <p className="section-title">Evolución Mensual — 2026</p>
-          <p className="section-subtitle">Empleados, ausencias y solicitudes por mes</p>
+          <p className="section-title">Evolución Mensual — {new Date().getFullYear()}</p>
+          <p className="section-subtitle">Solicitudes y ausencias aprobadas por mes (datos reales)</p>
         </div>
         <ResponsiveContainer width="100%" height={260}>
           <LineChart data={estadisticasMensuales} margin={{ top: 4, right: 20, left: -20, bottom: 4 }}>
@@ -187,7 +333,7 @@ export default function EstadisticasPage() {
             <Legend wrapperStyle={{ fontSize: 12, paddingTop: 12 }} />
             <Line type="monotone" dataKey="empleados" stroke="#1e3a5f" strokeWidth={2.5} dot={{ r: 4 }} name="Empleados" />
             <Line type="monotone" dataKey="solicitudes" stroke="#3b73b8" strokeWidth={2.5} dot={{ r: 4 }} name="Solicitudes" strokeDasharray="5 3" />
-            <Line type="monotone" dataKey="ausencias" stroke="#f59e0b" strokeWidth={2.5} dot={{ r: 4 }} name="Ausencias" strokeDasharray="3 3" />
+            <Line type="monotone" dataKey="ausencias" stroke="#f59e0b" strokeWidth={2.5} dot={{ r: 4 }} name="Ausencias aprobadas" strokeDasharray="3 3" />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -197,7 +343,9 @@ export default function EstadisticasPage() {
         <div className="card overflow-hidden">
           <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
             <p className="section-title">Detalle por Empleado</p>
-            <button className="btn-secondary text-sm"><Download className="w-4 h-4" /> Exportar CSV</button>
+            <button onClick={exportarCSV} className="btn-secondary text-sm">
+              <Download className="w-4 h-4" /> Exportar CSV
+            </button>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -224,7 +372,7 @@ export default function EstadisticasPage() {
                           <span className="font-medium text-slate-700 dark:text-slate-200">{emp.nombre} {emp.apellido}</span>
                         </div>
                       </td>
-                      <td className="table-cell text-slate-600 dark:text-slate-400">{emp.sector}</td>
+                      <td className="table-cell text-slate-600 dark:text-slate-400 text-sm max-w-[160px] truncate" title={emp.sector}>{emp.sector}</td>
                       <td className="table-cell text-center font-semibold text-slate-700 dark:text-slate-300">{mSolicitudes.length}</td>
                       <td className="table-cell text-center font-semibold text-emerald-600">{mAprobadas}</td>
                       <td className="table-cell">

@@ -2,16 +2,15 @@
 
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
-import { eventos } from '@/lib/mockData'
 import {
   SOLICITUD_ESTADO_COLOR, SOLICITUD_ESTADO_LABEL, SOLICITUD_TIPO_LABEL,
   NOVEDAD_CATEGORIA_COLOR, NOVEDAD_CATEGORIA_LABEL, formatFecha, formatMes,
-  getBirthdayThisYear,
+  getBirthdayThisYear, EVENTO_TIPO_LABEL, EVENTO_TIPO_DOT,
 } from '@/lib/utils'
 import {
   Users, ClipboardList, CalendarCheck, TrendingUp, AlertTriangle,
   CheckCircle2, XCircle, Clock, Download, PartyPopper, Bell,
-  ArrowRight, FileText, HeadphonesIcon, Plus, UserPlus,
+  ArrowRight, FileText, HeadphonesIcon, Plus, UserPlus, Calendar,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -294,12 +293,22 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
 
 function EmployeeDashboard({ saludo, fechaStr, empleadoId }: { saludo: string, fechaStr: string, empleadoId: string }) {
   const { empleado } = useAuth()
-  const { solicitudes, recibos, novedades } = useData()
+  const { solicitudes, recibos, novedades, eventos } = useData()
 
   const misSolicitudes = solicitudes.filter(s => s.empleadoId === empleadoId)
   const misPendientes = misSolicitudes.filter(s => s.estado === 'pendiente')
   const misRecibos = recibos.filter(r => r.empleadoId === empleadoId).sort((a, b) => b.anio - a.anio || b.mes - a.mes)
   const ultimoRecibo = misRecibos[0]
+
+  // Eventos próximos 30 días
+  const hoy = new Date()
+  const en30 = new Date(hoy); en30.setDate(hoy.getDate() + 30)
+  const hoyStr = hoy.toISOString().slice(0, 10)
+  const en30Str = en30.toISOString().slice(0, 10)
+  const proximosEventos = eventos
+    .filter(ev => ev.fecha >= hoyStr && ev.fecha <= en30Str)
+    .sort((a, b) => a.fecha.localeCompare(b.fecha))
+    .slice(0, 5)
 
   return (
     <div className="page-container">
@@ -389,13 +398,60 @@ function EmployeeDashboard({ saludo, fechaStr, empleadoId }: { saludo: string, f
                 : misRecibos.slice(0, 3).map(r => (
                   <div key={r.id} className="flex items-center justify-between py-1.5">
                     <span className="text-sm text-slate-600 dark:text-slate-400">{formatMes(r.mes, r.anio)}</span>
-                    <button className="flex items-center gap-1 text-brand-600 dark:text-brand-400 text-xs font-medium hover:underline">
-                      <Download className="w-3.5 h-3.5" /> Descargar
-                    </button>
+                    {r.archivoUrl
+                      ? (
+                        <a
+                          href={r.archivoUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-brand-600 dark:text-brand-400 text-xs font-medium hover:underline"
+                        >
+                          <Download className="w-3.5 h-3.5" /> Ver PDF
+                        </a>
+                      ) : (
+                        <span className="text-xs text-slate-400">Sin archivo</span>
+                      )
+                    }
                   </div>
                 ))
               }
             </div>
+          </div>
+
+          {/* Próximos eventos — 30 días */}
+          <div className="card p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Calendar className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+              <p className="section-title text-base">Próximos eventos</p>
+            </div>
+            {proximosEventos.length === 0 ? (
+              <p className="text-slate-400 text-sm text-center py-2">Sin eventos en los próximos 30 días</p>
+            ) : (
+              <div className="space-y-2.5">
+                {proximosEventos.map(ev => {
+                  const evDate = new Date(ev.fecha + 'T00:00:00')
+                  const diffDays = Math.round((evDate.getTime() - hoy.setHours(0,0,0,0)) / (1000*60*60*24))
+                  return (
+                    <div key={ev.id} className="flex items-start gap-2.5">
+                      <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${EVENTO_TIPO_DOT[ev.tipo]}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{ev.titulo}</p>
+                        <p className="text-xs text-slate-400">
+                          {evDate.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
+                          {' · '}
+                          <span className={diffDays === 0 ? 'text-brand-600 font-semibold' : 'text-slate-400'}>
+                            {diffDays === 0 ? 'Hoy' : diffDays === 1 ? 'Mañana' : `en ${diffDays} días`}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })}
+                <Link href="/dashboard/eventos" className="text-xs text-brand-600 dark:text-brand-400 hover:underline font-medium block pt-1">
+                  Ver calendario →
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -103,6 +103,7 @@ export interface Recibo {
   mes: number
   anio: number
   archivo: string
+  archivoUrl?: string  // URL pública en Supabase Storage
   fechaSubida: string
   monto: number
 }
@@ -134,11 +135,13 @@ export interface Novedad {
   imagen?: string
 }
 
+export type EventoTipo = 'feriado' | 'jornada' | 'acto' | 'capacitacion' | 'reunion' | 'otro'
+
 export interface Evento {
   id: string
   titulo: string
   fecha: string
-  tipo: 'cumpleanos' | 'evento' | 'vencimiento' | 'feriado'
+  tipo: EventoTipo
   descripcion?: string
   empleadoId?: string
 }

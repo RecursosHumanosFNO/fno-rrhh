@@ -1,13 +1,25 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { formatFecha, formatMes, formatMonto } from '@/lib/utils'
-import { FileText, Download, Upload, Search, X, CheckCircle2 } from 'lucide-react'
+import { createClient } from '@supabase/supabase-js'
+import {
+  FileText, Download, Upload, Search, X, CheckCircle2,
+  Loader2, AlertCircle, Eye, Cloud, HardDrive,
+} from 'lucide-react'
 
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+
+// Supabase client para Storage (usa variables de entorno públicas)
+function getSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!url || !key) return null
+  return createClient(url, key)
+}
 
 export default function RecibosPage() {
   const { user } = useAuth()
@@ -18,7 +30,10 @@ export default function RecibosPage() {
   const [mesFilter, setMesFilter] = useState('')
   const [anioFilter, setAnioFilter] = useState('2026')
   const [showUpload, setShowUpload] = useState(false)
-  const [uploadSuccess, setUploadSuccess] = useState(false)
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle')
+  const [uploadError, setUploadError] = useState('')
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [uploadForm, setUploadForm] = useState({
     empleadoId: '',
@@ -40,23 +55,81 @@ export default function RecibosPage() {
     return matchQuery && matchMes && matchAnio
   }).sort((a, b) => b.anio - a.anio || b.mes - a.mes)
 
-  function handleSubir() {
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0]
+    if (!f) return
+    if (f.type !== 'application/pdf') { setUploadError('Solo se aceptan archivos PDF.'); return }
+    if (f.size > 10 * 1024 * 1024) { setUploadError('El archivo no puede superar los 10 MB.'); return }
+    setUploadError('')
+    setSelectedFile(f)
+  }
+
+  async function handleSubir() {
     if (!uploadForm.empleadoId || !uploadForm.monto) return
+    setUploadStatus('uploading')
+    setUploadError('')
+
     const emp = empleados.find(e => e.id === uploadForm.empleadoId)
+    const fileName = `recibo_${emp?.apellido?.toLowerCase() ?? 'emp'}_${MESES[uploadForm.mes - 1].toLowerCase()}_${uploadForm.anio}.pdf`
+
+    let archivoUrl: string | undefined
+    let storageUsed = false
+
+    // Intentar subir a Supabase Storage si hay archivo seleccionado
+    if (selectedFile) {
+      const sb = getSupabase()
+      if (sb) {
+        const path = `${uploadForm.empleadoId}/${uploadForm.anio}/${uploadForm.mes.toString().padStart(2, '0')}_${Date.now()}.pdf`
+        const { error: upErr } = await sb.storage.from('fno-recibos').upload(path, selectedFile, {
+          contentType: 'application/pdf',
+          upsert: false,
+        })
+
+        if (upErr) {
+          console.warn('[Storage] upload error:', upErr.message)
+          setUploadError(`Advertencia: No se pudo subir el archivo a la nube (${upErr.message}). El recibo se registrará sin PDF adjunto.`)
+          // No cortamos — guardamos igual sin URL
+        } else {
+          const { data: urlData } = sb.storage.from('fno-recibos').getPublicUrl(path)
+          archivoUrl = urlData.publicUrl
+          storageUsed = true
+        }
+      } else {
+        setUploadError('Supabase Storage no está configurado. El recibo se registrará sin PDF adjunto.')
+      }
+    }
+
     addRecibo({
       empleadoId: uploadForm.empleadoId,
       mes: uploadForm.mes,
       anio: uploadForm.anio,
-      archivo: `recibo_${emp?.apellido ?? 'emp'}_${MESES[uploadForm.mes - 1].toLowerCase()}_${uploadForm.anio}.pdf`,
+      archivo: fileName,
       fechaSubida: new Date().toISOString().slice(0, 10),
       monto: parseFloat(uploadForm.monto),
+      archivoUrl,
     })
-    setUploadSuccess(true)
+
+    setUploadStatus('success')
+    if (storageUsed) setUploadError('') // limpiar advertencias si fue exitoso
+
     setTimeout(() => {
-      setUploadSuccess(false)
+      setUploadStatus('idle')
       setShowUpload(false)
+      setSelectedFile(null)
+      setUploadError('')
       setUploadForm({ empleadoId: '', mes: new Date().getMonth() + 1, anio: 2026, monto: '' })
-    }, 1500)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }, 1800)
+  }
+
+  function handleDescargar(r: { archivo: string; archivoUrl?: string }) {
+    if (r.archivoUrl) {
+      // Abrir en nueva pestaña (permite ver el PDF directamente en el navegador)
+      window.open(r.archivoUrl, '_blank', 'noopener,noreferrer')
+    } else {
+      // Sin URL real — mostrar mensaje
+      alert(`El recibo "${r.archivo}" no tiene PDF adjunto en la nube.\n\nPedile a RRHH que lo vuelva a cargar seleccionando el archivo PDF.`)
+    }
   }
 
   return (
@@ -72,7 +145,7 @@ export default function RecibosPage() {
           </p>
         </div>
         {isAdmin && (
-          <button onClick={() => setShowUpload(true)} className="btn-primary">
+          <button onClick={() => { setShowUpload(true); setUploadStatus('idle'); setUploadError('') }} className="btn-primary">
             <Upload className="w-4 h-4" /> Subir recibo
           </button>
         )}
@@ -137,6 +210,7 @@ export default function RecibosPage() {
             <tbody>
               {filtered.map(r => {
                 const emp = empleados.find(e => e.id === r.empleadoId)
+                const tieneArchivo = !!r.archivoUrl
                 return (
                   <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                     {isAdmin && (
@@ -161,7 +235,12 @@ export default function RecibosPage() {
                         </div>
                         <div>
                           <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{formatMes(r.mes, r.anio)}</p>
-                          <p className="text-xs text-slate-400">{r.archivo}</p>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            {tieneArchivo
+                              ? <><Cloud className="w-3 h-3 text-emerald-500" /><span className="text-xs text-emerald-600 dark:text-emerald-400">PDF en la nube</span></>
+                              : <><HardDrive className="w-3 h-3 text-slate-400" /><span className="text-xs text-slate-400">Sin archivo</span></>
+                            }
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -172,9 +251,17 @@ export default function RecibosPage() {
                       <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{formatMonto(r.monto)}</span>
                     </td>
                     <td className="table-cell text-right">
-                      <button className="btn-secondary text-sm py-1.5 inline-flex items-center gap-1.5">
-                        <Download className="w-4 h-4" />
-                        <span className="hidden sm:inline">Descargar</span>
+                      <button
+                        onClick={() => handleDescargar(r)}
+                        className={`inline-flex items-center gap-1.5 text-sm py-1.5 px-3 rounded-lg transition-colors ${
+                          tieneArchivo
+                            ? 'bg-brand-700 hover:bg-brand-600 text-white'
+                            : 'border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-not-allowed opacity-50'
+                        }`}
+                        title={tieneArchivo ? 'Ver / Descargar PDF' : 'Sin archivo disponible'}
+                      >
+                        {tieneArchivo ? <Eye className="w-4 h-4" /> : <Download className="w-4 h-4" />}
+                        <span className="hidden sm:inline">{tieneArchivo ? 'Ver PDF' : 'Sin archivo'}</span>
                       </button>
                     </td>
                   </tr>
@@ -209,31 +296,45 @@ export default function RecibosPage() {
 
       {/* Upload Modal */}
       {showUpload && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowUpload(false)}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { if (uploadStatus !== 'uploading') setShowUpload(false) }}>
           <div className="card w-full max-w-md animate-scale-in" onClick={e => e.stopPropagation()}>
             <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <p className="section-title">Subir Recibo de Sueldo</p>
-              <button onClick={() => setShowUpload(false)}><X className="w-5 h-5 text-slate-400" /></button>
+              <button onClick={() => { if (uploadStatus !== 'uploading') setShowUpload(false) }}>
+                <X className="w-5 h-5 text-slate-400" />
+              </button>
             </div>
             <div className="p-5 space-y-4">
-              {uploadSuccess && (
+              {/* Success */}
+              {uploadStatus === 'success' && (
                 <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 rounded-lg px-4 py-3 text-sm flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4" /> Recibo subido correctamente.
+                  <CheckCircle2 className="w-4 h-4 shrink-0" /> Recibo registrado correctamente.
                 </div>
               )}
+
+              {/* Warning/Error */}
+              {uploadError && uploadStatus !== 'success' && (
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 rounded-lg px-4 py-3 text-sm flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{uploadError}</span>
+                </div>
+              )}
+
               <div>
                 <label className="form-label">Empleado *</label>
                 <select
                   className="form-select"
                   value={uploadForm.empleadoId}
                   onChange={e => setUploadForm(f => ({ ...f, empleadoId: e.target.value }))}
+                  disabled={uploadStatus === 'uploading'}
                 >
                   <option value="">Seleccionar empleado</option>
-                  {empleados.filter(e => e.estado === 'activo').map(e => (
-                    <option key={e.id} value={e.id}>{e.nombre} {e.apellido}</option>
+                  {empleados.filter(e => e.estado === 'activo').sort((a, b) => a.apellido.localeCompare(b.apellido)).map(e => (
+                    <option key={e.id} value={e.id}>{e.apellido}, {e.nombre}</option>
                   ))}
                 </select>
               </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="form-label">Mes *</label>
@@ -241,6 +342,7 @@ export default function RecibosPage() {
                     className="form-select"
                     value={uploadForm.mes}
                     onChange={e => setUploadForm(f => ({ ...f, mes: parseInt(e.target.value) }))}
+                    disabled={uploadStatus === 'uploading'}
                   >
                     {MESES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
                   </select>
@@ -251,12 +353,15 @@ export default function RecibosPage() {
                     className="form-select"
                     value={uploadForm.anio}
                     onChange={e => setUploadForm(f => ({ ...f, anio: parseInt(e.target.value) }))}
+                    disabled={uploadStatus === 'uploading'}
                   >
                     <option value={2026}>2026</option>
                     <option value={2025}>2025</option>
+                    <option value={2024}>2024</option>
                   </select>
                 </div>
               </div>
+
               <div>
                 <label className="form-label">Monto neto (ARS) *</label>
                 <input
@@ -265,24 +370,66 @@ export default function RecibosPage() {
                   placeholder="Ej: 450000"
                   value={uploadForm.monto}
                   onChange={e => setUploadForm(f => ({ ...f, monto: e.target.value }))}
+                  disabled={uploadStatus === 'uploading'}
                 />
               </div>
+
+              {/* File upload zone */}
               <div>
-                <label className="form-label">Archivo PDF</label>
-                <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-6 text-center hover:border-brand-500 transition-colors">
-                  <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                  <p className="text-sm text-slate-500">Archivo PDF (referencia — se registra el monto)</p>
-                  <p className="text-xs text-slate-400 mt-1">PDF hasta 5MB</p>
+                <label className="form-label">
+                  Archivo PDF
+                  <span className="text-slate-400 font-normal ml-1">(recomendado — se guarda en la nube)</span>
+                </label>
+                <div
+                  className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-colors ${
+                    selectedFile
+                      ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-900/10'
+                      : 'border-slate-300 dark:border-slate-600 hover:border-brand-500'
+                  }`}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="application/pdf"
+                    className="hidden"
+                    onChange={handleFileChange}
+                    disabled={uploadStatus === 'uploading'}
+                  />
+                  {selectedFile ? (
+                    <div>
+                      <CheckCircle2 className="w-6 h-6 text-emerald-500 mx-auto mb-1.5" />
+                      <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">{selectedFile.name}</p>
+                      <p className="text-xs text-slate-400 mt-1">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB · Hacé clic para cambiar</p>
+                    </div>
+                  ) : (
+                    <div>
+                      <Upload className="w-7 h-7 text-slate-400 mx-auto mb-2" />
+                      <p className="text-sm text-slate-500">Hacé clic para seleccionar un PDF</p>
+                      <p className="text-xs text-slate-400 mt-1">Máx. 10 MB</p>
+                    </div>
+                  )}
                 </div>
               </div>
+
               <div className="flex gap-2 justify-end pt-2">
-                <button onClick={() => setShowUpload(false)} className="btn-secondary">Cancelar</button>
+                <button
+                  onClick={() => setShowUpload(false)}
+                  className="btn-secondary"
+                  disabled={uploadStatus === 'uploading'}
+                >
+                  Cancelar
+                </button>
                 <button
                   onClick={handleSubir}
-                  disabled={!uploadForm.empleadoId || !uploadForm.monto || uploadSuccess}
+                  disabled={!uploadForm.empleadoId || !uploadForm.monto || uploadStatus === 'uploading' || uploadStatus === 'success'}
                   className="btn-primary disabled:opacity-50"
                 >
-                  Subir recibo
+                  {uploadStatus === 'uploading' ? (
+                    <><Loader2 className="w-4 h-4 animate-spin" /> Subiendo...</>
+                  ) : (
+                    <><Upload className="w-4 h-4" /> Subir recibo</>
+                  )}
                 </button>
               </div>
             </div>

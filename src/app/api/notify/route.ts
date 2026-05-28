@@ -170,6 +170,77 @@ export async function POST(req: NextRequest) {
       })
     }
 
+    /* ── Recibo disponible → empleado ─────────────────────────────────────── */
+    else if (type === 'recibo_disponible') {
+      await transporter.sendMail({
+        from, to: data.email,
+        subject: `💰 Tu recibo de sueldo de ${data.periodo} está disponible`,
+        html: base(`
+          <h3 style="color:${BRAND};margin-top:0;">Recibo de sueldo disponible</h3>
+          <p>Hola <strong>${data.nombre}</strong>,</p>
+          <p style="color:#64748b;">Tu recibo de sueldo correspondiente a <strong>${data.periodo}</strong> ya está disponible en el Portal RRHH.</p>
+          <p style="color:#64748b;">Podés descargarlo ingresando a tu cuenta:</p>
+          ${btn('Ver mis recibos', `${PORTAL_URL}/dashboard/recibos`)}
+          <p style="color:#94a3b8;font-size:13px;margin-top:24px;">Si tenés alguna duda, respondé este email o comunicate con el área de RRHH.</p>
+        `),
+      })
+    }
+
+    /* ── Ticket respondido → empleado ──────────────────────────────────────── */
+    else if (type === 'ticket_respondido') {
+      await transporter.sendMail({
+        from, to: data.email,
+        subject: `💬 RRHH respondió tu pedido: ${data.asunto}`,
+        html: base(`
+          <h3 style="color:${BRAND};margin-top:0;">Respuesta a tu pedido de RRHH</h3>
+          <p>Hola <strong>${data.nombre}</strong>,</p>
+          <p style="color:#64748b;">El equipo de Recursos Humanos respondió a tu pedido <strong>"${data.asunto}"</strong>.</p>
+          <div style="background:#f1f5f9;border-left:4px solid ${BRAND};border-radius:0 8px 8px 0;padding:16px;margin:20px 0;">
+            <p style="margin:0 0 4px 0;font-weight:600;color:#475569;font-size:13px;">Respuesta de RRHH:</p>
+            <p style="margin:0;color:#1e293b;">${data.respuesta}</p>
+          </div>
+          ${btn('Ver mi pedido', `${PORTAL_URL}/dashboard/portal-rrhh`)}
+        `),
+      })
+    }
+
+    /* ── Novedad publicada → todos ─────────────────────────────────────────── */
+    else if (type === 'novedad_publicada') {
+      await transporter.sendMail({
+        from, to: ADMIN_EMAIL,
+        subject: `📢 Nueva novedad publicada: ${data.titulo}`,
+        html: base(`
+          <h3 style="color:${BRAND};margin-top:0;">Nueva novedad publicada</h3>
+          <p style="color:#64748b;">Se publicó una nueva novedad en el portal:</p>
+          <div style="background:#f1f5f9;border-radius:8px;padding:16px;margin:20px 0;">
+            <p style="margin:0 0 8px 0;font-weight:700;color:#1e293b;font-size:16px;">${data.titulo}</p>
+            <p style="margin:0;color:#475569;">${data.contenido}</p>
+            <p style="margin:8px 0 0 0;color:#94a3b8;font-size:12px;">Publicado por ${data.autor}</p>
+          </div>
+          ${btn('Ver en el portal', `${PORTAL_URL}/dashboard/comunicaciones`)}
+        `),
+      })
+    }
+
+    /* ── Solicitud de reset de contraseña ──────────────────────────────────── */
+    else if (type === 'reset_password') {
+      const resetUrl = `${PORTAL_URL}/reset-password?token=${data.token}`
+      await transporter.sendMail({
+        from, to: data.email,
+        subject: `🔑 Restablecer contraseña — Portal RRHH FNO`,
+        html: base(`
+          <h3 style="color:${BRAND};margin-top:0;">Restablecer contraseña</h3>
+          <p>Hola <strong>${data.nombre}</strong>,</p>
+          <p style="color:#64748b;">Recibimos una solicitud para restablecer la contraseña de tu cuenta en el Portal RRHH.</p>
+          <p style="color:#64748b;">Hacé clic en el botón de abajo para crear una nueva contraseña. El link es válido por <strong>30 minutos</strong>.</p>
+          ${btn('Restablecer contraseña', resetUrl)}
+          <div style="background:#fef3c7;border-radius:8px;padding:12px 16px;margin-top:20px;">
+            <p style="margin:0;color:#92400e;font-size:13px;">⚠️ Si no solicitaste este cambio, ignorá este email. Tu contraseña no se modificará.</p>
+          </div>
+        `),
+      })
+    }
+
     console.log('[notify] ✅ Email enviado correctamente, tipo:', type)
     return NextResponse.json({ ok: true })
   } catch (err) {

@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import type {
-  Empleado, Solicitud, Recibo, Novedad, Ticket, User,
+  Empleado, Solicitud, Recibo, Novedad, Ticket, User, Evento,
   AppNotification, PendingRegistration, TicketEstado, UserRole, EmpleadoEstado,
   SolicitudEstado, SolicitudTipo, NovedadCategoria, TicketTipo,
 } from '@/types'
@@ -15,6 +15,7 @@ interface DataContextType {
   solicitudes: Solicitud[]
   recibos: Recibo[]
   novedades: Novedad[]
+  eventos: Evento[]
   tickets: Ticket[]
   users: User[]
   pendingRegistrations: PendingRegistration[]
@@ -27,9 +28,15 @@ interface DataContextType {
   addSolicitud: (s: Omit<Solicitud, 'id' | 'fechaCreacion' | 'estado'>) => void
   approveSolicitud: (id: string, comment: string) => void
   rejectSolicitud: (id: string, comment: string) => void
+  cancelSolicitud: (id: string) => void
   // Novedades
-  addNovedad: (n: Omit<Novedad, 'id'>) => void
+  addNovedad: (n: Omit<Novedad, 'id'>, notifyEmail?: boolean) => void
+  updateNovedad: (id: string, data: Partial<Omit<Novedad, 'id'>>) => void
   deleteNovedad: (id: string) => void
+  // Eventos
+  addEvento: (e: Omit<Evento, 'id'>) => void
+  updateEvento: (id: string, data: Partial<Omit<Evento, 'id'>>) => void
+  deleteEvento: (id: string) => void
   // Recibos
   addRecibo: (r: Omit<Recibo, 'id'>) => void
   // Tickets
@@ -144,12 +151,14 @@ function mapSupabaseToRecibo(row: Record<string, unknown>): Recibo {
     mes: row.mes as number, anio: row.anio as number,
     archivo: (row.archivo as string) ?? '', fechaSubida: row.fecha_subida as string,
     monto: row.monto as number,
+    archivoUrl: (row.archivo_url as string) ?? undefined,
   }
 }
 function mapReciboToSupabase(r: Recibo) {
   return {
     id: r.id, empleado_id: r.empleadoId, mes: r.mes, anio: r.anio,
     archivo: r.archivo, fecha_subida: r.fechaSubida, monto: r.monto,
+    archivo_url: r.archivoUrl ?? null,
   }
 }
 
@@ -226,6 +235,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [solicitudes, setSolicitudes] = useState<Solicitud[]>(() => load('fno_solicitudes', initial.solicitudes))
   const [recibos, setRecibos] = useState<Recibo[]>(() => load('fno_recibos', initial.recibos))
   const [novedades, setNovedades] = useState<Novedad[]>(() => load('fno_novedades', initial.novedades))
+  const [eventos, setEventos] = useState<Evento[]>(() => load('fno_eventos', initial.eventos))
   const [tickets, setTickets] = useState<Ticket[]>(() => load('fno_tickets', initial.tickets))
   const [users, setUsers] = useState<User[]>(() => load('fno_users', initial.users))
   const [pendingRegistrations, setPending] = useState<PendingRegistration[]>(() => load('fno_pending', []))
@@ -238,6 +248,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { localStorage.setItem('fno_solicitudes', JSON.stringify(solicitudes)) }, [solicitudes])
   useEffect(() => { localStorage.setItem('fno_recibos', JSON.stringify(recibos)) }, [recibos])
   useEffect(() => { localStorage.setItem('fno_novedades', JSON.stringify(novedades)) }, [novedades])
+  useEffect(() => { localStorage.setItem('fno_eventos', JSON.stringify(eventos)) }, [eventos])
   useEffect(() => { localStorage.setItem('fno_tickets', JSON.stringify(tickets)) }, [tickets])
   useEffect(() => { localStorage.setItem('fno_users', JSON.stringify(users)) }, [users])
   useEffect(() => { localStorage.setItem('fno_pending', JSON.stringify(pendingRegistrations)) }, [pendingRegistrations])
@@ -370,6 +381,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (e.key === 'fno_solicitudes' && e.newValue) setSolicitudes(JSON.parse(e.newValue))
         if (e.key === 'fno_recibos' && e.newValue) setRecibos(JSON.parse(e.newValue))
         if (e.key === 'fno_novedades' && e.newValue) setNovedades(JSON.parse(e.newValue))
+        if (e.key === 'fno_eventos' && e.newValue) setEventos(JSON.parse(e.newValue))
         if (e.key === 'fno_tickets' && e.newValue) setTickets(JSON.parse(e.newValue))
         if (e.key === 'fno_notifs' && e.newValue) setNotifications(JSON.parse(e.newValue))
       } catch { /* ignore parse errors */ }
@@ -462,6 +474,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
   }, [solicitudes, addNotification])
 
+  const cancelSolicitud = useCallback((id: string) => {
+    setSolicitudes(prev => prev.filter(s => s.id !== id))
+    if (supabase) supabase.from('fno_solicitudes').delete().eq('id', id).then()
+  }, [])
+
   const rejectSolicitud = useCallback((id: string, comment: string) => {
     const fechaRes = new Date().toISOString().slice(0, 10)
     setSolicitudes(prev => prev.map(s => s.id === id
@@ -481,27 +498,71 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, [solicitudes, addNotification])
 
   // ── Novedades ──────────────────────────────────────────────────────────────
-  const addNovedad = useCallback((n: Omit<Novedad, 'id'>) => {
+  const addNovedad = useCallback((n: Omit<Novedad, 'id'>, notifyEmail = false) => {
     const nueva = { ...n, id: uid() }
     setNovedades(prev => [nueva, ...prev])
     addNotification({ texto: `Nueva novedad publicada: ${n.titulo}`, tipo: 'novedad' })
     if (supabase) supabase.from('fno_novedades').insert(mapNovedadToSupabase(nueva)).then(({ error }) => {
       if (error) console.error('[supabase] insert fno_novedades:', error)
     })
+    if (notifyEmail) {
+      sendEmail('novedad_publicada', { titulo: n.titulo, contenido: n.contenido, autor: n.autor })
+    }
   }, [addNotification])
+
+  const updateNovedad = useCallback((id: string, data: Partial<Omit<Novedad, 'id'>>) => {
+    setNovedades(prev => {
+      const updated = prev.map(n => n.id === id ? { ...n, ...data } : n)
+      if (supabase) {
+        const full = updated.find(n => n.id === id)
+        if (full) supabase.from('fno_novedades').upsert(mapNovedadToSupabase(full)).then()
+      }
+      return updated
+    })
+  }, [])
 
   const deleteNovedad = useCallback((id: string) => {
     setNovedades(prev => prev.filter(n => n.id !== id))
     if (supabase) supabase.from('fno_novedades').delete().eq('id', id).then()
   }, [])
 
+  // ── Eventos (CRUD) ─────────────────────────────────────────────────────────
+  const addEvento = useCallback((e: Omit<Evento, 'id'>) => {
+    const nuevo: Evento = { ...e, id: uid() }
+    setEventos(prev => [...prev, nuevo].sort((a, b) => a.fecha.localeCompare(b.fecha)))
+  }, [])
+
+  const updateEvento = useCallback((id: string, data: Partial<Omit<Evento, 'id'>>) => {
+    setEventos(prev => prev
+      .map(e => e.id === id ? { ...e, ...data } : e)
+      .sort((a, b) => a.fecha.localeCompare(b.fecha))
+    )
+  }, [])
+
+  const deleteEvento = useCallback((id: string) => {
+    setEventos(prev => prev.filter(e => e.id !== id))
+  }, [])
+
   // ── Recibos ────────────────────────────────────────────────────────────────
   const addRecibo = useCallback((r: Omit<Recibo, 'id'>) => {
     const nuevo = { ...r, id: uid() }
     setRecibos(prev => [nuevo, ...prev])
-    addNotification({ texto: `Nuevo recibo de sueldo disponible`, tipo: 'recibo', empleadoId: r.empleadoId })
+    addNotification({ texto: `Nuevo recibo de sueldo disponible — verificá tu sección de recibos`, tipo: 'recibo', empleadoId: r.empleadoId })
     if (supabase) supabase.from('fno_recibos').insert(mapReciboToSupabase(nuevo)).then(({ error }) => {
       if (error) console.error('[supabase] insert fno_recibos:', error)
+    })
+    // Notificar por email al empleado
+    setEmpleados(prev => {
+      const emp = prev.find(e => e.id === r.empleadoId)
+      if (emp?.email) {
+        const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+        sendEmail('recibo_disponible', {
+          email: emp.email,
+          nombre: `${emp.nombre} ${emp.apellido}`,
+          periodo: `${meses[r.mes - 1]} ${r.anio}`,
+        })
+      }
+      return prev
     })
   }, [addNotification])
 
@@ -518,9 +579,29 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const respondTicket = useCallback((id: string, respuesta: string, estado: TicketEstado) => {
     const hoy = new Date().toISOString().slice(0, 10)
-    setTickets(prev => prev.map(t => t.id === id ? { ...t, respuesta, estado, fechaActualizacion: hoy } : t))
+    setTickets(prev => {
+      const ticket = prev.find(t => t.id === id)
+      if (ticket) {
+        // Notificar por email al empleado
+        setEmpleados(emps => {
+          const emp = emps.find(e => e.id === ticket.empleadoId)
+          if (emp?.email) {
+            sendEmail('ticket_respondido', {
+              email: emp.email,
+              nombre: `${emp.nombre} ${emp.apellido}`,
+              asunto: ticket.asunto,
+              respuesta,
+              estado,
+            })
+          }
+          return emps
+        })
+        addNotification({ texto: `Tu pedido "${ticket.asunto}" recibió una respuesta de RRHH`, tipo: 'ticket', empleadoId: ticket.empleadoId })
+      }
+      return prev.map(t => t.id === id ? { ...t, respuesta, estado, fechaActualizacion: hoy } : t)
+    })
     if (supabase) supabase.from('fno_tickets').update({ respuesta, estado, fecha_actualizacion: hoy }).eq('id', id).then()
-  }, [])
+  }, [addNotification])
 
   // ── Usuarios ───────────────────────────────────────────────────────────────
   const addUser = useCallback((u: User) => {
@@ -620,11 +701,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <DataContext.Provider value={{
-      empleados, solicitudes, recibos, novedades, tickets, users,
+      empleados, solicitudes, recibos, novedades, eventos, tickets, users,
       pendingRegistrations, notifications,
       addEmpleado, updateEmpleado, deleteEmpleado,
-      addSolicitud, approveSolicitud, rejectSolicitud,
-      addNovedad, deleteNovedad,
+      addSolicitud, approveSolicitud, rejectSolicitud, cancelSolicitud,
+      addNovedad, updateNovedad, deleteNovedad,
+      addEvento, updateEvento, deleteEvento,
       addRecibo,
       addTicket, respondTicket,
       addUser, updateUserPassword, getUserByEmail, getPendingByEmail,
