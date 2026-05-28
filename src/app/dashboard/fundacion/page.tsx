@@ -2,7 +2,7 @@
 
 import {
   Heart, Eye, Star, BookOpen, Leaf, Sparkles,
-  MapPin, GraduationCap, Trophy, Users,
+  MapPin, GraduationCap, Trophy, Users, Navigation,
 } from 'lucide-react'
 import Image from 'next/image'
 
@@ -171,6 +171,36 @@ export default function FundacionPage() {
               </div>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* Nuestra Sede — mapa/foto */}
+      <div className="card overflow-hidden">
+        <div className="p-5 border-b border-sky-100 dark:border-slate-800 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-sky-50 dark:bg-sky-900/30 flex items-center justify-center shrink-0">
+            <Navigation className="w-5 h-5 text-sky-600 dark:text-sky-400" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Nuestra Sede</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1">
+              <MapPin className="w-3.5 h-3.5" /> Barrio Confluencia · Neuquén Capital
+            </p>
+          </div>
+        </div>
+        <div className="relative">
+          <img
+            src="/sede.jpg"
+            alt="Sede Fundación Neuquén Oeste"
+            className="w-full object-cover max-h-[480px]"
+          />
+          <a
+            href="https://maps.google.com/?q=Fundacion+Neuquen+Oeste"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="absolute bottom-4 right-4 btn-primary text-sm py-2 shadow-lg"
+          >
+            <MapPin className="w-4 h-4" /> Ver en Google Maps
+          </a>
         </div>
       </div>
 

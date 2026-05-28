@@ -13,9 +13,24 @@ import {
 } from 'lucide-react'
 
 const TIPOS: SolicitudTipo[] = [
-  'permiso_personal', 'vacaciones', 'licencia_medica',
-  'llegada_tarde', 'ausencia', 'pedido_administrativo',
+  'ausencia', 'llegada_tarde', 'salida_anticipada',
+  'licencia_medica', 'licencia_estudio', 'licencia_maternidad_paternidad', 'licencia_duelo', 'permiso_sin_goce',
+  'vacaciones', 'permiso_personal',
+  'horas_extra', 'cambio_turno', 'guardia_turno_especial', 'tarea_fuera_area',
+  'capacitacion',
+  'accidente_laboral', 'suspension', 'observacion_comportamiento', 'conflicto_interpersonal',
+  'entrega_documentacion', 'reconocimiento', 'pedido_administrativo', 'otro',
 ]
+
+// Agrupados para el select del modal (más fácil de leer)
+const TIPO_GRUPOS = [
+  { label: 'Asistencia', tipos: ['ausencia', 'llegada_tarde', 'salida_anticipada'] },
+  { label: 'Licencias y Permisos', tipos: ['licencia_medica', 'licencia_estudio', 'licencia_maternidad_paternidad', 'licencia_duelo', 'permiso_sin_goce', 'vacaciones', 'permiso_personal'] },
+  { label: 'Jornada Laboral', tipos: ['horas_extra', 'cambio_turno', 'guardia_turno_especial', 'tarea_fuera_area'] },
+  { label: 'Formación', tipos: ['capacitacion'] },
+  { label: 'Incidentes / RRHH', tipos: ['accidente_laboral', 'suspension', 'observacion_comportamiento', 'conflicto_interpersonal'] },
+  { label: 'Administrativo', tipos: ['entrega_documentacion', 'reconocimiento', 'pedido_administrativo', 'otro'] },
+] as const
 
 export default function SolicitudesPage() {
   const { user } = useAuth()
@@ -139,7 +154,13 @@ export default function SolicitudesPage() {
         </select>
         <select className="form-select w-auto text-sm" value={tipoFilter} onChange={e => setTipoFilter(e.target.value)}>
           <option value="">Todos los tipos</option>
-          {TIPOS.map(t => <option key={t} value={t}>{SOLICITUD_TIPO_LABEL[t]}</option>)}
+          {TIPO_GRUPOS.map(grupo => (
+            <optgroup key={grupo.label} label={`── ${grupo.label}`}>
+              {grupo.tipos.map(t => (
+                <option key={t} value={t}>{SOLICITUD_TIPO_LABEL[t as SolicitudTipo]}</option>
+              ))}
+            </optgroup>
+          ))}
         </select>
         {(query || estadoFilter || tipoFilter) && (
           <button onClick={() => { setQuery(''); setEstadoFilter(''); setTipoFilter('') }} className="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1">
@@ -281,7 +302,13 @@ export default function SolicitudesPage() {
               <div>
                 <label className="form-label">Tipo de solicitud *</label>
                 <select className="form-select" value={newForm.tipo} onChange={e => setNewForm(f => ({ ...f, tipo: e.target.value as SolicitudTipo }))}>
-                  {TIPOS.map(t => <option key={t} value={t}>{SOLICITUD_TIPO_LABEL[t]}</option>)}
+                  {TIPO_GRUPOS.map(grupo => (
+                    <optgroup key={grupo.label} label={`── ${grupo.label}`}>
+                      {grupo.tipos.map(t => (
+                        <option key={t} value={t}>{SOLICITUD_TIPO_LABEL[t as SolicitudTipo]}</option>
+                      ))}
+                    </optgroup>
+                  ))}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-4">

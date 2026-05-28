@@ -71,12 +71,36 @@ export function getBirthdayThisYear(fechaNacimiento: string): Date {
 }
 
 export const SOLICITUD_TIPO_LABEL: Record<SolicitudTipo, string> = {
-  permiso_personal: 'Permiso Personal',
-  vacaciones: 'Vacaciones',
-  licencia_medica: 'Licencia Médica',
-  llegada_tarde: 'Llegada Tarde',
-  ausencia: 'Ausencia',
-  pedido_administrativo: 'Pedido Administrativo',
+  // Asistencia
+  ausencia:                       'Ausencia',
+  llegada_tarde:                  'Llegada Tarde',
+  salida_anticipada:              'Salida Anticipada',
+  // Licencias
+  licencia_medica:                'Licencia Médica',
+  licencia_estudio:               'Licencia por Estudio',
+  licencia_maternidad_paternidad: 'Licencia Maternidad / Paternidad',
+  licencia_duelo:                 'Licencia por Duelo',
+  permiso_sin_goce:               'Permiso sin Goce de Sueldo',
+  // Tiempo libre
+  vacaciones:                     'Vacaciones',
+  permiso_personal:               'Permiso Personal',
+  // Jornada
+  horas_extra:                    'Horas Extra',
+  cambio_turno:                   'Cambio de Turno / Cobertura',
+  guardia_turno_especial:         'Guardia / Turno Especial',
+  tarea_fuera_area:               'Tarea Fuera del Área',
+  // Formación
+  capacitacion:                   'Capacitación / Formación',
+  // Incidentes / RRHH
+  accidente_laboral:              'Accidente Laboral',
+  suspension:                     'Suspensión',
+  observacion_comportamiento:     'Observación de Comportamiento',
+  conflicto_interpersonal:        'Conflicto Interpersonal',
+  // Administrativo
+  entrega_documentacion:          'Entrega de Documentación',
+  reconocimiento:                 'Reconocimiento / Felicitación',
+  pedido_administrativo:          'Pedido Administrativo',
+  otro:                           'Otro',
 }
 
 export const SOLICITUD_ESTADO_LABEL: Record<SolicitudEstado, string> = {

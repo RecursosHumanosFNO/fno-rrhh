@@ -15,6 +15,38 @@ export const SECTORES = [
   'Hidroponía',
 ]
 
+// ─── Lista plana de puestos (para filtros y comunicaciones) ──────────────────
+export const PUESTOS = [
+  'Director/a General',
+  'Coordinador/a',
+  'Encargado/a de Área',
+  'Encargado/a de RRHH',
+  'Docente / Maestro/a',
+  'Profesor/a',
+  'Preceptor/a',
+  'Auxiliar Docente',
+  'Psicopedagogo/a',
+  'Orientador/a Escolar',
+  'Administrativo/a',
+  'Admin. Contable',
+  'Recepcionista',
+  'Asistente',
+  'Auxiliar de Servicio',
+  'Personal de Mantenimiento',
+  'Kinesiólogo/a',
+  'Técnico/a',
+  'Locutor/a',
+  'Operador/a / Productor/a',
+  'Facilitador/a',
+  'Tallerista / Instructor/a',
+  'Profesor/a de Deportes',
+  'Entrenador/a',
+  'Encargado/a de Buffet',
+  'Cocinero/a',
+  'Operario/a Hidroponía',
+  'Otro (especificar)',
+]
+
 export const CARGOS_POR_SECTOR: Record<string, string[]> = {
   'Dirección General': [
     'Director/a General',

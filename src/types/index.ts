@@ -5,12 +5,36 @@ export type EmpleadoEstado = 'activo' | 'inactivo' | 'licencia' | 'vacaciones'
 export type SolicitudEstado = 'pendiente' | 'aprobado' | 'rechazado'
 
 export type SolicitudTipo =
-  | 'permiso_personal'
-  | 'vacaciones'
-  | 'licencia_medica'
-  | 'llegada_tarde'
+  // Asistencia
   | 'ausencia'
+  | 'llegada_tarde'
+  | 'salida_anticipada'
+  // Licencias
+  | 'licencia_medica'
+  | 'licencia_estudio'
+  | 'licencia_maternidad_paternidad'
+  | 'licencia_duelo'
+  | 'permiso_sin_goce'
+  // Tiempo libre
+  | 'vacaciones'
+  | 'permiso_personal'
+  // Jornada
+  | 'horas_extra'
+  | 'cambio_turno'
+  | 'guardia_turno_especial'
+  | 'tarea_fuera_area'
+  // Formación
+  | 'capacitacion'
+  // Incidentes / RRHH
+  | 'accidente_laboral'
+  | 'suspension'
+  | 'observacion_comportamiento'
+  | 'conflicto_interpersonal'
+  // Administrativo
+  | 'entrega_documentacion'
+  | 'reconocimiento'
   | 'pedido_administrativo'
+  | 'otro'
 
 export type NovedadCategoria = 'comunicado' | 'novedad' | 'alerta' | 'evento' | 'cumpleanos'
 
