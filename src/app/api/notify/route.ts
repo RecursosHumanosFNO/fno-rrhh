@@ -121,19 +121,25 @@ export async function POST(req: NextRequest) {
 
     /* ── Nueva solicitud (empleado) → admin ────────────────────────── */
     else if (type === 'new_solicitud') {
+      const horario = data.horarioDesde
+        ? `${data.horarioDesde}${data.horarioHasta ? ` a ${data.horarioHasta} hs` : ' hs'}`
+        : ''
       await transporter.sendMail({
         from, to: ADMIN_EMAIL,
-        subject: `📋 Nueva solicitud de ${data.tipo} — ${data.nombre}`,
+        subject: `📋 Nueva solicitud — ${data.tipo} · ${data.nombre}`,
         html: base(`
           <h3 style="color:${BRAND};margin-top:0;">Nueva solicitud recibida</h3>
+          <p style="color:#64748b;margin-top:0;">Un empleado envió una nueva solicitud que requiere tu revisión.</p>
           <table style="width:100%;border-collapse:collapse;margin:20px 0;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
             ${row('Empleado', data.nombre)}
-            ${row('Tipo', data.tipo, true)}
-            ${row('Fecha inicio', data.fechaInicio)}
-            ${data.fechaFin ? row('Fecha fin', data.fechaFin, true) : ''}
+            ${row('Cargo / Sector', `${data.cargo}${data.sector ? ' · ' + data.sector : ''}`, true)}
+            ${row('Tipo de solicitud', `<strong>${data.tipo}</strong>`)}
+            ${row('Fecha inicio', data.fechaInicio, true)}
+            ${data.fechaFin ? row('Fecha fin', data.fechaFin) : ''}
+            ${horario ? row('Horario', horario, !data.fechaFin) : ''}
             ${row('Descripción', data.descripcion, true)}
           </table>
-          ${btn('Ver solicitudes pendientes', `${PORTAL_URL}/dashboard/solicitudes`)}
+          ${btn('Revisar solicitud', `${PORTAL_URL}/dashboard/solicitudes`)}
         `),
       })
     }

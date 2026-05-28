@@ -420,8 +420,25 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   // ── Solicitudes ────────────────────────────────────────────────────────────
   const addSolicitud = useCallback((s: Omit<Solicitud, 'id' | 'fechaCreacion' | 'estado'>) => {
     const nueva: Solicitud = { ...s, id: uid(), estado: 'pendiente', fechaCreacion: new Date().toISOString().slice(0, 10) }
+    const tipoLabel = SOLICITUD_TIPO_LABEL[s.tipo] ?? s.tipo
     setSolicitudes(prev => [nueva, ...prev])
-    addNotification({ texto: `Nueva solicitud de ${s.tipo.replace('_', ' ')}: requiere revisión`, tipo: 'solicitud', empleadoId: s.empleadoId })
+    addNotification({ texto: `Nueva solicitud: ${tipoLabel} — pendiente de revisión`, tipo: 'solicitud', empleadoId: s.empleadoId })
+    // Enviar email al admin con los detalles completos
+    setEmpleados(prev => {
+      const emp = prev.find(e => e.id === s.empleadoId)
+      sendEmail('new_solicitud', {
+        nombre: emp ? `${emp.nombre} ${emp.apellido}` : 'Empleado',
+        cargo: emp?.cargo ?? '',
+        sector: emp?.sector ?? '',
+        tipo: tipoLabel,
+        fechaInicio: s.fechaInicio,
+        fechaFin: s.fechaFin ?? '',
+        horarioDesde: s.horarioDesde ?? '',
+        horarioHasta: s.horarioHasta ?? '',
+        descripcion: s.descripcion,
+      })
+      return prev
+    })
     if (supabase) supabase.from('fno_solicitudes').insert(mapSolicitudToSupabase(nueva)).then(({ error }) => {
       if (error) console.error('[supabase] insert fno_solicitudes:', error)
     })
