@@ -24,7 +24,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const stored = sessionStorage.getItem('fno_session')
+    const stored = localStorage.getItem('fno_session')
     if (stored) {
       try {
         const session = JSON.parse(stored)
@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setAuth({ user, empleado, isAuthenticated: true })
         }
       } catch {
-        sessionStorage.removeItem('fno_session')
+        localStorage.removeItem('fno_session')
       }
     }
     setIsLoading(false)
@@ -62,13 +62,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!empleado) return 'error'
 
     setAuth({ user, empleado, isAuthenticated: true })
-    sessionStorage.setItem('fno_session', JSON.stringify({ userId: user.id }))
+    localStorage.setItem('fno_session', JSON.stringify({ userId: user.id }))
     return 'ok'
   }, [users, empleados, pendingRegistrations])
 
   const logout = useCallback(() => {
     setAuth({ user: null, empleado: null, isAuthenticated: false })
-    sessionStorage.removeItem('fno_session')
+    localStorage.removeItem('fno_session')
   }, [])
 
   const updateEmpleado = useCallback((data: Partial<Empleado>) => {
