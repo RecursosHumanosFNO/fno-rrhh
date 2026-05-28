@@ -80,7 +80,6 @@ export const SOLICITUD_TIPO_LABEL: Record<SolicitudTipo, string> = {
   licencia_estudio:               'Licencia por Estudio',
   licencia_maternidad_paternidad: 'Licencia Maternidad / Paternidad',
   licencia_duelo:                 'Licencia por Duelo',
-  permiso_sin_goce:               'Permiso sin Goce de Sueldo',
   // Tiempo libre
   vacaciones:                     'Vacaciones',
   permiso_personal:               'Permiso Personal',

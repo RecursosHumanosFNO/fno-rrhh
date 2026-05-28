@@ -14,7 +14,6 @@ export type SolicitudTipo =
   | 'licencia_estudio'
   | 'licencia_maternidad_paternidad'
   | 'licencia_duelo'
-  | 'permiso_sin_goce'
   // Tiempo libre
   | 'vacaciones'
   | 'permiso_personal'
@@ -114,6 +113,8 @@ export interface Solicitud {
   tipo: SolicitudTipo
   fechaInicio: string
   fechaFin?: string
+  horarioDesde?: string
+  horarioHasta?: string
   descripcion: string
   estado: SolicitudEstado
   fechaCreacion: string

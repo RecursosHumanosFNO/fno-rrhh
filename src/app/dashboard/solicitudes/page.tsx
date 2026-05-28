@@ -14,7 +14,7 @@ import {
 
 const TIPOS: SolicitudTipo[] = [
   'ausencia', 'llegada_tarde', 'salida_anticipada',
-  'licencia_medica', 'licencia_estudio', 'licencia_maternidad_paternidad', 'licencia_duelo', 'permiso_sin_goce',
+  'licencia_medica', 'licencia_estudio', 'licencia_maternidad_paternidad', 'licencia_duelo',
   'vacaciones', 'permiso_personal',
   'horas_extra', 'cambio_turno', 'guardia_turno_especial', 'tarea_fuera_area',
   'capacitacion',
@@ -25,7 +25,7 @@ const TIPOS: SolicitudTipo[] = [
 // Agrupados para el select del modal (más fácil de leer)
 const TIPO_GRUPOS = [
   { label: 'Asistencia', tipos: ['ausencia', 'llegada_tarde', 'salida_anticipada'] },
-  { label: 'Licencias y Permisos', tipos: ['licencia_medica', 'licencia_estudio', 'licencia_maternidad_paternidad', 'licencia_duelo', 'permiso_sin_goce', 'vacaciones', 'permiso_personal'] },
+  { label: 'Licencias y Permisos', tipos: ['licencia_medica', 'licencia_estudio', 'licencia_maternidad_paternidad', 'licencia_duelo', 'vacaciones', 'permiso_personal'] },
   { label: 'Jornada Laboral', tipos: ['horas_extra', 'cambio_turno', 'guardia_turno_especial', 'tarea_fuera_area'] },
   { label: 'Formación', tipos: ['capacitacion'] },
   { label: 'Incidentes / RRHH', tipos: ['accidente_laboral', 'suspension', 'observacion_comportamiento', 'conflicto_interpersonal'] },
@@ -47,7 +47,9 @@ export default function SolicitudesPage() {
   // New solicitud form state
   const [newForm, setNewForm] = useState({
     tipo: 'permiso_personal' as SolicitudTipo,
-    fechaInicio: '', fechaFin: '', descripcion: '',
+    fechaInicio: '', fechaFin: '',
+    horarioDesde: '', horarioHasta: '',
+    descripcion: '',
   })
   const [newError, setNewError] = useState('')
 
@@ -87,10 +89,12 @@ export default function SolicitudesPage() {
       tipo: newForm.tipo,
       fechaInicio: newForm.fechaInicio,
       fechaFin: newForm.fechaFin || undefined,
+      horarioDesde: newForm.horarioDesde || undefined,
+      horarioHasta: newForm.horarioHasta || undefined,
       descripcion: newForm.descripcion,
     })
     setShowNueva(false)
-    setNewForm({ tipo: 'permiso_personal', fechaInicio: '', fechaFin: '', descripcion: '' })
+    setNewForm({ tipo: 'permiso_personal', fechaInicio: '', fechaFin: '', horarioDesde: '', horarioHasta: '', descripcion: '' })
   }
 
   return (
@@ -213,6 +217,7 @@ export default function SolicitudesPage() {
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                       {isAdmin && emp ? `${emp.nombre} ${emp.apellido} · ` : ''}
                       {formatFecha(sol.fechaInicio)}{sol.fechaFin ? ` al ${formatFecha(sol.fechaFin)}` : ''}
+                      {sol.horarioDesde ? ` · ${sol.horarioDesde}${sol.horarioHasta ? ` a ${sol.horarioHasta} hs` : ' hs'}` : ''}
                       {' · '}Creada el {formatFecha(sol.fechaCreacion)}
                     </p>
                   </div>
@@ -319,6 +324,31 @@ export default function SolicitudesPage() {
                 <div>
                   <label className="form-label">Fecha fin</label>
                   <input className="form-input" type="date" value={newForm.fechaFin} onChange={e => setNewForm(f => ({ ...f, fechaFin: e.target.value }))} />
+                </div>
+              </div>
+              <div>
+                <label className="form-label">
+                  Horario <span className="text-slate-400 font-normal">(opcional)</span>
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">Desde</span>
+                    <input
+                      className="form-input pl-14 text-sm"
+                      type="time"
+                      value={newForm.horarioDesde}
+                      onChange={e => setNewForm(f => ({ ...f, horarioDesde: e.target.value }))}
+                    />
+                  </div>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">Hasta</span>
+                    <input
+                      className="form-input pl-14 text-sm"
+                      type="time"
+                      value={newForm.horarioHasta}
+                      onChange={e => setNewForm(f => ({ ...f, horarioHasta: e.target.value }))}
+                    />
+                  </div>
                 </div>
               </div>
               <div>
