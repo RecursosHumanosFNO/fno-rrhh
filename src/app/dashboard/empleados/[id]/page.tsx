@@ -15,7 +15,7 @@ import {
   ArrowLeft, Edit2, Mail, Phone, MapPin, Calendar, Building2,
   FileText, ClipboardList, Clock, Download, User, Save, X,
   Shield, CheckCircle2, AlertTriangle, Lock, Eye, EyeOff,
-  Camera, AlertCircle,
+  Camera, AlertCircle, Loader2,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -29,6 +29,7 @@ export default function EmpleadoDetailPage() {
 
   const [tab, setTab] = useState(0)
   const [editMode, setEditMode] = useState(false)
+  const [downloadingReciboId, setDownloadingReciboId] = useState<string | null>(null)
   const [showNewPass, setShowNewPass] = useState(false)
   const [newPassword, setNewPassword] = useState('')
   const [passMsg, setPassMsg] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null)
@@ -120,6 +121,25 @@ export default function EmpleadoDetailPage() {
     setPassMsg({ type: 'ok', msg: 'Contraseña actualizada correctamente.' })
     setNewPassword('')
     setTimeout(() => setPassMsg(null), 3000)
+  }
+
+  async function handleVerRecibo(r: { id: string; archivo: string; archivoUrl?: string; empleadoId: string }) {
+    if (!r.archivoUrl) return
+    setDownloadingReciboId(r.id)
+    try {
+      const res = await fetch('/api/recibo-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: r.archivoUrl, empleadoId: user?.empleadoId ?? '' }),
+      })
+      const data = await res.json()
+      if (data.url) window.open(data.url, '_blank', 'noopener,noreferrer')
+      else alert('No se pudo obtener el link del recibo.')
+    } catch {
+      alert('Error de conexión.')
+    } finally {
+      setDownloadingReciboId(null)
+    }
   }
 
   async function handleSendResetEmail() {
@@ -483,14 +503,16 @@ export default function EmpleadoDetailPage() {
                     <p className="text-xs text-slate-400">Subido: {formatFecha(r.fechaSubida)} · {formatMonto(r.monto)}</p>
                   </div>
                   {r.archivoUrl ? (
-                    <a
-                      href={r.archivoUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn-secondary text-sm py-1.5 inline-flex items-center gap-1.5"
+                    <button
+                      onClick={() => handleVerRecibo(r)}
+                      disabled={downloadingReciboId === r.id}
+                      className="btn-secondary text-sm py-1.5 inline-flex items-center gap-1.5 disabled:opacity-60"
                     >
-                      <Download className="w-4 h-4" /> Ver PDF
-                    </a>
+                      {downloadingReciboId === r.id
+                        ? <><Loader2 className="w-4 h-4 animate-spin" /> Cargando...</>
+                        : <><Download className="w-4 h-4" /> Ver PDF</>
+                      }
+                    </button>
                   ) : (
                     <span className="text-xs text-slate-400 px-2">Sin archivo</span>
                   )}

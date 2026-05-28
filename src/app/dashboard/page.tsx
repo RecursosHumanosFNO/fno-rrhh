@@ -400,14 +400,20 @@ function EmployeeDashboard({ saludo, fechaStr, empleadoId }: { saludo: string, f
                     <span className="text-sm text-slate-600 dark:text-slate-400">{formatMes(r.mes, r.anio)}</span>
                     {r.archivoUrl
                       ? (
-                        <a
-                          href={r.archivoUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <button
+                          onClick={async () => {
+                            const res = await fetch('/api/recibo-url', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ path: r.archivoUrl, empleadoId }),
+                            })
+                            const d = await res.json()
+                            if (d.url) window.open(d.url, '_blank', 'noopener,noreferrer')
+                          }}
                           className="flex items-center gap-1 text-brand-600 dark:text-brand-400 text-xs font-medium hover:underline"
                         >
                           <Download className="w-3.5 h-3.5" /> Ver PDF
-                        </a>
+                        </button>
                       ) : (
                         <span className="text-xs text-slate-400">Sin archivo</span>
                       )

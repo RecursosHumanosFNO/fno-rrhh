@@ -7,14 +7,14 @@ import { formatFecha, formatMes, formatMonto } from '@/lib/utils'
 import { createClient } from '@supabase/supabase-js'
 import {
   FileText, Download, Upload, Search, X, CheckCircle2,
-  Loader2, AlertCircle, Eye, Cloud, HardDrive,
+  Loader2, AlertCircle, Eye, Cloud, HardDrive, Lock,
 } from 'lucide-react'
 
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
 
-// Supabase client para Storage (usa variables de entorno públicas)
-function getSupabase() {
+// Cliente Supabase con anon key — solo para UPLOAD (no para generar URLs)
+function getSupabaseAnon() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   if (!url || !key) return null
@@ -33,6 +33,7 @@ export default function RecibosPage() {
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle')
   const [uploadError, setUploadError] = useState('')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [downloadingId, setDownloadingId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [uploadForm, setUploadForm] = useState({
@@ -72,12 +73,12 @@ export default function RecibosPage() {
     const emp = empleados.find(e => e.id === uploadForm.empleadoId)
     const fileName = `recibo_${emp?.apellido?.toLowerCase() ?? 'emp'}_${MESES[uploadForm.mes - 1].toLowerCase()}_${uploadForm.anio}.pdf`
 
-    let archivoUrl: string | undefined
+    // archivoUrl guarda el PATH dentro del bucket (no la URL pública)
+    let storagePath: string | undefined
     let storageUsed = false
 
-    // Intentar subir a Supabase Storage si hay archivo seleccionado
     if (selectedFile) {
-      const sb = getSupabase()
+      const sb = getSupabaseAnon()
       if (sb) {
         const path = `${uploadForm.empleadoId}/${uploadForm.anio}/${uploadForm.mes.toString().padStart(2, '0')}_${Date.now()}.pdf`
         const { error: upErr } = await sb.storage.from('fno-recibos').upload(path, selectedFile, {
@@ -88,10 +89,8 @@ export default function RecibosPage() {
         if (upErr) {
           console.warn('[Storage] upload error:', upErr.message)
           setUploadError(`Advertencia: No se pudo subir el archivo a la nube (${upErr.message}). El recibo se registrará sin PDF adjunto.`)
-          // No cortamos — guardamos igual sin URL
         } else {
-          const { data: urlData } = sb.storage.from('fno-recibos').getPublicUrl(path)
-          archivoUrl = urlData.publicUrl
+          storagePath = path   // guardamos el PATH, no una URL pública
           storageUsed = true
         }
       } else {
@@ -106,11 +105,11 @@ export default function RecibosPage() {
       archivo: fileName,
       fechaSubida: new Date().toISOString().slice(0, 10),
       monto: parseFloat(uploadForm.monto),
-      archivoUrl,
+      archivoUrl: storagePath,  // path dentro del bucket
     })
 
     setUploadStatus('success')
-    if (storageUsed) setUploadError('') // limpiar advertencias si fue exitoso
+    if (storageUsed) setUploadError('')
 
     setTimeout(() => {
       setUploadStatus('idle')
@@ -122,13 +121,34 @@ export default function RecibosPage() {
     }, 1800)
   }
 
-  function handleDescargar(r: { archivo: string; archivoUrl?: string }) {
-    if (r.archivoUrl) {
-      // Abrir en nueva pestaña (permite ver el PDF directamente en el navegador)
-      window.open(r.archivoUrl, '_blank', 'noopener,noreferrer')
-    } else {
-      // Sin URL real — mostrar mensaje
-      alert(`El recibo "${r.archivo}" no tiene PDF adjunto en la nube.\n\nPedile a RRHH que lo vuelva a cargar seleccionando el archivo PDF.`)
+  // Pide una URL firmada al servidor (bucket privado, válida 10 minutos)
+  async function handleDescargar(r: { id: string; archivo: string; archivoUrl?: string; empleadoId: string }) {
+    if (!r.archivoUrl) {
+      alert(`El recibo "${r.archivo}" no tiene PDF adjunto.\n\nPedile a RRHH que lo vuelva a cargar seleccionando el archivo PDF.`)
+      return
+    }
+
+    const requesterEmpleadoId = isAdmin
+      ? (user?.empleadoId ?? '')
+      : (user?.empleadoId ?? '')
+
+    setDownloadingId(r.id)
+    try {
+      const res = await fetch('/api/recibo-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: r.archivoUrl, empleadoId: requesterEmpleadoId }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.url) {
+        alert('No se pudo obtener el link del recibo. Intentá de nuevo.')
+        return
+      }
+      window.open(data.url, '_blank', 'noopener,noreferrer')
+    } catch {
+      alert('Error de conexión al intentar obtener el link.')
+    } finally {
+      setDownloadingId(null)
     }
   }
 
@@ -144,11 +164,17 @@ export default function RecibosPage() {
             {filtered.length} {filtered.length === 1 ? 'recibo' : 'recibos'} encontrados
           </p>
         </div>
-        {isAdmin && (
-          <button onClick={() => { setShowUpload(true); setUploadStatus('idle'); setUploadError('') }} className="btn-primary">
-            <Upload className="w-4 h-4" /> Subir recibo
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {/* Indicador de seguridad */}
+          <div className="hidden sm:flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2.5 py-1.5 rounded-lg">
+            <Lock className="w-3.5 h-3.5" /> Acceso privado
+          </div>
+          {isAdmin && (
+            <button onClick={() => { setShowUpload(true); setUploadStatus('idle'); setUploadError('') }} className="btn-primary">
+              <Upload className="w-4 h-4" /> Subir recibo
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Filters */}
@@ -211,6 +237,7 @@ export default function RecibosPage() {
               {filtered.map(r => {
                 const emp = empleados.find(e => e.id === r.empleadoId)
                 const tieneArchivo = !!r.archivoUrl
+                const isDownloading = downloadingId === r.id
                 return (
                   <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                     {isAdmin && (
@@ -253,15 +280,21 @@ export default function RecibosPage() {
                     <td className="table-cell text-right">
                       <button
                         onClick={() => handleDescargar(r)}
+                        disabled={!tieneArchivo || isDownloading}
                         className={`inline-flex items-center gap-1.5 text-sm py-1.5 px-3 rounded-lg transition-colors ${
                           tieneArchivo
-                            ? 'bg-brand-700 hover:bg-brand-600 text-white'
-                            : 'border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-not-allowed opacity-50'
+                            ? 'bg-brand-700 hover:bg-brand-600 text-white disabled:opacity-70'
+                            : 'border border-slate-200 dark:border-slate-700 text-slate-400 cursor-not-allowed opacity-50'
                         }`}
-                        title={tieneArchivo ? 'Ver / Descargar PDF' : 'Sin archivo disponible'}
+                        title={tieneArchivo ? 'Ver PDF (link privado, válido 10 min)' : 'Sin archivo disponible'}
                       >
-                        {tieneArchivo ? <Eye className="w-4 h-4" /> : <Download className="w-4 h-4" />}
-                        <span className="hidden sm:inline">{tieneArchivo ? 'Ver PDF' : 'Sin archivo'}</span>
+                        {isDownloading
+                          ? <Loader2 className="w-4 h-4 animate-spin" />
+                          : tieneArchivo ? <Eye className="w-4 h-4" /> : <Download className="w-4 h-4" />
+                        }
+                        <span className="hidden sm:inline">
+                          {isDownloading ? 'Cargando...' : tieneArchivo ? 'Ver PDF' : 'Sin archivo'}
+                        </span>
                       </button>
                     </td>
                   </tr>
@@ -305,14 +338,11 @@ export default function RecibosPage() {
               </button>
             </div>
             <div className="p-5 space-y-4">
-              {/* Success */}
               {uploadStatus === 'success' && (
                 <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 rounded-lg px-4 py-3 text-sm flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 shrink-0" /> Recibo registrado correctamente.
                 </div>
               )}
-
-              {/* Warning/Error */}
               {uploadError && uploadStatus !== 'success' && (
                 <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 rounded-lg px-4 py-3 text-sm flex items-start gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -374,11 +404,10 @@ export default function RecibosPage() {
                 />
               </div>
 
-              {/* File upload zone */}
               <div>
                 <label className="form-label">
                   Archivo PDF
-                  <span className="text-slate-400 font-normal ml-1">(recomendado — se guarda en la nube)</span>
+                  <span className="text-slate-400 font-normal ml-1">(recomendado — se guarda cifrado en la nube)</span>
                 </label>
                 <div
                   className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-colors ${
