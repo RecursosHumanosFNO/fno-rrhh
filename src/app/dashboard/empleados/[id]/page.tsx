@@ -25,14 +25,11 @@ export default function EmpleadoDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { user } = useAuth()
   const router = useRouter()
-  const { empleados, solicitudes, recibos, users, updateEmpleado, deleteEmpleado, updateUserPassword } = useData()
+  const { empleados, solicitudes, recibos, users, updateEmpleado, deleteEmpleado } = useData()
 
   const [tab, setTab] = useState(0)
   const [editMode, setEditMode] = useState(false)
   const [downloadingReciboId, setDownloadingReciboId] = useState<string | null>(null)
-  const [showNewPass, setShowNewPass] = useState(false)
-  const [newPassword, setNewPassword] = useState('')
-  const [passMsg, setPassMsg] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null)
   const [resetStatus, setResetStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
   const fotoRef = useRef<HTMLInputElement>(null)
 
@@ -111,17 +108,6 @@ export default function EmpleadoDetailPage() {
     reader.readAsDataURL(file)
   }
 
-  function handlePasswordReset() {
-    if (!empUser) return
-    if (newPassword.length < 6) {
-      setPassMsg({ type: 'err', msg: 'La contraseña debe tener al menos 6 caracteres.' })
-      return
-    }
-    updateUserPassword(empUser.id, newPassword)
-    setPassMsg({ type: 'ok', msg: 'Contraseña actualizada correctamente.' })
-    setNewPassword('')
-    setTimeout(() => setPassMsg(null), 3000)
-  }
 
   async function handleVerRecibo(r: { id: string; archivo: string; archivoUrl?: string; empleadoId: string }) {
     if (!r.archivoUrl) return
@@ -402,39 +388,6 @@ export default function EmpleadoDetailPage() {
                       </button>
                     </div>
 
-                    {/* Manual override (admin force-set) */}
-                    <div>
-                      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wide">
-                        O establecer contraseña manualmente
-                      </p>
-                      {passMsg && (
-                        <div className={`rounded-lg px-3 py-2 text-sm flex items-center gap-2 mb-2 ${
-                          passMsg.type === 'ok'
-                            ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
-                            : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'
-                        }`}>
-                          {passMsg.type === 'ok' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-                          {passMsg.msg}
-                        </div>
-                      )}
-                      <div className="flex gap-2">
-                        <div className="relative flex-1">
-                          <input
-                            type={showNewPass ? 'text' : 'password'}
-                            className="form-input text-sm pr-10 w-full"
-                            placeholder="Nueva contraseña (mín. 6 caracteres)"
-                            value={newPassword}
-                            onChange={e => setNewPassword(e.target.value)}
-                          />
-                          <button onClick={() => setShowNewPass(!showNewPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
-                            {showNewPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                          </button>
-                        </div>
-                        <button onClick={handlePasswordReset} className="btn-secondary shrink-0">
-                          Guardar
-                        </button>
-                      </div>
-                    </div>
                   </div>
                 ) : (
                   <p className="text-sm text-slate-400">Este empleado no tiene cuenta de acceso creada.</p>
