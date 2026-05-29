@@ -183,7 +183,7 @@ export default function FundacionPage() {
           <div>
             <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Nuestra Sede</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1">
-              <MapPin className="w-3.5 h-3.5" /> Barrio Confluencia · Neuquén Capital
+              <MapPin className="w-3.5 h-3.5" /> Barrio Unión de Mayo · Neuquén Capital
             </p>
           </div>
         </div>
