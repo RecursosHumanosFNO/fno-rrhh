@@ -1,8 +1,9 @@
 'use client'
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import type { User, Empleado, AuthState } from '@/types'
+import type { User, Empleado, AuthState, UserRole } from '@/types'
 import { useData } from './DataContext'
+import { supabase } from '@/lib/supabase'
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string, remember: boolean) => Promise<'ok' | 'pendiente' | 'error'>
@@ -23,77 +24,94 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   })
   const [isLoading, setIsLoading] = useState(true)
 
-  // Restaurar sesión desde localStorage (el usuario completo se guarda sin contraseña)
-  useEffect(() => {
-    const stored = localStorage.getItem('fno_session')
-    if (stored) {
-      try {
-        const session = JSON.parse(stored)
-        // Formato nuevo: { userId, user: {...} } | Formato viejo: { userId }
-        const user: User | undefined = session.user ?? undefined
-        const empleado = empleados.find(e => e.id === user?.empleadoId)
-        if (user && empleado) {
-          setAuth({ user, empleado, isAuthenticated: true })
-        } else {
-          // Sesión inválida o empleado no encontrado → limpiar
-          localStorage.removeItem('fno_session')
-        }
-      } catch {
-        localStorage.removeItem('fno_session')
-      }
+  // Obtiene el perfil del usuario desde fno_users usando su Supabase Auth ID
+  const loadProfile = useCallback(async (authUserId: string): Promise<User | null> => {
+    if (!supabase) return null
+    const { data } = await supabase
+      .from('fno_users')
+      .select('id, email, role, empleado_id')
+      .eq('auth_id', authUserId)
+      .maybeSingle()
+    if (!data) return null
+    return {
+      id: data.id as string,
+      email: data.email as string,
+      role: data.role as UserRole,
+      empleadoId: data.empleado_id as string,
     }
-    setIsLoading(false)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
-  // Sync empleado data cuando cambia en DataContext
+  // Escucha cambios de sesión de Supabase Auth (login, logout, refresco de token)
   useEffect(() => {
-    if (auth.user) {
-      const updatedEmp = empleados.find(e => e.id === auth.user!.empleadoId)
-      if (updatedEmp) setAuth(prev => ({ ...prev, empleado: updatedEmp }))
+    if (!supabase) {
+      setIsLoading(false)
+      return
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        const user = await loadProfile(session.user.id)
+        if (user) {
+          setAuth(prev => ({
+            user,
+            // Si ya teníamos el empleado cargado, lo mantenemos; sino lo sincroniza el efecto de abajo
+            empleado: prev.empleado?.id === user.empleadoId ? prev.empleado : null,
+            isAuthenticated: true,
+          }))
+        } else {
+          // Auth válido pero sin perfil en fno_users (no debería ocurrir en uso normal)
+          setAuth({ user: null, empleado: null, isAuthenticated: false })
+        }
+      } else {
+        setAuth({ user: null, empleado: null, isAuthenticated: false })
+      }
+      setIsLoading(false)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [loadProfile]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sincroniza el objeto empleado cuando DataContext termina de cargar
+  useEffect(() => {
+    if (!auth.user) return
+    const emp = empleados.find(e => e.id === auth.user!.empleadoId)
+    if (emp && emp !== auth.empleado) {
+      setAuth(prev => ({ ...prev, empleado: emp }))
     }
   }, [empleados]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const login = useCallback(async (email: string, password: string, _remember: boolean): Promise<'ok' | 'pendiente' | 'error'> => {
+  const login = useCallback(async (
+    email: string,
+    password: string,
+    _remember: boolean,
+  ): Promise<'ok' | 'pendiente' | 'error'> => {
     const normalEmail = email.toLowerCase().trim()
 
-    // Verificar si está en pendientes (lista local, sin contraseñas)
+    // Verificar pendientes (lista local, sin contraseñas)
     const pending = pendingRegistrations.find(p => p.email === normalEmail)
     if (pending) return 'pendiente'
 
-    // Validación server-side — las contraseñas nunca llegan al cliente
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      })
+    if (!supabase) return 'error'
 
-      if (!res.ok) return 'error'
+    const { error } = await supabase.auth.signInWithPassword({ email: normalEmail, password })
+    if (error) return 'error'
 
-      const { user } = await res.json() as { user: User }
-      if (!user) return 'error'
-
-      const empleado = empleados.find(e => e.id === user.empleadoId)
-      if (!empleado) return 'error'
-
-      setAuth({ user, empleado, isAuthenticated: true })
-      // Guardar usuario completo (sin contraseña) para restaurar sesión
-      localStorage.setItem('fno_session', JSON.stringify({ userId: user.id, user }))
-      return 'ok'
-    } catch {
-      return 'error'
-    }
-  }, [empleados, pendingRegistrations])
+    // onAuthStateChange maneja el estado auth automáticamente
+    return 'ok'
+  }, [pendingRegistrations])
 
   const logout = useCallback(() => {
+    if (supabase) supabase.auth.signOut().catch(() => {})
     setAuth({ user: null, empleado: null, isAuthenticated: false })
-    localStorage.removeItem('fno_session')
   }, [])
 
   const updateEmpleado = useCallback((data: Partial<Empleado>) => {
     if (!auth.empleado) return
     updateEmpData(auth.empleado.id, data)
-    setAuth(prev => prev.empleado ? { ...prev, empleado: { ...prev.empleado, ...data } } : prev)
+    setAuth(prev => prev.empleado
+      ? { ...prev, empleado: { ...prev.empleado, ...data } }
+      : prev
+    )
   }, [auth.empleado, updateEmpData])
 
   return (

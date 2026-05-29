@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabase'
 import { Eye, EyeOff, Lock, Mail, AlertCircle, ExternalLink } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -179,14 +180,13 @@ function ForgotPasswordLink() {
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault()
-    if (!email) return
+    if (!email || !supabase) return
     setStatus('loading')
-    const res = await fetch('/api/reset-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
-    }).then(r => r.json()).catch(() => ({ ok: false }))
-    setStatus(res.ok ? 'sent' : 'error')
+    const { error } = await supabase.auth.resetPasswordForEmail(
+      email.toLowerCase().trim(),
+      { redirectTo: `${window.location.origin}/api/auth/callback?next=/reset-password` },
+    )
+    setStatus(error ? 'error' : 'sent')
   }
 
   return (

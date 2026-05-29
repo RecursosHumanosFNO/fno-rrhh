@@ -650,7 +650,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       tipoContrato: 'Contrato', jornada: 'Full Time', supervisor: '',
       estado: 'activo', diasVacaciones: 14, diasVacacionesUsados: 0,
     }
-    const nuevoUser: User = { id: uid(), email: reg.email, password: reg.password, role: 'employee', empleadoId }
+    const userId = uid()
+    const nuevoUser: User = { id: userId, email: reg.email, role: 'employee', empleadoId }
     setEmpleados(prev => [...prev, nuevoEmpleado])
     setUsers(prev => [...prev, nuevoUser])
     setPending(prev => prev.filter(p => p.id !== id))
@@ -659,8 +660,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       supabase.from('fno_empleados').insert(mapEmpleadoToSupabase(nuevoEmpleado)).then(({ error }) => {
         if (error) console.error('[supabase] insert fno_empleados (approve):', error)
       })
-      supabase.from('fno_users').insert({ id: nuevoUser.id, email: nuevoUser.email, password: nuevoUser.password, role: nuevoUser.role, empleado_id: nuevoUser.empleadoId }).then()
       supabase.from('fno_pending').delete().eq('id', id).then()
+      // Crear usuario en Supabase Auth + fno_users via ruta server-side (contraseña encriptada)
+      fetch('/api/admin/create-auth-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: reg.email, password: reg.password, userId, empleadoId, role: 'employee' }),
+      }).catch(err => console.error('[auth] create-auth-user:', err))
     }
     sendEmail('registration_approved', { nombre: reg.nombre, email: reg.email })
   }, [pendingRegistrations, addNotification])

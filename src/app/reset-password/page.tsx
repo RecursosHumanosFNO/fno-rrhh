@@ -4,11 +4,12 @@ import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Lock, Eye, EyeOff, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
 import Link from 'next/link'
+import { supabase } from '@/lib/supabase'
 
 function ResetPasswordForm() {
   const params = useSearchParams()
   const router = useRouter()
-  const token = params.get('token') ?? ''
+  const code = params.get('code') ?? ''
 
   const [status, setStatus] = useState<'loading' | 'valid' | 'invalid' | 'success'>('loading')
   const [email, setEmail] = useState('')
@@ -18,43 +19,44 @@ function ResetPasswordForm() {
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
+  // Intercambiar el código de Supabase por una sesión activa
   useEffect(() => {
-    if (!token) { setStatus('invalid'); return }
-    fetch(`/api/reset-password?token=${encodeURIComponent(token)}`)
-      .then(r => r.json())
-      .then(d => {
-        if (d.valid) { setEmail(d.email); setStatus('valid') }
-        else setStatus('invalid')
+    if (!code) { setStatus('invalid'); return }
+    if (!supabase) { setStatus('invalid'); return }
+
+    supabase.auth.exchangeCodeForSession(code)
+      .then(({ data, error: err }) => {
+        if (err || !data.session) {
+          setStatus('invalid')
+        } else {
+          setEmail(data.session.user.email ?? '')
+          setStatus('valid')
+        }
       })
-      .catch(() => setStatus('invalid'))
-  }, [token])
+  }, [code])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
     if (password.length < 6) { setError('La contraseña debe tener al menos 6 caracteres.'); return }
     if (password !== confirm) { setError('Las contraseñas no coinciden.'); return }
+    if (!supabase) { setError('Error de conexión.'); return }
 
     setSubmitting(true)
-    const res = await fetch('/api/reset-password', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token, password }),
-    }).then(r => r.json()).catch(() => ({ ok: false, error: 'Error de conexión' }))
+    const { error: err } = await supabase.auth.updateUser({ password })
     setSubmitting(false)
 
-    if (res.ok) {
+    if (err) {
+      setError(err.message ?? 'Ocurrió un error. Intentá de nuevo.')
+    } else {
       setStatus('success')
       setTimeout(() => router.push('/login'), 3000)
-    } else {
-      setError(res.error ?? 'Ocurrió un error. Intentá de nuevo.')
     }
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(145deg, #82cac2 0%, #76bfac 100%)' }}>
       <div className="w-full max-w-md">
-        {/* Card */}
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
           <div className="bg-[#1e3a5f] p-6 text-center">
             <h1 className="text-xl font-bold text-white">Fundación Neuquén Oeste</h1>
@@ -74,7 +76,7 @@ function ResetPasswordForm() {
                 <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
                 <h2 className="text-lg font-semibold text-slate-800 mb-2">Enlace inválido o expirado</h2>
                 <p className="text-slate-500 text-sm mb-6">
-                  Este enlace de recuperación ya fue utilizado o expiró (tienen validez de 30 minutos).
+                  Este enlace ya fue utilizado o expiró. Solicitá uno nuevo desde la pantalla de inicio de sesión.
                 </p>
                 <Link href="/login" className="inline-flex items-center gap-2 bg-[#1e3a5f] text-white px-5 py-2.5 rounded-lg font-medium hover:bg-[#162d4a] transition-colors text-sm">
                   Volver al inicio
@@ -89,7 +91,7 @@ function ResetPasswordForm() {
                     <Lock className="w-7 h-7 text-[#1e3a5f]" />
                   </div>
                   <h2 className="text-xl font-bold text-slate-800">Nueva contraseña</h2>
-                  <p className="text-slate-500 text-sm mt-1">Para la cuenta <strong>{email}</strong></p>
+                  {email && <p className="text-slate-500 text-sm mt-1">Para la cuenta <strong>{email}</strong></p>}
                 </div>
 
                 {error && (
@@ -142,9 +144,7 @@ function ResetPasswordForm() {
               <div className="text-center py-4">
                 <CheckCircle2 className="w-14 h-14 text-emerald-500 mx-auto mb-4" />
                 <h2 className="text-lg font-semibold text-slate-800 mb-2">¡Contraseña actualizada!</h2>
-                <p className="text-slate-500 text-sm mb-2">
-                  Tu contraseña fue cambiada correctamente.
-                </p>
+                <p className="text-slate-500 text-sm mb-2">Tu contraseña fue cambiada correctamente.</p>
                 <p className="text-slate-400 text-sm">Redirigiendo al inicio de sesión...</p>
               </div>
             )}
