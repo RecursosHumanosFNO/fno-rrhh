@@ -313,64 +313,84 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     return () => clearInterval(interval)
   }, [syncFromSupabase])
 
-  // ── Supabase Realtime — cambios instantáneos cross-device ──────────────────
+  // ── Supabase Realtime — solo se conecta cuando hay sesión activa ─────────────
+  // Con RLS habilitado, suscribirse sin auth genera CHANNEL_ERROR.
+  // Escuchamos onAuthStateChange y armamos/destruimos el canal según la sesión.
   useEffect(() => {
     if (!supabase) return
 
-    const channel = supabase
-      .channel('fno_realtime_all')
-      // Empleados
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fno_empleados' }, ({ eventType, new: n, old: o }) => {
-        if (eventType === 'DELETE') setEmpleados(prev => prev.filter(e => e.id !== (o as { id: string }).id))
-        else setEmpleados(prev => upsert(prev, mapSupabaseToEmpleado(n as Record<string, unknown>)))
-      })
-      // Usuarios
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fno_users' }, ({ eventType, new: n, old: o }) => {
-        if (eventType === 'DELETE') setUsers(prev => prev.filter(u => u.id !== (o as { id: string }).id))
-        else {
-          const u = n as Record<string, string>
-          setUsers(prev => upsert(prev, { id: u.id, email: u.email, role: u.role as UserRole, empleadoId: u.empleado_id }))
-        }
-      })
-      // Pendientes
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fno_pending' }, ({ eventType, new: n, old: o }) => {
-        if (eventType === 'DELETE') setPending(prev => prev.filter(p => p.id !== (o as { id: string }).id))
-        else {
-          const p = n as Record<string, string>
-          setPending(prev => upsert(prev, { id: p.id, nombre: p.nombre, apellido: p.apellido, dni: p.dni, email: p.email, password: p.password, sector: p.sector, cargo: p.cargo, telefono: p.telefono ?? '', fechaSolicitud: p.fecha_solicitud }))
-        }
-      })
-      // Solicitudes
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fno_solicitudes' }, ({ eventType, new: n, old: o }) => {
-        if (eventType === 'DELETE') setSolicitudes(prev => prev.filter(s => s.id !== (o as { id: string }).id))
-        else setSolicitudes(prev => upsertHead(prev, mapSupabaseToSolicitud(n as Record<string, unknown>)))
-      })
-      // Recibos
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fno_recibos' }, ({ eventType, new: n, old: o }) => {
-        if (eventType === 'DELETE') setRecibos(prev => prev.filter(r => r.id !== (o as { id: string }).id))
-        else setRecibos(prev => upsertHead(prev, mapSupabaseToRecibo(n as Record<string, unknown>)))
-      })
-      // Novedades
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fno_novedades' }, ({ eventType, new: n, old: o }) => {
-        if (eventType === 'DELETE') setNovedades(prev => prev.filter(x => x.id !== (o as { id: string }).id))
-        else setNovedades(prev => upsertHead(prev, mapSupabaseToNovedad(n as Record<string, unknown>)))
-      })
-      // Tickets
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fno_tickets' }, ({ eventType, new: n, old: o }) => {
-        if (eventType === 'DELETE') setTickets(prev => prev.filter(t => t.id !== (o as { id: string }).id))
-        else setTickets(prev => upsertHead(prev, mapSupabaseToTicket(n as Record<string, unknown>)))
-      })
-      // Notificaciones
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fno_notifs' }, ({ eventType, new: n, old: o }) => {
-        if (eventType === 'DELETE') setNotifications(prev => prev.filter(x => x.id !== (o as { id: string }).id))
-        else setNotifications(prev => upsertHead(prev, mapSupabaseToNotif(n as Record<string, unknown>)))
-      })
-      .subscribe((status) => {
-        console.log('[realtime] status:', status)
-      })
+    let channel: ReturnType<typeof supabase.channel> | null = null
 
-    return () => { supabase?.removeChannel(channel) }
-  }, [])
+    function setupChannel() {
+      if (channel) supabase!.removeChannel(channel)
+      channel = supabase!
+        .channel('fno_realtime_auth')
+        // Empleados
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'fno_empleados' }, ({ eventType, new: n, old: o }) => {
+          if (eventType === 'DELETE') setEmpleados(prev => prev.filter(e => e.id !== (o as { id: string }).id))
+          else setEmpleados(prev => upsert(prev, mapSupabaseToEmpleado(n as Record<string, unknown>)))
+        })
+        // Usuarios
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'fno_users' }, ({ eventType, new: n, old: o }) => {
+          if (eventType === 'DELETE') setUsers(prev => prev.filter(u => u.id !== (o as { id: string }).id))
+          else {
+            const u = n as Record<string, string>
+            setUsers(prev => upsert(prev, { id: u.id, email: u.email, role: u.role as UserRole, empleadoId: u.empleado_id }))
+          }
+        })
+        // Pendientes
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'fno_pending' }, ({ eventType, new: n, old: o }) => {
+          if (eventType === 'DELETE') setPending(prev => prev.filter(p => p.id !== (o as { id: string }).id))
+          else {
+            const p = n as Record<string, string>
+            setPending(prev => upsert(prev, { id: p.id, nombre: p.nombre, apellido: p.apellido, dni: p.dni, email: p.email, password: p.password, sector: p.sector, cargo: p.cargo, telefono: p.telefono ?? '', fechaSolicitud: p.fecha_solicitud }))
+          }
+        })
+        // Solicitudes
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'fno_solicitudes' }, ({ eventType, new: n, old: o }) => {
+          if (eventType === 'DELETE') setSolicitudes(prev => prev.filter(s => s.id !== (o as { id: string }).id))
+          else setSolicitudes(prev => upsertHead(prev, mapSupabaseToSolicitud(n as Record<string, unknown>)))
+        })
+        // Recibos
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'fno_recibos' }, ({ eventType, new: n, old: o }) => {
+          if (eventType === 'DELETE') setRecibos(prev => prev.filter(r => r.id !== (o as { id: string }).id))
+          else setRecibos(prev => upsertHead(prev, mapSupabaseToRecibo(n as Record<string, unknown>)))
+        })
+        // Novedades
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'fno_novedades' }, ({ eventType, new: n, old: o }) => {
+          if (eventType === 'DELETE') setNovedades(prev => prev.filter(x => x.id !== (o as { id: string }).id))
+          else setNovedades(prev => upsertHead(prev, mapSupabaseToNovedad(n as Record<string, unknown>)))
+        })
+        // Tickets
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'fno_tickets' }, ({ eventType, new: n, old: o }) => {
+          if (eventType === 'DELETE') setTickets(prev => prev.filter(t => t.id !== (o as { id: string }).id))
+          else setTickets(prev => upsertHead(prev, mapSupabaseToTicket(n as Record<string, unknown>)))
+        })
+        // Notificaciones
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'fno_notifs' }, ({ eventType, new: n, old: o }) => {
+          if (eventType === 'DELETE') setNotifications(prev => prev.filter(x => x.id !== (o as { id: string }).id))
+          else setNotifications(prev => upsertHead(prev, mapSupabaseToNotif(n as Record<string, unknown>)))
+        })
+        .subscribe((status) => {
+          console.log('[realtime] status:', status)
+        })
+    }
+
+    // Solo conectar realtime cuando hay sesión activa
+    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        setupChannel()
+        syncFromSupabase()
+      } else {
+        if (channel) { supabase!.removeChannel(channel); channel = null }
+      }
+    })
+
+    return () => {
+      authSub.unsubscribe()
+      if (channel) supabase?.removeChannel(channel)
+    }
+  }, [syncFromSupabase])
 
   // ── Sync entre pestañas del mismo navegador via storage event ──────────────
   useEffect(() => {

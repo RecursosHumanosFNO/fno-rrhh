@@ -93,11 +93,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (!supabase) return 'error'
 
-    const { error } = await supabase.auth.signInWithPassword({ email: normalEmail, password })
-    if (error) return 'error'
-
-    // onAuthStateChange maneja el estado auth automáticamente
-    return 'ok'
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email: normalEmail, password })
+      if (error) return 'error'
+      // onAuthStateChange maneja el estado auth automáticamente
+      return 'ok'
+    } catch {
+      return 'error'
+    }
   }, [pendingRegistrations])
 
   const logout = useCallback(() => {
