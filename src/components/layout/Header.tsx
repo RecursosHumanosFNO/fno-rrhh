@@ -33,9 +33,20 @@ export default function Header({ onMenuToggle }: HeaderProps) {
   const [query, setQuery] = useState('')
   const [showSearch, setShowSearch] = useState(false)
   const searchRef = useRef<HTMLDivElement>(null)
+  const notifsRef = useRef<HTMLDivElement>(null)
+  const userMenuRef = useRef<HTMLDivElement>(null)
 
   const isAdmin = user?.role === 'admin'
-  const visibleNotifications = notifications.filter(n => isAdmin || n.tipo !== 'registro')
+
+  // Admin: ve todo. Empleado: solo sus propias notificaciones + globales sin soloAdmin
+  const visibleNotifications = [...notifications]
+    .filter(n => {
+      if (isAdmin) return true
+      if (n.soloAdmin || n.tipo === 'registro') return false
+      return !n.empleadoId || n.empleadoId === empleado?.id
+    })
+    .sort((a, b) => b.fecha.localeCompare(a.fecha)) // Más reciente primero
+
   const unread = visibleNotifications.filter(n => !n.leida)
 
   const q = query.trim().toLowerCase()
@@ -86,12 +97,18 @@ export default function Header({ onMenuToggle }: HeaderProps) {
 
   ] : []
 
-  // Cierra al hacer click afuera
+  // Cierra cualquier panel al hacer click afuera
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
         setShowSearch(false)
         setQuery('')
+      }
+      if (notifsRef.current && !notifsRef.current.contains(e.target as Node)) {
+        setShowNotifs(false)
+      }
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setShowDropdown(false)
       }
     }
     document.addEventListener('mousedown', handleClick)
@@ -183,7 +200,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
         </button>
 
         {/* Notifications */}
-        <div className="relative">
+        <div className="relative" ref={notifsRef}>
           <button
             onClick={() => { setShowNotifs(!showNotifs); setShowDropdown(false) }}
             className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-white/30 dark:hover:bg-teal-900/30 text-teal-800 dark:text-teal-400 relative transition-colors"
@@ -244,7 +261,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
         </div>
 
         {/* User menu */}
-        <div className="relative ml-1">
+        <div className="relative ml-1" ref={userMenuRef}>
           <button
             onClick={() => { setShowDropdown(!showDropdown); setShowNotifs(false) }}
             className="flex items-center gap-2 pl-2 pr-1 py-1 rounded-lg hover:bg-white/30 dark:hover:bg-slate-800 transition-colors"

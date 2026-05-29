@@ -166,6 +166,7 @@ export interface AppNotification {
   fecha: string
   tipo: 'solicitud' | 'novedad' | 'recibo' | 'ticket' | 'registro' | 'sistema'
   empleadoId?: string
+  soloAdmin?: boolean  // Si es true, solo visible para admin
 }
 
 export interface AuthState {

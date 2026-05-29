@@ -89,13 +89,65 @@ export default function EstadisticasPage() {
     })
   }, [empleados, solicitudes])
 
+  // ── Helpers de estilo Excel ────────────────────────────────────────────────
+  function xlCell(v: string | number, bold = false, bgRgb?: string, fgRgb = 'FFFFFF') {
+    const cell: XLSX.CellObject = { v, t: typeof v === 'number' ? 'n' : 's' }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(cell as any).s = {
+      font: { bold, color: bgRgb ? { rgb: fgRgb } : { rgb: '1a202c' }, sz: 11 },
+      fill: bgRgb ? { patternType: 'solid', fgColor: { rgb: bgRgb } } : undefined,
+      alignment: { vertical: 'center', wrapText: false },
+      border: {
+        top:    { style: 'thin', color: { rgb: 'D1D5DB' } },
+        bottom: { style: 'thin', color: { rgb: 'D1D5DB' } },
+        left:   { style: 'thin', color: { rgb: 'D1D5DB' } },
+        right:  { style: 'thin', color: { rgb: 'D1D5DB' } },
+      },
+    }
+    return cell
+  }
+
+  function applyHeader(ws: XLSX.WorkSheet, headers: string[], colWidths: number[]) {
+    // Cabecera con fondo teal oscuro
+    headers.forEach((h, c) => {
+      const addr = XLSX.utils.encode_cell({ r: 0, c })
+      ws[addr] = xlCell(h, true, '1B5E6A')
+    })
+    // Anchos de columna
+    ws['!cols'] = colWidths.map(w => ({ wch: w }))
+    // Altura de la fila de cabecera
+    ws['!rows'] = [{ hpx: 22 }]
+  }
+
+  function applyRowStripes(ws: XLSX.WorkSheet, totalRows: number, totalCols: number) {
+    for (let r = 1; r <= totalRows; r++) {
+      const bg = r % 2 === 0 ? 'E8F5F2' : undefined   // Verde agua suave en filas pares
+      for (let c = 0; c < totalCols; c++) {
+        const addr = XLSX.utils.encode_cell({ r, c })
+        if (!ws[addr]) ws[addr] = { v: '', t: 's' }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ;(ws[addr] as any).s = {
+          font: { sz: 10, color: { rgb: '1a202c' } },
+          fill: bg ? { patternType: 'solid', fgColor: { rgb: bg } } : undefined,
+          alignment: { vertical: 'center' },
+          border: {
+            top:    { style: 'thin', color: { rgb: 'D1D5DB' } },
+            bottom: { style: 'thin', color: { rgb: 'D1D5DB' } },
+            left:   { style: 'thin', color: { rgb: 'D1D5DB' } },
+            right:  { style: 'thin', color: { rgb: 'D1D5DB' } },
+          },
+        }
+      }
+    }
+  }
+
   // ── Item 13: Exportar informe Excel ────────────────────────────────────────
   function exportarInforme() {
     const wb = XLSX.utils.book_new()
 
     // Hoja 1: KPIs
-    const kpiData = [
-      ['Indicador', 'Valor'],
+    const kpiHeaders = ['Indicador', 'Valor']
+    const kpiRows = [
       ['Total Empleados', totalEmpleados],
       ['Empleados Activos', activos],
       ['Total Solicitudes', solicitudes.length],
@@ -104,84 +156,75 @@ export default function EstadisticasPage() {
       ['Tasa de Aprobación', `${tasaAprobacion}%`],
       ['Sectores Activos', sectoresActivos],
     ]
-    const wsKpi = XLSX.utils.aoa_to_sheet(kpiData)
+    const wsKpi = XLSX.utils.aoa_to_sheet([kpiHeaders, ...kpiRows])
+    applyHeader(wsKpi, kpiHeaders, [32, 18])
+    applyRowStripes(wsKpi, kpiRows.length, kpiHeaders.length)
     XLSX.utils.book_append_sheet(wb, wsKpi, 'Resumen KPIs')
 
     // Hoja 2: Empleados por sector
-    const sectorData = [
-      ['Sector', 'Cantidad'],
-      ...empleadosPorSector.map(r => [r.sector, r.cantidad]),
-    ]
-    const wsSector = XLSX.utils.aoa_to_sheet(sectorData)
+    const sectorHeaders = ['Sector', 'Cantidad de Empleados']
+    const sectorRows = empleadosPorSector.map(r => [r.sector, r.cantidad])
+    const wsSector = XLSX.utils.aoa_to_sheet([sectorHeaders, ...sectorRows])
+    applyHeader(wsSector, sectorHeaders, [28, 22])
+    applyRowStripes(wsSector, sectorRows.length, sectorHeaders.length)
     XLSX.utils.book_append_sheet(wb, wsSector, 'Por Sector')
 
     // Hoja 3: Solicitudes por tipo
-    const tipoData = [
-      ['Tipo', 'Cantidad'],
-      ...solicitudesPorTipo.map(r => [r.tipo, r.cantidad]),
-    ]
-    const wsTipo = XLSX.utils.aoa_to_sheet(tipoData)
+    const tipoHeaders = ['Tipo de Solicitud', 'Cantidad']
+    const tipoRows = solicitudesPorTipo.map(r => [r.tipo, r.cantidad])
+    const wsTipo = XLSX.utils.aoa_to_sheet([tipoHeaders, ...tipoRows])
+    applyHeader(wsTipo, tipoHeaders, [30, 16])
+    applyRowStripes(wsTipo, tipoRows.length, tipoHeaders.length)
     XLSX.utils.book_append_sheet(wb, wsTipo, 'Por Tipo')
 
     // Hoja 4: Evolución mensual
-    const mensualData = [
-      ['Mes', 'Empleados', 'Solicitudes', 'Ausencias'],
-      ...estadisticasMensuales.map(r => [r.mes, r.empleados, r.solicitudes, r.ausencias]),
-    ]
-    const wsMensual = XLSX.utils.aoa_to_sheet(mensualData)
+    const mensualHeaders = ['Mes', 'Empleados', 'Solicitudes', 'Ausencias']
+    const mensualRows = estadisticasMensuales.map(r => [r.mes, r.empleados, r.solicitudes, r.ausencias])
+    const wsMensual = XLSX.utils.aoa_to_sheet([mensualHeaders, ...mensualRows])
+    applyHeader(wsMensual, mensualHeaders, [14, 16, 16, 16])
+    applyRowStripes(wsMensual, mensualRows.length, mensualHeaders.length)
     XLSX.utils.book_append_sheet(wb, wsMensual, 'Evolución Mensual')
 
     // Hoja 5: Detalle empleados
-    const empData = [
-      ['Apellido', 'Nombre', 'DNI', 'Cargo', 'Sector', 'Estado', 'Ingreso', 'Solicitudes', 'Aprobadas'],
-      ...empleados.filter(e => e.id !== '1').map(emp => {
-        const mSol = solicitudes.filter(s => s.empleadoId === emp.id)
-        return [
-          emp.apellido, emp.nombre, emp.dni ?? '', emp.cargo, emp.sector,
-          emp.estado, emp.fechaIngreso ?? '',
-          mSol.length, mSol.filter(s => s.estado === 'aprobado').length,
-        ]
-      }),
-    ]
-    const wsEmp = XLSX.utils.aoa_to_sheet(empData)
+    const empHeaders = ['Apellido', 'Nombre', 'DNI', 'Cargo', 'Sector', 'Estado', 'Ingreso', 'Solicitudes', 'Aprobadas']
+    const empRows = empleados.filter(e => e.id !== '1').map(emp => {
+      const mSol = solicitudes.filter(s => s.empleadoId === emp.id)
+      return [
+        emp.apellido, emp.nombre, emp.dni ?? '', emp.cargo, emp.sector,
+        emp.estado, emp.fechaIngreso ?? '',
+        mSol.length, mSol.filter(s => s.estado === 'aprobado').length,
+      ]
+    })
+    const wsEmp = XLSX.utils.aoa_to_sheet([empHeaders, ...empRows])
+    applyHeader(wsEmp, empHeaders, [18, 16, 14, 22, 20, 12, 14, 14, 14])
+    applyRowStripes(wsEmp, empRows.length, empHeaders.length)
     XLSX.utils.book_append_sheet(wb, wsEmp, 'Detalle Empleados')
 
     const fecha = new Date().toISOString().slice(0, 10)
     XLSX.writeFile(wb, `informe_rrhh_${fecha}.xlsx`)
   }
 
-  // ── Item 14: Exportar CSV de empleados ─────────────────────────────────────
+  // ── Item 14: Exportar empleados como Excel con colores ─────────────────────
   function exportarCSV() {
-    const headers = ['Apellido', 'Nombre', 'DNI', 'CUIL', 'Cargo', 'Sector', 'Estado', 'Fecha Ingreso', 'Email', 'Teléfono', 'Solicitudes', 'Solicitudes Aprobadas']
+    const headers = ['Apellido', 'Nombre', 'DNI', 'CUIL', 'Cargo', 'Sector', 'Estado', 'Fecha Ingreso', 'Email', 'Teléfono', 'Solicitudes', 'Sol. Aprobadas']
     const rows = empleados.filter(e => e.id !== '1').map(emp => {
       const mSol = solicitudes.filter(s => s.empleadoId === emp.id)
       return [
-        emp.apellido,
-        emp.nombre,
-        emp.dni ?? '',
-        emp.cuil ?? '',
-        emp.cargo,
-        emp.sector,
-        emp.estado,
-        emp.fechaIngreso ?? '',
-        emp.email ?? '',
-        emp.telefono ?? '',
-        mSol.length,
-        mSol.filter(s => s.estado === 'aprobado').length,
+        emp.apellido, emp.nombre, emp.dni ?? '', emp.cuil ?? '',
+        emp.cargo, emp.sector, emp.estado, emp.fechaIngreso ?? '',
+        emp.email ?? '', emp.telefono ?? '',
+        mSol.length, mSol.filter(s => s.estado === 'aprobado').length,
       ]
     })
 
-    const csv = [headers, ...rows]
-      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-      .join('\n')
+    const wb = XLSX.utils.book_new()
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows])
+    applyHeader(ws, headers, [18, 16, 14, 16, 22, 20, 12, 14, 28, 16, 14, 14])
+    applyRowStripes(ws, rows.length, headers.length)
+    XLSX.utils.book_append_sheet(wb, ws, 'Empleados')
 
-    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `empleados_${new Date().toISOString().slice(0, 10)}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+    const fecha = new Date().toISOString().slice(0, 10)
+    XLSX.writeFile(wb, `empleados_${fecha}.xlsx`)
   }
 
   // Acortar label del sector para el eje X del chart (máx 12 chars)
@@ -344,7 +387,7 @@ export default function EstadisticasPage() {
           <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
             <p className="section-title">Detalle por Empleado</p>
             <button onClick={exportarCSV} className="btn-secondary text-sm">
-              <Download className="w-4 h-4" /> Exportar CSV
+              <Download className="w-4 h-4" /> Exportar Excel
             </button>
           </div>
           <div className="overflow-x-auto">

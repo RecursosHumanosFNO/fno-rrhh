@@ -107,7 +107,7 @@ export default function EventosPage() {
   // Rellenar hasta múltiplo de 7
   while (celdas.length % 7 !== 0) celdas.push(null)
 
-  // Map de día → eventos
+  // Map de día → eventos (sin cumpleaños, se renderizan por separado)
   const eventosPorDia = useMemo(() => {
     const map: Record<number, { tipo: EventoTipo; titulo: string }[]> = {}
     eventosMes.forEach(ev => {
@@ -115,14 +115,18 @@ export default function EventosPage() {
       if (!map[d]) map[d] = []
       map[d].push({ tipo: ev.tipo, titulo: ev.titulo })
     })
-    // Cumpleaños en el mes
+    return map
+  }, [eventosMes])
+
+  // Map de día → cantidad de cumpleaños
+  const cumplesPorDia = useMemo(() => {
+    const map: Record<number, number> = {}
     cumpleaniosMes.forEach(emp => {
       const d = parseLocalDate(emp.fechaNacimiento).getDate()
-      if (!map[d]) map[d] = []
-      map[d].push({ tipo: 'otro' as EventoTipo, titulo: `🎂 ${emp.nombre}` })
+      map[d] = (map[d] ?? 0) + 1
     })
     return map
-  }, [eventosMes, cumpleaniosMes])
+  }, [cumpleaniosMes])
 
   const hoyStr = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`
 
@@ -176,9 +180,11 @@ export default function EventosPage() {
                 }
                 const fechaStr = `${viewAnio}-${String(viewMes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`
                 const evs = eventosPorDia[dia] ?? []
+                const cumpleCount = cumplesPorDia[dia] ?? 0
                 const esHoy = fechaStr === hoyStr
                 const esSelected = fechaStr === selectedDay
                 const esFinDeSemana = [0, 6].includes((primerDia + (dia - 1)) % 7)
+                const tienePuntos = evs.length > 0 || cumpleCount > 0
 
                 return (
                   <button
@@ -192,17 +198,21 @@ export default function EventosPage() {
                     <span className={`font-semibold text-sm leading-none mt-1 ${esHoy && !esSelected ? 'text-sky-700 dark:text-sky-400' : ''}`}>
                       {dia}
                     </span>
-                    {evs.length > 0 && (
+                    {tienePuntos && (
                       <div className="flex gap-0.5 mt-auto mb-0.5 flex-wrap justify-center">
-                        {evs.slice(0, 3).map((ev, j) => (
+                        {evs.slice(0, 2).map((ev, j) => (
                           <div
                             key={j}
                             className={`w-1.5 h-1.5 rounded-full ${esSelected ? 'bg-white' : EVENTO_TIPO_DOT[ev.tipo]}`}
                           />
                         ))}
-                        {evs.length > 3 && (
+                        {/* Punto rosa de cumpleaños — siempre visible */}
+                        {cumpleCount > 0 && (
+                          <div className={`w-1.5 h-1.5 rounded-full ${esSelected ? 'bg-pink-200' : 'bg-pink-500'}`} />
+                        )}
+                        {evs.length > 2 && (
                           <span className={`text-[9px] leading-none ${esSelected ? 'text-white/80' : 'text-slate-400'}`}>
-                            +{evs.length - 3}
+                            +{evs.length - 2}
                           </span>
                         )}
                       </div>
@@ -223,7 +233,7 @@ export default function EventosPage() {
                 </div>
               ))}
               <div className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-pink-400" />
+                <div className="w-2.5 h-2.5 rounded-full bg-pink-500" />
                 <span className="text-xs text-slate-500 dark:text-slate-400">Cumpleaños</span>
               </div>
             </div>

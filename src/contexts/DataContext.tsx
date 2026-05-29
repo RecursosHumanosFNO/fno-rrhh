@@ -455,12 +455,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const nueva: Solicitud = { ...s, id: uid(), estado: 'pendiente', fechaCreacion: new Date().toISOString().slice(0, 10) }
     const tipoLabel = SOLICITUD_TIPO_LABEL[s.tipo] ?? s.tipo
     setSolicitudes(prev => [nueva, ...prev])
-    addNotification({ texto: `Nueva solicitud: ${tipoLabel} — pendiente de revisión`, tipo: 'solicitud', empleadoId: s.empleadoId })
-    // Enviar email al admin con los detalles completos
+    // Confirmación al empleado
+    addNotification({ texto: `Tu solicitud de ${tipoLabel} fue enviada y está pendiente de revisión`, tipo: 'solicitud', empleadoId: s.empleadoId })
+    // Alerta al admin + email
     setEmpleados(prev => {
       const emp = prev.find(e => e.id === s.empleadoId)
+      const nombreEmp = emp ? `${emp.nombre} ${emp.apellido}` : 'Empleado'
+      addNotification({ texto: `Nueva solicitud de ${nombreEmp}: ${tipoLabel}`, tipo: 'solicitud', soloAdmin: true })
       sendEmail('new_solicitud', {
-        nombre: emp ? `${emp.nombre} ${emp.apellido}` : 'Empleado',
+        nombre: nombreEmp,
         cargo: emp?.cargo ?? '',
         sector: emp?.sector ?? '',
         tipo: tipoLabel,
@@ -486,10 +489,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     if (supabase) supabase.from('fno_solicitudes').update({ estado: 'aprobado', fecha_resolucion: fechaRes, comentario_admin: comment }).eq('id', id).then()
     const sol = solicitudes.find(s => s.id === id)
     if (sol) {
-      addNotification({ texto: 'Tu solicitud fue aprobada', tipo: 'solicitud', empleadoId: sol.empleadoId })
+      // Notificación al empleado
+      addNotification({ texto: 'Tu solicitud fue aprobada ✓', tipo: 'solicitud', empleadoId: sol.empleadoId })
       setEmpleados(prev => {
         const emp = prev.find(e => e.id === sol.empleadoId)
-        if (emp?.email) sendEmail('solicitud_resuelta', { email: emp.email, nombre: `${emp.nombre} ${emp.apellido}`, tipo: SOLICITUD_TIPO_LABEL[sol.tipo as keyof typeof SOLICITUD_TIPO_LABEL] ?? sol.tipo, estado: 'aprobado', comentario: comment })
+        const nombreEmp = emp ? `${emp.nombre} ${emp.apellido}` : 'el empleado'
+        // Confirmación para el admin
+        addNotification({ texto: `Solicitud de ${nombreEmp} aprobada y notificada`, tipo: 'solicitud', soloAdmin: true })
+        if (emp?.email) sendEmail('solicitud_resuelta', { email: emp.email, nombre: nombreEmp, tipo: SOLICITUD_TIPO_LABEL[sol.tipo as keyof typeof SOLICITUD_TIPO_LABEL] ?? sol.tipo, estado: 'aprobado', comentario: comment })
         return prev
       })
     }
@@ -509,10 +516,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     if (supabase) supabase.from('fno_solicitudes').update({ estado: 'rechazado', fecha_resolucion: fechaRes, comentario_admin: comment }).eq('id', id).then()
     const sol = solicitudes.find(s => s.id === id)
     if (sol) {
+      // Notificación al empleado
       addNotification({ texto: 'Tu solicitud fue rechazada', tipo: 'solicitud', empleadoId: sol.empleadoId })
       setEmpleados(prev => {
         const emp = prev.find(e => e.id === sol.empleadoId)
-        if (emp?.email) sendEmail('solicitud_resuelta', { email: emp.email, nombre: `${emp.nombre} ${emp.apellido}`, tipo: SOLICITUD_TIPO_LABEL[sol.tipo as keyof typeof SOLICITUD_TIPO_LABEL] ?? sol.tipo, estado: 'rechazado', comentario: comment })
+        const nombreEmp = emp ? `${emp.nombre} ${emp.apellido}` : 'el empleado'
+        // Confirmación para el admin
+        addNotification({ texto: `Solicitud de ${nombreEmp} rechazada y notificada`, tipo: 'solicitud', soloAdmin: true })
+        if (emp?.email) sendEmail('solicitud_resuelta', { email: emp.email, nombre: nombreEmp, tipo: SOLICITUD_TIPO_LABEL[sol.tipo as keyof typeof SOLICITUD_TIPO_LABEL] ?? sol.tipo, estado: 'rechazado', comentario: comment })
         return prev
       })
     }
