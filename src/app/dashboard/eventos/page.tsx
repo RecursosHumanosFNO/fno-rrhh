@@ -199,16 +199,16 @@ export default function EventosPage() {
                       {dia}
                     </span>
                     {tienePuntos && (
-                      <div className="flex gap-0.5 mt-auto mb-0.5 flex-wrap justify-center">
+                      <div className="flex gap-1 mt-auto mb-1 flex-wrap justify-center">
                         {evs.slice(0, 2).map((ev, j) => (
                           <div
                             key={j}
-                            className={`w-1.5 h-1.5 rounded-full ${esSelected ? 'bg-white' : EVENTO_TIPO_DOT[ev.tipo]}`}
+                            className={`w-2 h-2 rounded-full shadow-sm ${esSelected ? 'bg-white/90' : EVENTO_TIPO_DOT[ev.tipo]}`}
                           />
                         ))}
-                        {/* Punto rosa de cumpleaños — siempre visible */}
+                        {/* Punto rosa de cumpleaños */}
                         {cumpleCount > 0 && (
-                          <div className={`w-1.5 h-1.5 rounded-full ${esSelected ? 'bg-pink-200' : 'bg-pink-500'}`} />
+                          <div className={`w-2 h-2 rounded-full shadow-sm ${esSelected ? 'bg-pink-200' : 'bg-pink-500'}`} />
                         )}
                         {evs.length > 2 && (
                           <span className={`text-[9px] leading-none ${esSelected ? 'text-white/80' : 'text-slate-400'}`}>
@@ -226,14 +226,14 @@ export default function EventosPage() {
             <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
               {TIPOS_EVENTO.map(t => (
                 <div key={t} className="flex items-center gap-1.5">
-                  <div className={`w-2.5 h-2.5 rounded-full ${EVENTO_TIPO_DOT[t]}`} />
+                  <div className={`w-2.5 h-2.5 rounded-full shadow-sm ${EVENTO_TIPO_DOT[t]}`} />
                   <span className="text-xs text-slate-500 dark:text-slate-400">
                     {EVENTO_TIPO_LABEL[t].replace(/^\S+\s/, '')}
                   </span>
                 </div>
               ))}
               <div className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-pink-500" />
+                <div className="w-2.5 h-2.5 rounded-full shadow-sm bg-pink-500" />
                 <span className="text-xs text-slate-500 dark:text-slate-400">Cumpleaños</span>
               </div>
             </div>
