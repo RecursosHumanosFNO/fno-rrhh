@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback, useMemo } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { formatFecha, formatMes, formatMonto } from '@/lib/utils'
@@ -8,12 +8,12 @@ import { createClient } from '@supabase/supabase-js'
 import {
   FileText, Download, Upload, Search, X, CheckCircle2,
   Loader2, AlertCircle, Eye, Cloud, HardDrive, Lock,
+  Layers, ChevronRight, AlertTriangle, CheckCheck, User,
 } from 'lucide-react'
 
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
 
-// Cliente Supabase con anon key — solo para UPLOAD (no para generar URLs)
 function getSupabaseAnon() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -21,21 +21,54 @@ function getSupabaseAnon() {
   return createClient(url, key)
 }
 
+// ── Tipos para carga masiva ────────────────────────────────────────────────
+type BulkRow = {
+  file: File
+  detectedDni: string
+  empleadoId: string      // '' = sin asignar
+  monto: string
+  status: 'matched' | 'unmatched' | 'manual'
+  uploadStatus: 'pending' | 'uploading' | 'done' | 'error'
+  errorMsg?: string
+}
+type BulkStep = 'select' | 'preview' | 'uploading' | 'done'
+
+// ── Helpers de matching ────────────────────────────────────────────────────
+function normDni(d: string) { return d.replace(/\D/g, '') }
+
+function extractDniFromFilename(name: string): string {
+  const base = name.replace(/\.[^.]+$/, '')
+  // Busca secuencia de 7 u 8 dígitos en el nombre (DNI argentino)
+  const m = base.match(/\b(\d{7,8})\b/)
+  return m ? m[1] : ''
+}
+
+function extractMontoFromFilename(name: string, dniFound: string): string {
+  const base = name.replace(/\.[^.]+$/, '')
+  const parts = base.split(/[_\-\s]+/)
+  for (const p of parts) {
+    if (/^\d{4,10}$/.test(p) && p !== dniFound) return p
+  }
+  return ''
+}
+
 export default function RecibosPage() {
   const { user } = useAuth()
   const { empleados, recibos, addRecibo } = useData()
   const isAdmin = user?.role === 'admin'
 
+  // ── Estado filtros/tabla ───────────────────────────────────────────────
   const [query, setQuery] = useState('')
   const [mesFilter, setMesFilter] = useState('')
   const [anioFilter, setAnioFilter] = useState('2026')
+  const [downloadingId, setDownloadingId] = useState<string | null>(null)
+
+  // ── Estado carga individual ────────────────────────────────────────────
   const [showUpload, setShowUpload] = useState(false)
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle')
   const [uploadError, setUploadError] = useState('')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [downloadingId, setDownloadingId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-
   const [uploadForm, setUploadForm] = useState({
     empleadoId: '',
     mes: new Date().getMonth() + 1,
@@ -43,19 +76,30 @@ export default function RecibosPage() {
     monto: '',
   })
 
-  const misRecibos = isAdmin
-    ? recibos
-    : recibos.filter(r => r.empleadoId === user?.empleadoId)
+  // ── Estado carga masiva ────────────────────────────────────────────────
+  const [showBulk, setShowBulk] = useState(false)
+  const [bulkStep, setBulkStep] = useState<BulkStep>('select')
+  const [bulkMes, setBulkMes] = useState(new Date().getMonth() + 1)
+  const [bulkAnio, setBulkAnio] = useState(2026)
+  const [bulkRows, setBulkRows] = useState<BulkRow[]>([])
+  const [bulkConfirmed, setBulkConfirmed] = useState(false)
+  const [bulkProgress, setBulkProgress] = useState(0)
+  const [bulkDone, setBulkDone] = useState({ ok: 0, fail: 0 })
+  const bulkInputRef = useRef<HTMLInputElement>(null)
 
-  const filtered = misRecibos.filter(r => {
+  // ── Listado filtrado ───────────────────────────────────────────────────
+  const misRecibos = isAdmin ? recibos : recibos.filter(r => r.empleadoId === user?.empleadoId)
+
+  const filtered = useMemo(() => misRecibos.filter(r => {
     const emp = empleados.find(e => e.id === r.empleadoId)
     const empName = emp ? `${emp.nombre} ${emp.apellido}` : ''
     const matchQuery = !query || empName.toLowerCase().includes(query.toLowerCase()) || formatMes(r.mes, r.anio).toLowerCase().includes(query.toLowerCase())
     const matchMes = !mesFilter || r.mes === parseInt(mesFilter)
     const matchAnio = !anioFilter || r.anio === parseInt(anioFilter)
     return matchQuery && matchMes && matchAnio
-  }).sort((a, b) => b.anio - a.anio || b.mes - a.mes)
+  }).sort((a, b) => b.anio - a.anio || b.mes - a.mes), [misRecibos, empleados, query, mesFilter, anioFilter])
 
+  // ── Carga individual ───────────────────────────────────────────────────
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]
     if (!f) return
@@ -69,32 +113,20 @@ export default function RecibosPage() {
     if (!uploadForm.empleadoId || !uploadForm.monto) return
     setUploadStatus('uploading')
     setUploadError('')
-
     const emp = empleados.find(e => e.id === uploadForm.empleadoId)
     const fileName = `recibo_${emp?.apellido?.toLowerCase() ?? 'emp'}_${MESES[uploadForm.mes - 1].toLowerCase()}_${uploadForm.anio}.pdf`
-
-    // archivoUrl guarda el PATH dentro del bucket (no la URL pública)
     let storagePath: string | undefined
-    let storageUsed = false
 
     if (selectedFile) {
       const sb = getSupabaseAnon()
       if (sb) {
         const path = `${uploadForm.empleadoId}/${uploadForm.anio}/${uploadForm.mes.toString().padStart(2, '0')}_${Date.now()}.pdf`
-        const { error: upErr } = await sb.storage.from('fno-recibos').upload(path, selectedFile, {
-          contentType: 'application/pdf',
-          upsert: false,
-        })
-
+        const { error: upErr } = await sb.storage.from('fno-recibos').upload(path, selectedFile, { contentType: 'application/pdf', upsert: false })
         if (upErr) {
-          console.warn('[Storage] upload error:', upErr.message)
-          setUploadError(`Advertencia: No se pudo subir el archivo a la nube (${upErr.message}). El recibo se registrará sin PDF adjunto.`)
+          setUploadError(`Advertencia: No se pudo subir el archivo (${upErr.message}). El recibo se registrará sin PDF.`)
         } else {
-          storagePath = path   // guardamos el PATH, no una URL pública
-          storageUsed = true
+          storagePath = path
         }
-      } else {
-        setUploadError('Supabase Storage no está configurado. El recibo se registrará sin PDF adjunto.')
       }
     }
 
@@ -105,53 +137,140 @@ export default function RecibosPage() {
       archivo: fileName,
       fechaSubida: new Date().toISOString().slice(0, 10),
       monto: parseFloat(uploadForm.monto),
-      archivoUrl: storagePath,  // path dentro del bucket
+      archivoUrl: storagePath,
     })
 
     setUploadStatus('success')
-    if (storageUsed) setUploadError('')
-
+    if (storagePath) setUploadError('')
     setTimeout(() => {
-      setUploadStatus('idle')
-      setShowUpload(false)
-      setSelectedFile(null)
-      setUploadError('')
+      setUploadStatus('idle'); setShowUpload(false); setSelectedFile(null); setUploadError('')
       setUploadForm({ empleadoId: '', mes: new Date().getMonth() + 1, anio: 2026, monto: '' })
       if (fileInputRef.current) fileInputRef.current.value = ''
     }, 1800)
   }
 
-  // Pide una URL firmada al servidor (bucket privado, válida 10 minutos)
-  async function handleDescargar(r: { id: string; archivo: string; archivoUrl?: string; empleadoId: string }) {
-    if (!r.archivoUrl) {
-      alert(`El recibo "${r.archivo}" no tiene PDF adjunto.\n\nPedile a RRHH que lo vuelva a cargar seleccionando el archivo PDF.`)
-      return
+  // ── Carga masiva — analizar archivos ──────────────────────────────────
+  const analizarArchivos = useCallback((files: File[]) => {
+    const rows: BulkRow[] = files
+      .filter(f => f.type === 'application/pdf')
+      .map(file => {
+        const dni = extractDniFromFilename(file.name)
+        const monto = extractMontoFromFilename(file.name, dni)
+        const empActivos = empleados.filter(e => e.estado === 'activo' && e.id !== '1')
+        const match = dni
+          ? empActivos.find(e => normDni(e.dni ?? '') === normDni(dni))
+          : undefined
+        return {
+          file,
+          detectedDni: dni,
+          empleadoId: match?.id ?? '',
+          monto,
+          status: match ? 'matched' : 'unmatched',
+          uploadStatus: 'pending',
+        }
+      })
+    setBulkRows(rows)
+    setBulkStep('preview')
+  }, [empleados])
+
+  function handleBulkFileDrop(e: React.DragEvent) {
+    e.preventDefault()
+    const files = Array.from(e.dataTransfer.files)
+    analizarArchivos(files)
+  }
+
+  function handleBulkFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    analizarArchivos(files)
+  }
+
+  // ── Carga masiva — subir todos ─────────────────────────────────────────
+  async function handleBulkUpload() {
+    if (!bulkConfirmed) return
+    const rowsToUpload = bulkRows.filter(r => r.empleadoId)
+    setBulkStep('uploading')
+    setBulkProgress(0)
+    const sb = getSupabaseAnon()
+    let ok = 0, fail = 0
+
+    for (let i = 0; i < rowsToUpload.length; i++) {
+      const row = rowsToUpload[i]
+      // Marcar fila como "subiendo"
+      setBulkRows(prev => prev.map(r => r.file.name === row.file.name ? { ...r, uploadStatus: 'uploading' } : r))
+
+      try {
+        let storagePath: string | undefined
+        if (sb) {
+          const path = `${row.empleadoId}/${bulkAnio}/${bulkMes.toString().padStart(2, '0')}_${Date.now()}_${i}.pdf`
+          const { error } = await sb.storage.from('fno-recibos').upload(path, row.file, {
+            contentType: 'application/pdf', upsert: false,
+          })
+          if (!error) storagePath = path
+          else console.warn('[bulk] storage error:', error.message)
+        }
+
+        const emp = empleados.find(e => e.id === row.empleadoId)
+        addRecibo({
+          empleadoId: row.empleadoId,
+          mes: bulkMes,
+          anio: bulkAnio,
+          archivo: `recibo_${emp?.apellido?.toLowerCase() ?? 'emp'}_${MESES[bulkMes - 1].toLowerCase()}_${bulkAnio}.pdf`,
+          fechaSubida: new Date().toISOString().slice(0, 10),
+          monto: parseFloat(row.monto) || 0,
+          archivoUrl: storagePath,
+        })
+
+        setBulkRows(prev => prev.map(r => r.file.name === row.file.name ? { ...r, uploadStatus: 'done' } : r))
+        ok++
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Error desconocido'
+        setBulkRows(prev => prev.map(r => r.file.name === row.file.name ? { ...r, uploadStatus: 'error', errorMsg: msg } : r))
+        fail++
+      }
+      setBulkProgress(Math.round(((i + 1) / rowsToUpload.length) * 100))
     }
 
-    const requesterEmpleadoId = isAdmin
-      ? (user?.empleadoId ?? '')
-      : (user?.empleadoId ?? '')
+    setBulkDone({ ok, fail })
+    setBulkStep('done')
+  }
 
+  function resetBulk() {
+    setShowBulk(false)
+    setBulkStep('select')
+    setBulkRows([])
+    setBulkConfirmed(false)
+    setBulkProgress(0)
+    setBulkDone({ ok: 0, fail: 0 })
+    if (bulkInputRef.current) bulkInputRef.current.value = ''
+  }
+
+  // ── Descargar recibo ───────────────────────────────────────────────────
+  async function handleDescargar(r: { id: string; archivo: string; archivoUrl?: string; empleadoId: string }) {
+    if (!r.archivoUrl) {
+      alert(`El recibo "${r.archivo}" no tiene PDF adjunto.\n\nPedile a RRHH que lo vuelva a cargar.`)
+      return
+    }
     setDownloadingId(r.id)
     try {
       const res = await fetch('/api/recibo-url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: r.archivoUrl, empleadoId: requesterEmpleadoId }),
+        body: JSON.stringify({ path: r.archivoUrl, empleadoId: user?.empleadoId ?? '' }),
       })
       const data = await res.json()
-      if (!res.ok || !data.url) {
-        alert('No se pudo obtener el link del recibo. Intentá de nuevo.')
-        return
-      }
+      if (!res.ok || !data.url) { alert('No se pudo obtener el link del recibo.'); return }
       window.open(data.url, '_blank', 'noopener,noreferrer')
     } catch {
-      alert('Error de conexión al intentar obtener el link.')
+      alert('Error de conexión.')
     } finally {
       setDownloadingId(null)
     }
   }
 
+  const sinAsignar = bulkRows.filter(r => !r.empleadoId).length
+  const conAsignar = bulkRows.filter(r => r.empleadoId).length
+
+  // ──────────────────────────────────────────────────────────────────────
   return (
     <div className="page-container">
       {/* Header */}
@@ -164,15 +283,25 @@ export default function RecibosPage() {
             {filtered.length} {filtered.length === 1 ? 'recibo' : 'recibos'} encontrados
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          {/* Indicador de seguridad */}
+        <div className="flex items-center gap-2">
           <div className="hidden sm:flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2.5 py-1.5 rounded-lg">
             <Lock className="w-3.5 h-3.5" /> Acceso privado
           </div>
           {isAdmin && (
-            <button onClick={() => { setShowUpload(true); setUploadStatus('idle'); setUploadError('') }} className="btn-primary">
-              <Upload className="w-4 h-4" /> Subir recibo
-            </button>
+            <>
+              <button
+                onClick={() => { setShowBulk(true); setBulkStep('select') }}
+                className="btn-secondary"
+              >
+                <Layers className="w-4 h-4" /> Carga masiva
+              </button>
+              <button
+                onClick={() => { setShowUpload(true); setUploadStatus('idle'); setUploadError('') }}
+                className="btn-primary"
+              >
+                <Upload className="w-4 h-4" /> Subir recibo
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -198,15 +327,10 @@ export default function RecibosPage() {
         </select>
         <select className="form-select w-auto text-sm" value={anioFilter} onChange={e => setAnioFilter(e.target.value)}>
           <option value="">Todos los años</option>
-          <option value="2026">2026</option>
-          <option value="2025">2025</option>
-          <option value="2024">2024</option>
+          {['2026', '2025', '2024'].map(y => <option key={y} value={y}>{y}</option>)}
         </select>
         {(query || mesFilter || anioFilter !== '2026') && (
-          <button
-            onClick={() => { setQuery(''); setMesFilter(''); setAnioFilter('2026') }}
-            className="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1"
-          >
+          <button onClick={() => { setQuery(''); setMesFilter(''); setAnioFilter('2026') }} className="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1">
             <X className="w-3.5 h-3.5" /> Limpiar
           </button>
         )}
@@ -218,7 +342,7 @@ export default function RecibosPage() {
           <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
           <p className="text-slate-500 font-medium">No se encontraron recibos</p>
           <p className="text-slate-400 text-sm mt-1">
-            {isAdmin ? 'Subí recibos usando el botón "Subir recibo"' : 'Los recibos aparecerán aquí cuando RRHH los suba'}
+            {isAdmin ? 'Subí recibos usando los botones de arriba' : 'Los recibos aparecerán aquí cuando RRHH los suba'}
           </p>
         </div>
       ) : (
@@ -247,9 +371,7 @@ export default function RecibosPage() {
                             {emp?.foto ? <img src={emp.foto} alt="" className="w-8 h-8 object-cover" /> : emp ? `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}` : '?'}
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
-                              {emp ? `${emp.nombre} ${emp.apellido}` : 'N/A'}
-                            </p>
+                            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{emp ? `${emp.nombre} ${emp.apellido}` : 'N/A'}</p>
                             <p className="text-xs text-slate-400">{emp?.sector}</p>
                           </div>
                         </div>
@@ -271,9 +393,7 @@ export default function RecibosPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="table-cell hidden sm:table-cell text-slate-600 dark:text-slate-400 text-sm">
-                      {formatFecha(r.fechaSubida)}
-                    </td>
+                    <td className="table-cell hidden sm:table-cell text-slate-600 dark:text-slate-400 text-sm">{formatFecha(r.fechaSubida)}</td>
                     <td className="table-cell text-right hidden md:table-cell">
                       <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{formatMonto(r.monto)}</span>
                     </td>
@@ -286,15 +406,9 @@ export default function RecibosPage() {
                             ? 'bg-brand-700 hover:bg-brand-600 text-white disabled:opacity-70'
                             : 'border border-slate-200 dark:border-slate-700 text-slate-400 cursor-not-allowed opacity-50'
                         }`}
-                        title={tieneArchivo ? 'Ver PDF (link privado, válido 10 min)' : 'Sin archivo disponible'}
                       >
-                        {isDownloading
-                          ? <Loader2 className="w-4 h-4 animate-spin" />
-                          : tieneArchivo ? <Eye className="w-4 h-4" /> : <Download className="w-4 h-4" />
-                        }
-                        <span className="hidden sm:inline">
-                          {isDownloading ? 'Cargando...' : tieneArchivo ? 'Ver PDF' : 'Sin archivo'}
-                        </span>
+                        {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : tieneArchivo ? <Eye className="w-4 h-4" /> : <Download className="w-4 h-4" />}
+                        <span className="hidden sm:inline">{isDownloading ? 'Cargando...' : tieneArchivo ? 'Ver PDF' : 'Sin archivo'}</span>
                       </button>
                     </td>
                   </tr>
@@ -305,7 +419,7 @@ export default function RecibosPage() {
         </div>
       )}
 
-      {/* Summary cards for employee */}
+      {/* Cards resumen empleado */}
       {!isAdmin && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="card p-4 text-center">
@@ -313,9 +427,7 @@ export default function RecibosPage() {
             <p className="text-sm text-slate-500 mt-1">Recibos totales</p>
           </div>
           <div className="card p-4 text-center">
-            <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">
-              {misRecibos.filter(r => r.anio === 2026).length}
-            </p>
+            <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{misRecibos.filter(r => r.anio === 2026).length}</p>
             <p className="text-sm text-slate-500 mt-1">En 2026</p>
           </div>
           <div className="card p-4 text-center">
@@ -327,7 +439,9 @@ export default function RecibosPage() {
         </div>
       )}
 
-      {/* Upload Modal */}
+      {/* ══════════════════════════════════════════════════════════════
+          MODAL: CARGA INDIVIDUAL
+      ══════════════════════════════════════════════════════════════ */}
       {showUpload && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { if (uploadStatus !== 'uploading') setShowUpload(false) }}>
           <div className="card w-full max-w-md animate-scale-in" onClick={e => e.stopPropagation()}>
@@ -345,122 +459,346 @@ export default function RecibosPage() {
               )}
               {uploadError && uploadStatus !== 'success' && (
                 <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 rounded-lg px-4 py-3 text-sm flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>{uploadError}</span>
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" /><span>{uploadError}</span>
                 </div>
               )}
-
               <div>
                 <label className="form-label">Empleado *</label>
-                <select
-                  className="form-select"
-                  value={uploadForm.empleadoId}
-                  onChange={e => setUploadForm(f => ({ ...f, empleadoId: e.target.value }))}
-                  disabled={uploadStatus === 'uploading'}
-                >
+                <select className="form-select" value={uploadForm.empleadoId} onChange={e => setUploadForm(f => ({ ...f, empleadoId: e.target.value }))} disabled={uploadStatus === 'uploading'}>
                   <option value="">Seleccionar empleado</option>
-                  {empleados.filter(e => e.estado === 'activo').sort((a, b) => a.apellido.localeCompare(b.apellido)).map(e => (
+                  {empleados.filter(e => e.estado === 'activo' && e.id !== '1').sort((a, b) => a.apellido.localeCompare(b.apellido)).map(e => (
                     <option key={e.id} value={e.id}>{e.apellido}, {e.nombre}</option>
                   ))}
                 </select>
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="form-label">Mes *</label>
-                  <select
-                    className="form-select"
-                    value={uploadForm.mes}
-                    onChange={e => setUploadForm(f => ({ ...f, mes: parseInt(e.target.value) }))}
-                    disabled={uploadStatus === 'uploading'}
-                  >
+                  <select className="form-select" value={uploadForm.mes} onChange={e => setUploadForm(f => ({ ...f, mes: parseInt(e.target.value) }))} disabled={uploadStatus === 'uploading'}>
                     {MESES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="form-label">Año *</label>
-                  <select
-                    className="form-select"
-                    value={uploadForm.anio}
-                    onChange={e => setUploadForm(f => ({ ...f, anio: parseInt(e.target.value) }))}
-                    disabled={uploadStatus === 'uploading'}
-                  >
-                    <option value={2026}>2026</option>
-                    <option value={2025}>2025</option>
-                    <option value={2024}>2024</option>
+                  <select className="form-select" value={uploadForm.anio} onChange={e => setUploadForm(f => ({ ...f, anio: parseInt(e.target.value) }))} disabled={uploadStatus === 'uploading'}>
+                    {[2026, 2025, 2024].map(y => <option key={y} value={y}>{y}</option>)}
                   </select>
                 </div>
               </div>
-
               <div>
                 <label className="form-label">Monto neto (ARS) *</label>
-                <input
-                  className="form-input"
-                  type="number"
-                  placeholder="Ej: 450000"
-                  value={uploadForm.monto}
-                  onChange={e => setUploadForm(f => ({ ...f, monto: e.target.value }))}
-                  disabled={uploadStatus === 'uploading'}
-                />
+                <input className="form-input" type="number" placeholder="Ej: 450000" value={uploadForm.monto} onChange={e => setUploadForm(f => ({ ...f, monto: e.target.value }))} disabled={uploadStatus === 'uploading'} />
               </div>
-
               <div>
-                <label className="form-label">
-                  Archivo PDF
-                  <span className="text-slate-400 font-normal ml-1">(recomendado — se guarda cifrado en la nube)</span>
-                </label>
+                <label className="form-label">Archivo PDF <span className="text-slate-400 font-normal ml-1">(guardado cifrado en la nube)</span></label>
                 <div
-                  className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-colors ${
-                    selectedFile
-                      ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-900/10'
-                      : 'border-slate-300 dark:border-slate-600 hover:border-brand-500'
-                  }`}
+                  className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-colors ${selectedFile ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-900/10' : 'border-slate-300 dark:border-slate-600 hover:border-brand-500'}`}
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="application/pdf"
-                    className="hidden"
-                    onChange={handleFileChange}
-                    disabled={uploadStatus === 'uploading'}
-                  />
+                  <input ref={fileInputRef} type="file" accept="application/pdf" className="hidden" onChange={handleFileChange} disabled={uploadStatus === 'uploading'} />
                   {selectedFile ? (
-                    <div>
-                      <CheckCircle2 className="w-6 h-6 text-emerald-500 mx-auto mb-1.5" />
-                      <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">{selectedFile.name}</p>
-                      <p className="text-xs text-slate-400 mt-1">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB · Hacé clic para cambiar</p>
-                    </div>
+                    <div><CheckCircle2 className="w-6 h-6 text-emerald-500 mx-auto mb-1.5" /><p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">{selectedFile.name}</p><p className="text-xs text-slate-400 mt-1">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB · Hacé clic para cambiar</p></div>
                   ) : (
-                    <div>
-                      <Upload className="w-7 h-7 text-slate-400 mx-auto mb-2" />
-                      <p className="text-sm text-slate-500">Hacé clic para seleccionar un PDF</p>
-                      <p className="text-xs text-slate-400 mt-1">Máx. 10 MB</p>
-                    </div>
+                    <div><Upload className="w-7 h-7 text-slate-400 mx-auto mb-2" /><p className="text-sm text-slate-500">Hacé clic para seleccionar un PDF</p><p className="text-xs text-slate-400 mt-1">Máx. 10 MB</p></div>
                   )}
                 </div>
               </div>
-
               <div className="flex gap-2 justify-end pt-2">
-                <button
-                  onClick={() => setShowUpload(false)}
-                  className="btn-secondary"
-                  disabled={uploadStatus === 'uploading'}
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleSubir}
-                  disabled={!uploadForm.empleadoId || !uploadForm.monto || uploadStatus === 'uploading' || uploadStatus === 'success'}
-                  className="btn-primary disabled:opacity-50"
-                >
-                  {uploadStatus === 'uploading' ? (
-                    <><Loader2 className="w-4 h-4 animate-spin" /> Subiendo...</>
-                  ) : (
-                    <><Upload className="w-4 h-4" /> Subir recibo</>
-                  )}
+                <button onClick={() => setShowUpload(false)} className="btn-secondary" disabled={uploadStatus === 'uploading'}>Cancelar</button>
+                <button onClick={handleSubir} disabled={!uploadForm.empleadoId || !uploadForm.monto || uploadStatus === 'uploading' || uploadStatus === 'success'} className="btn-primary disabled:opacity-50">
+                  {uploadStatus === 'uploading' ? <><Loader2 className="w-4 h-4 animate-spin" /> Subiendo...</> : <><Upload className="w-4 h-4" /> Subir recibo</>}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════
+          MODAL: CARGA MASIVA
+      ══════════════════════════════════════════════════════════════ */}
+      {showBulk && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => { if (bulkStep !== 'uploading') resetBulk() }}>
+          <div className="card w-full max-w-3xl max-h-[90vh] flex flex-col animate-scale-in" onClick={e => e.stopPropagation()}>
+
+            {/* Header */}
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
+              <div>
+                <p className="section-title flex items-center gap-2"><Layers className="w-5 h-5" /> Carga masiva de recibos</p>
+                <p className="text-xs text-slate-400 mt-0.5">Los archivos deben tener el DNI del empleado en el nombre (ej: <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">20123456.pdf</code>)</p>
+              </div>
+              {bulkStep !== 'uploading' && (
+                <button onClick={resetBulk}><X className="w-5 h-5 text-slate-400" /></button>
+              )}
+            </div>
+
+            <div className="overflow-y-auto flex-1">
+
+              {/* PASO 1: Seleccionar archivos */}
+              {bulkStep === 'select' && (
+                <div className="p-5 space-y-5">
+                  {/* Instrucciones */}
+                  <div className="bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-800 rounded-xl p-4 text-sm text-sky-800 dark:text-sky-300 space-y-1.5">
+                    <p className="font-semibold">¿Cómo nombrar los archivos?</p>
+                    <div className="space-y-1 text-xs text-sky-700 dark:text-sky-400">
+                      <p>✅ <code className="bg-sky-100 dark:bg-sky-900/40 px-1 rounded">20123456.pdf</code> → solo el DNI (7 u 8 dígitos)</p>
+                      <p>✅ <code className="bg-sky-100 dark:bg-sky-900/40 px-1 rounded">20123456_450000.pdf</code> → DNI + monto (opcional)</p>
+                      <p>✅ <code className="bg-sky-100 dark:bg-sky-900/40 px-1 rounded">GARCIA_20123456.pdf</code> → también se detecta el DNI</p>
+                      <p className="text-amber-600 dark:text-amber-400">⚠ Un archivo sin DNI reconocible quedará sin asignar y no se subirá hasta que lo asignes manualmente.</p>
+                    </div>
+                  </div>
+
+                  {/* Período */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="form-label">Mes del período *</label>
+                      <select className="form-select" value={bulkMes} onChange={e => setBulkMes(parseInt(e.target.value))}>
+                        {MESES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="form-label">Año *</label>
+                      <select className="form-select" value={bulkAnio} onChange={e => setBulkAnio(parseInt(e.target.value))}>
+                        {[2026, 2025, 2024].map(y => <option key={y} value={y}>{y}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Drop zone */}
+                  <div
+                    className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-2xl p-10 text-center cursor-pointer hover:border-brand-500 hover:bg-brand-50/50 dark:hover:border-teal-500 dark:hover:bg-teal-900/10 transition-all"
+                    onDragOver={e => e.preventDefault()}
+                    onDrop={handleBulkFileDrop}
+                    onClick={() => bulkInputRef.current?.click()}
+                  >
+                    <input ref={bulkInputRef} type="file" accept="application/pdf" multiple className="hidden" onChange={handleBulkFileSelect} />
+                    <Layers className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+                    <p className="text-slate-600 dark:text-slate-300 font-medium">Arrastrá los PDFs aquí o hacé clic para seleccionarlos</p>
+                    <p className="text-slate-400 text-sm mt-1">Podés seleccionar todos los archivos del mes de una vez</p>
+                  </div>
+                </div>
+              )}
+
+              {/* PASO 2: Preview / revisión */}
+              {bulkStep === 'preview' && (
+                <div className="p-5 space-y-4">
+                  {/* Resumen de estado */}
+                  <div className="flex gap-3 flex-wrap">
+                    <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-sm px-3 py-2 rounded-lg">
+                      <CheckCircle2 className="w-4 h-4" /> {bulkRows.filter(r => r.empleadoId).length} asignados
+                    </div>
+                    {sinAsignar > 0 && (
+                      <div className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm px-3 py-2 rounded-lg">
+                        <AlertTriangle className="w-4 h-4" /> {sinAsignar} sin asignar
+                      </div>
+                    )}
+                    <div className="ml-auto text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                      Período: <span className="font-semibold text-slate-700 dark:text-slate-200">{MESES[bulkMes - 1]} {bulkAnio}</span>
+                    </div>
+                  </div>
+
+                  {/* Tabla de revisión */}
+                  <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-800/60">
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Archivo PDF</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">DNI detectado</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Empleado asignado</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Monto (ARS)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {bulkRows.map((row, i) => {
+                          const emp = empleados.find(e => e.id === row.empleadoId)
+                          const sinEmp = !row.empleadoId
+                          return (
+                            <tr key={i} className={`${sinEmp ? 'bg-red-50/60 dark:bg-red-900/10' : ''}`}>
+                              {/* Archivo */}
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-2">
+                                  <FileText className={`w-4 h-4 shrink-0 ${sinEmp ? 'text-red-400' : 'text-brand-600 dark:text-teal-400'}`} />
+                                  <span className={`text-xs truncate max-w-[160px] ${sinEmp ? 'text-red-700 dark:text-red-400' : 'text-slate-700 dark:text-slate-300'}`} title={row.file.name}>
+                                    {row.file.name}
+                                  </span>
+                                </div>
+                              </td>
+                              {/* DNI detectado */}
+                              <td className="px-4 py-3">
+                                {row.detectedDni
+                                  ? <span className="font-mono text-xs bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">{row.detectedDni}</span>
+                                  : <span className="text-xs text-red-500">No detectado</span>
+                                }
+                              </td>
+                              {/* Empleado asignado */}
+                              <td className="px-4 py-3 min-w-[200px]">
+                                {sinEmp ? (
+                                  <select
+                                    className="form-select text-xs py-1.5"
+                                    value=""
+                                    onChange={e => setBulkRows(prev => prev.map((r, j) => j === i ? { ...r, empleadoId: e.target.value, status: 'manual' } : r))}
+                                  >
+                                    <option value="">⚠ Seleccionar empleado...</option>
+                                    {empleados.filter(e => e.estado === 'activo' && e.id !== '1').sort((a, b) => a.apellido.localeCompare(b.apellido)).map(e => (
+                                      <option key={e.id} value={e.id}>{e.apellido}, {e.nombre} — {normDni(e.dni ?? '')}</option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-6 h-6 rounded-full bg-brand-700 flex items-center justify-center text-white text-[10px] font-bold overflow-hidden shrink-0">
+                                      {emp?.foto ? <img src={emp.foto} alt="" className="w-6 h-6 object-cover" /> : <User className="w-3.5 h-3.5" />}
+                                    </div>
+                                    <div>
+                                      <p className="text-xs font-medium text-slate-700 dark:text-slate-200">{emp ? `${emp.apellido}, ${emp.nombre}` : '—'}</p>
+                                      <p className="text-[10px] text-slate-400">{emp?.sector}</p>
+                                    </div>
+                                    <button
+                                      onClick={() => setBulkRows(prev => prev.map((r, j) => j === i ? { ...r, empleadoId: '', status: 'unmatched' } : r))}
+                                      className="ml-auto text-slate-300 hover:text-red-400 transition-colors"
+                                      title="Cambiar asignación"
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                )}
+                              </td>
+                              {/* Monto */}
+                              <td className="px-4 py-3">
+                                <input
+                                  type="number"
+                                  placeholder="0"
+                                  value={row.monto}
+                                  onChange={e => setBulkRows(prev => prev.map((r, j) => j === i ? { ...r, monto: e.target.value } : r))}
+                                  className="form-input text-xs py-1.5 w-28"
+                                />
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Advertencia si hay sin asignar */}
+                  {sinAsignar > 0 && (
+                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl px-4 py-3 text-sm text-amber-700 dark:text-amber-400 flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                      <span><strong>{sinAsignar} archivo{sinAsignar > 1 ? 's' : ''}</strong> no {sinAsignar > 1 ? 'tienen' : 'tiene'} empleado asignado. Asigná manualmente desde el dropdown rojo o eliminá esos archivos de la carga. No se subirán hasta que estén asignados.</span>
+                    </div>
+                  )}
+
+                  {/* Confirmación */}
+                  {conAsignar > 0 && (
+                    <label className="flex items-start gap-3 cursor-pointer bg-slate-50 dark:bg-slate-800/50 rounded-xl px-4 py-3 border border-slate-200 dark:border-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={bulkConfirmed}
+                        onChange={e => setBulkConfirmed(e.target.checked)}
+                        className="mt-0.5 w-4 h-4 accent-teal-600 cursor-pointer"
+                      />
+                      <span className="text-sm text-slate-700 dark:text-slate-300">
+                        <strong>Verifico que cada recibo corresponde exactamente al empleado asignado.</strong>
+                        {' '}Un recibo mal asignado comprometería información salarial privada.
+                      </span>
+                    </label>
+                  )}
+                </div>
+              )}
+
+              {/* PASO 3: Subiendo */}
+              {bulkStep === 'uploading' && (
+                <div className="p-8 space-y-6">
+                  <div className="text-center">
+                    <Loader2 className="w-10 h-10 text-brand-600 dark:text-teal-400 animate-spin mx-auto mb-3" />
+                    <p className="font-semibold text-slate-800 dark:text-slate-100">Subiendo recibos...</p>
+                    <p className="text-sm text-slate-500 mt-1">{bulkProgress}% completado</p>
+                  </div>
+                  <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
+                    <div className="bg-brand-700 dark:bg-teal-500 h-2.5 rounded-full transition-all duration-500" style={{ width: `${bulkProgress}%` }} />
+                  </div>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {bulkRows.filter(r => r.empleadoId).map((row, i) => {
+                      const emp = empleados.find(e => e.id === row.empleadoId)
+                      return (
+                        <div key={i} className="flex items-center gap-3 text-sm">
+                          {row.uploadStatus === 'pending' && <div className="w-4 h-4 rounded-full border-2 border-slate-300 shrink-0" />}
+                          {row.uploadStatus === 'uploading' && <Loader2 className="w-4 h-4 text-brand-600 animate-spin shrink-0" />}
+                          {row.uploadStatus === 'done' && <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />}
+                          {row.uploadStatus === 'error' && <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />}
+                          <span className={`flex-1 truncate ${row.uploadStatus === 'error' ? 'text-red-600' : 'text-slate-600 dark:text-slate-400'}`}>
+                            {emp ? `${emp.apellido}, ${emp.nombre}` : row.file.name}
+                          </span>
+                          {row.uploadStatus === 'error' && <span className="text-xs text-red-500">{row.errorMsg}</span>}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* PASO 4: Listo */}
+              {bulkStep === 'done' && (
+                <div className="p-8 text-center space-y-4">
+                  {bulkDone.fail === 0 ? (
+                    <CheckCheck className="w-14 h-14 text-emerald-500 mx-auto" />
+                  ) : (
+                    <AlertCircle className="w-14 h-14 text-amber-500 mx-auto" />
+                  )}
+                  <div>
+                    <p className="text-xl font-bold text-slate-800 dark:text-slate-100">
+                      {bulkDone.fail === 0 ? '¡Carga completada!' : 'Carga finalizada con errores'}
+                    </p>
+                    <p className="text-slate-500 text-sm mt-1">
+                      {bulkDone.ok} recibos subidos correctamente
+                      {bulkDone.fail > 0 && ` · ${bulkDone.fail} con error`}
+                    </p>
+                  </div>
+                  {bulkDone.fail > 0 && (
+                    <div className="space-y-1.5 text-left">
+                      {bulkRows.filter(r => r.uploadStatus === 'error').map((r, i) => {
+                        const emp = empleados.find(e => e.id === r.empleadoId)
+                        return (
+                          <div key={i} className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                            {emp ? `${emp.apellido}, ${emp.nombre}` : r.file.name}: {r.errorMsg}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Footer con acciones */}
+            <div className="p-5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0">
+              {bulkStep === 'select' && (
+                <button onClick={resetBulk} className="btn-secondary">Cancelar</button>
+              )}
+              {bulkStep === 'preview' && (
+                <>
+                  <button
+                    onClick={() => { setBulkStep('select'); setBulkRows([]); setBulkConfirmed(false) }}
+                    className="btn-secondary"
+                  >
+                    ← Volver
+                  </button>
+                  <button
+                    onClick={handleBulkUpload}
+                    disabled={!bulkConfirmed || conAsignar === 0}
+                    className="btn-primary disabled:opacity-50"
+                  >
+                    <CheckCheck className="w-4 h-4" />
+                    Confirmar y subir {conAsignar} recibo{conAsignar !== 1 ? 's' : ''}
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </>
+              )}
+              {bulkStep === 'done' && (
+                <button onClick={resetBulk} className="btn-primary mx-auto">
+                  <CheckCircle2 className="w-4 h-4" /> Cerrar
+                </button>
+              )}
             </div>
           </div>
         </div>
