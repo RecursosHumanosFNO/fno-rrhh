@@ -6,7 +6,7 @@ import { useData } from './DataContext'
 import { supabase } from '@/lib/supabase'
 
 interface AuthContextType extends AuthState {
-  login: (email: string, password: string, remember: boolean) => Promise<'ok' | 'pendiente' | 'error'>
+  login: (email: string, password: string, remember: boolean) => Promise<'ok' | 'pendiente' | 'error' | 'timeout'>
   logout: () => void
   updateEmpleado: (data: Partial<Empleado>) => void
   isLoading: boolean
@@ -84,7 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     email: string,
     password: string,
     _remember: boolean,
-  ): Promise<'ok' | 'pendiente' | 'error'> => {
+  ): Promise<'ok' | 'pendiente' | 'error' | 'timeout'> => {
     const normalEmail = email.toLowerCase().trim()
 
     // Verificar pendientes (lista local, sin contraseñas)
@@ -94,10 +94,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!supabase) return 'error'
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email: normalEmail, password })
-      if (error) return 'error'
-      // onAuthStateChange maneja el estado auth automáticamente
-      return 'ok'
+      // Timeout de 15s: evita spinner infinito si Supabase está pausado o con latencia
+      const timeout = new Promise<'timeout'>(resolve => setTimeout(() => resolve('timeout'), 15000))
+      const attempt = supabase.auth.signInWithPassword({ email: normalEmail, password })
+        .then(({ error }) => error ? 'error' as const : 'ok' as const)
+        .catch(() => 'error' as const)
+      return await Promise.race([attempt, timeout])
     } catch {
       return 'error'
     }

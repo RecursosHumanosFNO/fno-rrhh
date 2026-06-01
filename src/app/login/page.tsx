@@ -28,6 +28,7 @@ export default function LoginPage() {
     setLoading(false)
     if (result === 'ok') router.replace('/dashboard')
     else if (result === 'pendiente') setError('Tu solicitud de acceso está pendiente de aprobación por el administrador.')
+    else if (result === 'timeout') setError('El servidor está tardando en responder. Esperá un minuto y volvé a intentar.')
     else setError('Email o contraseña incorrectos.')
   }
 
