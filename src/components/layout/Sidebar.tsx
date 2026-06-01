@@ -33,11 +33,14 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   const isAdmin = user?.role === 'admin'
 
-  // Perfil incompleto del usuario logueado (mismos campos que el detalle de empleado)
+  // Perfil incompleto — solo campos esenciales (foto, cbu, banco y relación de emergencia son opcionales)
   const perfilIncompleto = !!empleado && [
-    empleado.fechaNacimiento, empleado.cuil, empleado.telefono, empleado.direccion,
-    empleado.cbu, empleado.banco, empleado.contactoEmergencia?.nombre,
-    empleado.contactoEmergencia?.telefono, empleado.contactoEmergencia?.relacion, empleado.foto,
+    empleado.fechaNacimiento,
+    empleado.cuil,
+    empleado.telefono,
+    empleado.direccion,
+    empleado.contactoEmergencia?.nombre,
+    empleado.contactoEmergencia?.telefono,
   ].some(v => !v)
 
   const adminLinks: NavLink[] = [
