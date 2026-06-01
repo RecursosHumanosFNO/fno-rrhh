@@ -6,7 +6,7 @@ export const runtime = 'nodejs'
 const ADMIN_EMAIL = 'rrhhfundacionnqnoeste@gmail.com'
 const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL ?? 'https://portalfundacion.vercel.app'
 
-const BRAND = '#1e3a5f'
+const BRAND = '#23597e'
 
 function base(content: string) {
   return `
@@ -18,7 +18,7 @@ function base(content: string) {
     <div style="padding:32px;">${content}</div>
     <div style="background:#f8fafc;padding:16px 32px;border-top:1px solid #e2e8f0;">
       <p style="color:#94a3b8;font-size:11px;margin:0;text-align:center;">
-        Portal RRHH — Fundación Neuquén Oeste · <a href="${PORTAL_URL}" style="color:#3b73b8;">fno-rrhh.vercel.app</a>
+        Portal RRHH — Fundación Neuquén Oeste · <a href="${PORTAL_URL}" style="color:#3078ac;">portalfundacion.vercel.app</a>
       </p>
     </div>
   </div>`

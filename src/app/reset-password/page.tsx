@@ -55,10 +55,10 @@ function ResetPasswordForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(145deg, #82cac2 0%, #76bfac 100%)' }}>
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(145deg, #49d8b7 0%, #3078ac 100%)' }}>
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-          <div className="bg-[#1e3a5f] p-6 text-center">
+          <div className="bg-[#23597e] p-6 text-center">
             <h1 className="text-xl font-bold text-white">Fundación Neuquén Oeste</h1>
             <p className="text-blue-200 text-sm mt-1">Portal de Recursos Humanos</p>
           </div>
@@ -78,7 +78,7 @@ function ResetPasswordForm() {
                 <p className="text-slate-500 text-sm mb-6">
                   Este enlace ya fue utilizado o expiró. Solicitá uno nuevo desde la pantalla de inicio de sesión.
                 </p>
-                <Link href="/login" className="inline-flex items-center gap-2 bg-[#1e3a5f] text-white px-5 py-2.5 rounded-lg font-medium hover:bg-[#162d4a] transition-colors text-sm">
+                <Link href="/login" className="inline-flex items-center gap-2 bg-[#23597e] text-white px-5 py-2.5 rounded-lg font-medium hover:bg-[#1a4763] transition-colors text-sm">
                   Volver al inicio
                 </Link>
               </div>
@@ -88,7 +88,7 @@ function ResetPasswordForm() {
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div className="text-center mb-2">
                   <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                    <Lock className="w-7 h-7 text-[#1e3a5f]" />
+                    <Lock className="w-7 h-7 text-[#23597e]" />
                   </div>
                   <h2 className="text-xl font-bold text-slate-800">Nueva contraseña</h2>
                   {email && <p className="text-slate-500 text-sm mt-1">Para la cuenta <strong>{email}</strong></p>}
@@ -105,7 +105,7 @@ function ResetPasswordForm() {
                   <div className="relative">
                     <input
                       type={showPass ? 'text' : 'password'}
-                      className="w-full px-4 py-2.5 pr-10 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/30 focus:border-[#1e3a5f]"
+                      className="w-full px-4 py-2.5 pr-10 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#23597e]/30 focus:border-[#23597e]"
                       placeholder="Mínimo 6 caracteres"
                       value={password}
                       onChange={e => setPassword(e.target.value)}
@@ -121,7 +121,7 @@ function ResetPasswordForm() {
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Confirmar contraseña</label>
                   <input
                     type="password"
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/30 focus:border-[#1e3a5f]"
+                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#23597e]/30 focus:border-[#23597e]"
                     placeholder="Repetí la contraseña"
                     value={confirm}
                     onChange={e => setConfirm(e.target.value)}
@@ -132,7 +132,7 @@ function ResetPasswordForm() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full bg-[#1e3a5f] text-white py-3 rounded-lg font-semibold hover:bg-[#162d4a] transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                  className="w-full bg-[#23597e] text-white py-3 rounded-lg font-semibold hover:bg-[#1a4763] transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
                 >
                   {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
                   {submitting ? 'Guardando...' : 'Guardar nueva contraseña'}

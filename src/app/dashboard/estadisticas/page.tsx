@@ -12,7 +12,7 @@ import {
 import { TrendingUp, Users, ClipboardList, CalendarCheck, Download, BarChart3 } from 'lucide-react'
 import * as XLSX from 'xlsx'
 
-const COLORS = ['#1e3a5f', '#3b73b8', '#5988c3', '#9eb9dc', '#c5d5ea', '#10b981', '#f59e0b', '#ef4444']
+const COLORS = ['#23597e', '#3078ac', '#5193bd', '#82afcf', '#49d8b7', '#28c4a0', '#f59e0b', '#ef4444']
 
 const MESES_CORTOS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 const MESES_COMPLETOS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -306,7 +306,7 @@ export default function EstadisticasPage() {
                     return orig?.sector ?? label
                   }}
                 />
-                <Bar dataKey="cantidad" fill="#1e3a5f" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="cantidad" fill="#23597e" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -374,8 +374,8 @@ export default function EstadisticasPage() {
             <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} allowDecimals={false} />
             <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 12 }} />
             <Legend wrapperStyle={{ fontSize: 12, paddingTop: 12 }} />
-            <Line type="monotone" dataKey="empleados" stroke="#1e3a5f" strokeWidth={2.5} dot={{ r: 4 }} name="Empleados" />
-            <Line type="monotone" dataKey="solicitudes" stroke="#3b73b8" strokeWidth={2.5} dot={{ r: 4 }} name="Solicitudes" strokeDasharray="5 3" />
+            <Line type="monotone" dataKey="empleados" stroke="#23597e" strokeWidth={2.5} dot={{ r: 4 }} name="Empleados" />
+            <Line type="monotone" dataKey="solicitudes" stroke="#3078ac" strokeWidth={2.5} dot={{ r: 4 }} name="Solicitudes" strokeDasharray="5 3" />
             <Line type="monotone" dataKey="ausencias" stroke="#f59e0b" strokeWidth={2.5} dot={{ r: 4 }} name="Ausencias aprobadas" strokeDasharray="3 3" />
           </LineChart>
         </ResponsiveContainer>

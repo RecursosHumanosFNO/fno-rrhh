@@ -12,20 +12,34 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // Azul marino institucional (claro #3078ac · oscuro #23597e)
         brand: {
-          50:  '#e8eef7',
-          100: '#c5d5ea',
-          200: '#9eb9dc',
-          300: '#779dce',
-          400: '#5988c3',
-          500: '#3b73b8',
-          600: '#2e5d9a',
-          700: '#1e3a5f',
-          800: '#172d4a',
-          900: '#0f1e33',
+          50:  '#eef4f9',
+          100: '#d3e3ef',
+          200: '#aecbe0',
+          300: '#82afcf',
+          400: '#5193bd',
+          500: '#3078ac',  // azul marino claro
+          600: '#2a6995',
+          700: '#23597e',  // azul marino oscuro — color principal
+          800: '#1c4763',
+          900: '#143447',
         },
-        sidebar: '#1e3a5f',
-        'sidebar-dark': '#0f1e33',
+        // Verde agua institucional (#49d8b7) — acento
+        accent: {
+          50:  '#e9faf5',
+          100: '#c7f2e6',
+          200: '#97e8d2',
+          300: '#66ddbe',
+          400: '#49d8b7',  // verde agua
+          500: '#28c4a0',
+          600: '#1fa183',
+          700: '#1c8069',
+          800: '#186653',
+          900: '#145244',
+        },
+        sidebar: '#23597e',
+        'sidebar-dark': '#143447',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
