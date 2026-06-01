@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Users, FileText, ClipboardList, Megaphone,
   BarChart3, User, HeadphonesIcon, ChevronLeft, ChevronRight,
-  LogOut, ExternalLink, Info, Building2, UserCheck, CalendarDays,
+  LogOut, ExternalLink, Info, UserCheck, CalendarDays, AlertTriangle,
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -23,6 +23,7 @@ interface NavLink {
   label: string
   icon: React.ComponentType<{ className?: string }>
   badge?: number
+  warn?: boolean
 }
 
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
@@ -31,6 +32,13 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const { pendingRegistrations, solicitudes } = useData()
 
   const isAdmin = user?.role === 'admin'
+
+  // Perfil incompleto del usuario logueado (mismos campos que el detalle de empleado)
+  const perfilIncompleto = !!empleado && [
+    empleado.fechaNacimiento, empleado.cuil, empleado.telefono, empleado.direccion,
+    empleado.cbu, empleado.banco, empleado.contactoEmergencia?.nombre,
+    empleado.contactoEmergencia?.telefono, empleado.contactoEmergencia?.relacion, empleado.foto,
+  ].some(v => !v)
 
   const adminLinks: NavLink[] = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -43,7 +51,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     { href: '/dashboard/estadisticas', label: 'Estadísticas', icon: BarChart3 },
     { href: '/dashboard/portal-rrhh', label: 'Portal RRHH', icon: HeadphonesIcon },
     { href: '/dashboard/fundacion', label: 'La Fundación', icon: Info },
-    { href: '/dashboard/perfil', label: 'Mi Perfil', icon: User },
+    { href: '/dashboard/perfil', label: 'Mi Perfil', icon: User, warn: perfilIncompleto },
   ]
 
   const employeeLinks: NavLink[] = [
@@ -54,7 +62,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     { href: '/dashboard/eventos', label: 'Eventos y Cumpleaños', icon: CalendarDays },
     { href: '/dashboard/portal-rrhh', label: 'Portal RRHH', icon: HeadphonesIcon },
     { href: '/dashboard/fundacion', label: 'La Fundación', icon: Info },
-    { href: '/dashboard/perfil', label: 'Mi Perfil', icon: User },
+    { href: '/dashboard/perfil', label: 'Mi Perfil', icon: User, warn: perfilIncompleto },
   ]
 
   const links = isAdmin ? adminLinks : employeeLinks
@@ -103,17 +111,23 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-0.5">
-        {links.map(({ href, label, icon: Icon, badge }) => {
+        {links.map(({ href, label, icon: Icon, badge, warn }) => {
           const isActive = href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(href)
           return (
             <Link
               key={href}
               href={href}
-              title={collapsed ? label : undefined}
+              title={collapsed ? (warn ? `${label} · perfil incompleto` : label) : undefined}
               className={cn('nav-link relative', collapsed ? 'justify-center px-2' : '', isActive ? 'nav-link-active' : 'nav-link-inactive')}
             >
               <Icon className="w-5 h-5 shrink-0" />
               {!collapsed && <span className="truncate flex-1">{label}</span>}
+              {warn && (
+                <AlertTriangle className={cn(
+                  'text-amber-400 fill-amber-400/20 shrink-0',
+                  collapsed ? 'absolute top-1 right-1 w-3.5 h-3.5' : 'w-4 h-4',
+                )} />
+              )}
               {badge && badge > 0 && (
                 <span className={cn(
                   'bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center',

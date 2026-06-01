@@ -69,7 +69,7 @@ export default function LoginPage() {
           <div className="grid grid-cols-3 gap-4 mb-6">
             {[
               { n: '+160', label: 'Empleados' },
-              { n: '10', label: 'Sectores' },
+              { n: '+1000', label: 'Alumnos' },
               { n: '24/7', label: 'Disponible' },
             ].map(item => (
               <div key={item.label} className="bg-white/10 backdrop-blur rounded-xl p-4 text-center border border-white/20">

@@ -169,8 +169,8 @@ export const solicitudes: Solicitud[] = []
 export const novedades: Novedad[] = [
   {
     id: 'n1',
-    titulo: 'Bienvenidos al Portal de RRHH',
-    contenido: 'El Portal de Recursos Humanos de la Fundación Neuquén Oeste ya está en línea. Desde aquí podrán gestionar empleados, recibos de sueldo, solicitudes y mucho más. Ante cualquier consulta, comunicarse con el área de RRHH.',
+    titulo: 'Bienvenidos al Portal de la Fundación Neuquén Oeste',
+    contenido: 'Este es el portal interno de la Fundación Neuquén Oeste. Desde acá vas a poder consultar el calendario institucional, gestionar tus solicitudes y permisos, acceder a tus recibos de sueldo, comunicarte con el área de RRHH y mantenerte al día con las novedades de la institución. Ante cualquier consulta, escribinos a RRHH.',
     categoria: 'novedad',
     fechaPublicacion: '2026-05-26',
     autor: 'RRHH',
