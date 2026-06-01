@@ -99,14 +99,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       // Timeout de 15s: evita spinner infinito si Supabase está pausado o con latencia
       const timeout = new Promise<'timeout'>(resolve => setTimeout(() => resolve('timeout'), 15000))
-      const attempt = supabase.auth.signInWithPassword({ email: normalEmail, password })
-        .then(({ error }) => error ? 'error' as const : 'ok' as const)
-        .catch(() => 'error' as const)
+      const attempt = (async (): Promise<'ok' | 'error'> => {
+        const { data, error } = await supabase!.auth.signInWithPassword({ email: normalEmail, password })
+        if (error || !data.user) return 'error'
+        // Cargar el perfil y dejar la sesión lista ANTES de devolver 'ok'.
+        // (onAuthStateChange está diferido, así que sin esto el dashboard
+        //  no vería isAuthenticated=true al primer intento)
+        const profile = await loadProfile(data.user.id)
+        if (!profile) return 'error'
+        const emp = empleados.find(e => e.id === profile.empleadoId) ?? null
+        setAuth({ user: profile, empleado: emp, isAuthenticated: true })
+        return 'ok'
+      })().catch(() => 'error' as const)
       return await Promise.race([attempt, timeout])
     } catch {
       return 'error'
     }
-  }, [pendingRegistrations])
+  }, [pendingRegistrations, empleados, loadProfile])
 
   const logout = useCallback(() => {
     if (supabase) supabase.auth.signOut().catch(() => {})
