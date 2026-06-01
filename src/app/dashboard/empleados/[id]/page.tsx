@@ -75,6 +75,7 @@ export default function EmpleadoDetailPage() {
   // Editable form state (for admin editing)
   const [form, setForm] = useState({
     nombre: emp.nombre, apellido: emp.apellido, dni: emp.dni, cuil: emp.cuil ?? '',
+    email: emp.email,
     fechaNacimiento: emp.fechaNacimiento, telefono: emp.telefono, direccion: emp.direccion,
     sector: emp.sector, cargo: emp.cargo, jornada: emp.jornada,
     supervisor: emp.supervisor, estado: emp.estado, fechaIngreso: emp.fechaIngreso,
@@ -83,10 +84,43 @@ export default function EmpleadoDetailPage() {
     contactoRelacion: emp.contactoEmergencia.relacion,
     cbu: emp.cbu ?? '', banco: emp.banco ?? '',
   })
+  const [savingEmail, setSavingEmail] = useState(false)
+  const [saveError, setSaveError] = useState('')
 
-  function handleSave() {
+  async function handleSave() {
+    setSaveError('')
+    const nuevoEmail = form.email.toLowerCase().trim()
+    const emailCambio = nuevoEmail !== emp!.email.toLowerCase().trim()
+
+    // Si cambió el email, actualizarlo en Supabase Auth + tablas via API
+    if (emailCambio) {
+      if (!empUser) {
+        setSaveError('Este empleado no tiene cuenta de acceso, no se puede cambiar el email de login.')
+        return
+      }
+      setSavingEmail(true)
+      try {
+        const res = await fetch('/api/admin/set-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ empleadoId: emp!.id, newEmail: nuevoEmail, requesterId: user?.empleadoId }),
+        })
+        const data = await res.json()
+        setSavingEmail(false)
+        if (!data.ok) {
+          setSaveError(data.error ?? 'No se pudo actualizar el email.')
+          return
+        }
+      } catch {
+        setSavingEmail(false)
+        setSaveError('Error de conexión al actualizar el email.')
+        return
+      }
+    }
+
     updateEmpleado(emp!.id, {
       nombre: form.nombre, apellido: form.apellido, dni: form.dni, cuil: form.cuil,
+      email: nuevoEmail,
       fechaNacimiento: form.fechaNacimiento, telefono: form.telefono, direccion: form.direccion,
       sector: form.sector, cargo: form.cargo,
       jornada: form.jornada as Empleado['jornada'], supervisor: form.supervisor,
@@ -238,11 +272,13 @@ export default function EmpleadoDetailPage() {
                 )}
                 {isAdmin && editMode && (
                   <>
-                    <button onClick={() => setEditMode(false)} className="btn-secondary bg-white/15 border-white/25 text-white hover:bg-white/25">
+                    <button onClick={() => { setEditMode(false); setSaveError('') }} disabled={savingEmail} className="btn-secondary bg-white/15 border-white/25 text-white hover:bg-white/25 disabled:opacity-50">
                       <X className="w-4 h-4" /> Cancelar
                     </button>
-                    <button onClick={handleSave} className="btn-primary">
-                      <Save className="w-4 h-4" /> Guardar
+                    <button onClick={handleSave} disabled={savingEmail} className="btn-primary disabled:opacity-50">
+                      {savingEmail
+                        ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Guardando...</>
+                        : <><Save className="w-4 h-4" /> Guardar</>}
                     </button>
                   </>
                 )}
@@ -268,6 +304,14 @@ export default function EmpleadoDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Error al guardar (ej: email duplicado) */}
+      {saveError && (
+        <div className="rounded-xl border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20 p-4 flex gap-3">
+          <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+          <p className="text-sm text-red-700 dark:text-red-400">{saveError}</p>
+        </div>
+      )}
 
       {/* Missing data warning */}
       {missingFields.length > 0 && (
@@ -337,9 +381,23 @@ export default function EmpleadoDetailPage() {
                   : <span className="text-sm text-slate-700 dark:text-slate-300">{emp.fechaNacimiento ? `${formatFecha(emp.fechaNacimiento)}${edad ? ` (${edad} años)` : ''}` : '—'}</span>
                 }
               </div>
-              <div className="flex flex-col sm:flex-row sm:items-center gap-1 py-2 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-xs font-medium text-slate-500 dark:text-slate-400 sm:w-40 shrink-0">Email</span>
-                <span className="text-sm text-slate-700 dark:text-slate-300">{emp.email}</span>
+              <div className="flex flex-col sm:flex-row sm:items-start gap-1 py-2 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400 sm:w-40 shrink-0 sm:pt-2">Email</span>
+                {isAdmin && editMode ? (
+                  <div className="flex-1">
+                    <input
+                      className="form-input text-sm w-full"
+                      type="email"
+                      value={form.email}
+                      onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                    />
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                      ⚠️ Cambiar el email también cambia el usuario de inicio de sesión del empleado.
+                    </p>
+                  </div>
+                ) : (
+                  <span className="text-sm text-slate-700 dark:text-slate-300">{emp.email}</span>
+                )}
               </div>
               {[
                 { label: 'Teléfono', key: 'telefono', value: form.telefono },
