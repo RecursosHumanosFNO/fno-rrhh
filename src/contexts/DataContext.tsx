@@ -45,6 +45,7 @@ interface DataContextType {
   // Usuarios / Registro
   addUser: (u: User) => void
   updateUserPassword: (userId: string, newPassword: string) => void
+  setUserRole: (empleadoId: string, role: UserRole) => void
   addPendingRegistration: (reg: Omit<PendingRegistration, 'id' | 'fechaSolicitud'>) => void
   approvePendingRegistration: (id: string) => void
   rejectPendingRegistration: (id: string) => void
@@ -646,6 +647,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     if (supabase) supabase.from('fno_users').update({ password: newPassword }).eq('id', userId).then()
   }, [])
 
+  const setUserRole = useCallback((empleadoId: string, role: UserRole) => {
+    setUsers(prev => prev.map(u => u.empleadoId === empleadoId ? { ...u, role } : u))
+  }, [])
+
   const getUserByEmail = useCallback((email: string) =>
     users.find(u => u.email === email.toLowerCase().trim()), [users])
 
@@ -747,7 +752,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       addEvento, updateEvento, deleteEvento,
       addRecibo,
       addTicket, respondTicket,
-      addUser, updateUserPassword, getUserByEmail, getPendingByEmail,
+      addUser, updateUserPassword, setUserRole, getUserByEmail, getPendingByEmail,
       addPendingRegistration, approvePendingRegistration, rejectPendingRegistration, refreshPending,
       markNotificationRead, markAllRead, addNotification,
     }}>

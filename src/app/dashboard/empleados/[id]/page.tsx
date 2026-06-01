@@ -25,12 +25,14 @@ export default function EmpleadoDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { user } = useAuth()
   const router = useRouter()
-  const { empleados, solicitudes, recibos, users, updateEmpleado, deleteEmpleado } = useData()
+  const { empleados, solicitudes, recibos, users, updateEmpleado, deleteEmpleado, setUserRole } = useData()
 
   const [tab, setTab] = useState(0)
   const [editMode, setEditMode] = useState(false)
   const [downloadingReciboId, setDownloadingReciboId] = useState<string | null>(null)
   const [resetStatus, setResetStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const [roleStatus, setRoleStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
+  const [confirmRole, setConfirmRole] = useState<'admin' | 'employee' | null>(null)
   const fotoRef = useRef<HTMLInputElement>(null)
 
   const isAdmin = user?.role === 'admin'
@@ -142,6 +144,31 @@ export default function EmpleadoDetailPage() {
       setResetStatus('error')
     }
     setTimeout(() => setResetStatus('idle'), 5000)
+  }
+
+  async function handleSetRole(newRole: 'admin' | 'employee') {
+    if (!user?.empleadoId) return
+    setConfirmRole(null)
+    setRoleStatus('loading')
+    try {
+      const res = await fetch('/api/admin/set-role', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ empleadoId: id, role: newRole, requesterId: user.empleadoId }),
+      })
+      const data = await res.json()
+      if (data.ok) {
+        setUserRole(id, newRole)
+        setRoleStatus('ok')
+        setTimeout(() => setRoleStatus('idle'), 3000)
+      } else {
+        setRoleStatus('error')
+        setTimeout(() => setRoleStatus('idle'), 4000)
+      }
+    } catch {
+      setRoleStatus('error')
+      setTimeout(() => setRoleStatus('idle'), 4000)
+    }
   }
 
   return (
@@ -357,6 +384,53 @@ export default function EmpleadoDetailPage() {
                 <p className="section-title mb-4 flex items-center gap-2"><Lock className="w-4 h-4" /> Gestión de Contraseña</p>
                 {empUser ? (
                   <div className="space-y-4">
+
+                    {/* ── Rol de acceso ─────────────────────────────────── */}
+                    <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-3 flex items-center gap-2">
+                        <Shield className="w-4 h-4" /> Rol de acceso
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                          empUser.role === 'admin'
+                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                            : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                        }`}>
+                          {empUser.role === 'admin' ? '⭐ Administrador' : '👤 Empleado'}
+                        </span>
+
+                        {/* No mostrar botón si es el perfil del propio admin */}
+                        {id !== user?.empleadoId ? (
+                          <button
+                            onClick={() => setConfirmRole(empUser.role === 'admin' ? 'employee' : 'admin')}
+                            disabled={roleStatus === 'loading'}
+                            className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 ${
+                              empUser.role === 'admin'
+                                ? 'bg-red-50 hover:bg-red-100 text-red-700 dark:bg-red-900/20 dark:hover:bg-red-900/30 dark:text-red-400'
+                                : 'bg-amber-50 hover:bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:hover:bg-amber-900/30 dark:text-amber-300'
+                            }`}
+                          >
+                            {roleStatus === 'loading' ? (
+                              <><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Guardando...</>
+                            ) : empUser.role === 'admin' ? 'Quitar admin' : 'Hacer admin'}
+                          </button>
+                        ) : (
+                          <span className="text-xs text-slate-400 italic">Tu cuenta</span>
+                        )}
+                      </div>
+
+                      {roleStatus === 'ok' && (
+                        <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-2 flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Rol actualizado correctamente.
+                        </p>
+                      )}
+                      {roleStatus === 'error' && (
+                        <p className="text-xs text-red-600 dark:text-red-400 mt-2 flex items-center gap-1">
+                          <AlertCircle className="w-3.5 h-3.5" /> No se pudo actualizar el rol.
+                        </p>
+                      )}
+                    </div>
+
                     {/* Secure reset via email */}
                     <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-100 dark:border-blue-800">
                       <p className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Enviar link de recuperación</p>
@@ -541,6 +615,49 @@ export default function EmpleadoDetailPage() {
           )}
         </div>
       )}
+
+      {/* ── Modal confirmación cambio de rol ────────────────────────────── */}
+      {confirmRole && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => setConfirmRole(null)}>
+          <div className="card w-full max-w-sm animate-scale-in" onClick={e => e.stopPropagation()}>
+            <div className="p-6 text-center">
+              <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                confirmRole === 'admin'
+                  ? 'bg-amber-100 dark:bg-amber-900/30'
+                  : 'bg-red-100 dark:bg-red-900/30'
+              }`}>
+                <Shield className={`w-7 h-7 ${confirmRole === 'admin' ? 'text-amber-500' : 'text-red-500'}`} />
+              </div>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">
+                {confirmRole === 'admin' ? '¿Hacer administrador?' : '¿Quitar rol de admin?'}
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+                {confirmRole === 'admin'
+                  ? `${emp.nombre} ${emp.apellido} tendrá acceso completo al portal: empleados, recibos, estadísticas y configuración.`
+                  : `${emp.nombre} ${emp.apellido} pasará a ser empleado regular y perderá el acceso administrativo.`
+                }
+              </p>
+              <div className="flex gap-3">
+                <button onClick={() => setConfirmRole(null)} className="btn-secondary flex-1 justify-center">
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => handleSetRole(confirmRole)}
+                  className={`flex-1 justify-center px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors ${
+                    confirmRole === 'admin'
+                      ? 'bg-amber-500 hover:bg-amber-600'
+                      : 'bg-red-500 hover:bg-red-600'
+                  }`}
+                >
+                  {confirmRole === 'admin' ? 'Sí, hacer admin' : 'Sí, quitar admin'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
