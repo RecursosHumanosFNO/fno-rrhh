@@ -119,6 +119,18 @@ export default function Header({ onMenuToggle }: HeaderProps) {
     solicitud: '📋', novedad: '📢', recibo: '💰', ticket: '🎫', registro: '👤', sistema: '🔔',
   }
 
+  // A dónde lleva cada notificación al hacer clic (según rol y tipo)
+  function notifHref(tipo: string): string {
+    switch (tipo) {
+      case 'solicitud': return '/dashboard/solicitudes'
+      case 'novedad':   return '/dashboard/comunicaciones'
+      case 'recibo':    return '/dashboard/recibos'
+      case 'ticket':    return '/dashboard/portal-rrhh'
+      case 'registro':  return isAdmin ? '/dashboard/registros-pendientes' : '/dashboard'
+      default:          return '/dashboard'
+    }
+  }
+
   function ResultIcon({ type }: { type: string }) {
     if (type === 'empleado') return <Users className="w-4 h-4" />
     if (type === 'evento')   return <CalendarDays className="w-4 h-4" />
@@ -240,9 +252,10 @@ export default function Header({ onMenuToggle }: HeaderProps) {
                     <p className="text-sm text-slate-400">Sin notificaciones</p>
                   </div>
                 ) : visibleNotifications.slice(0, 10).map(n => (
-                  <div
+                  <Link
                     key={n.id}
-                    onClick={() => markNotificationRead(n.id)}
+                    href={notifHref(n.tipo)}
+                    onClick={() => { markNotificationRead(n.id); setShowNotifs(false) }}
                     className={`p-3 hover:bg-[#e5f4fa] dark:hover:bg-teal-900/20 transition-colors cursor-pointer flex items-start gap-2.5 ${!n.leida ? 'bg-sky-50/80 dark:bg-teal-900/20' : ''}`}
                   >
                     <span className="text-base shrink-0 mt-0.5">{tipoIcon[n.tipo] ?? '🔔'}</span>
@@ -253,7 +266,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
                       <p className="text-[10px] text-slate-400 mt-0.5">{n.fecha}</p>
                     </div>
                     {!n.leida && <div className="w-2 h-2 bg-brand-600 dark:bg-teal-400 rounded-full shrink-0 mt-1.5" />}
-                  </div>
+                  </Link>
                 ))}
               </div>
             </div>
