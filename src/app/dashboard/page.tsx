@@ -46,7 +46,7 @@ function StatCard({ icon: Icon, label, value, sub, color }: {
 }
 
 function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string }) {
-  const { empleados, solicitudes, novedades, pendingRegistrations, approvePendingRegistration, rejectPendingRegistration } = useData()
+  const { empleados, solicitudes, novedades, eventos, pendingRegistrations, approvePendingRegistration, rejectPendingRegistration } = useData()
 
   const pendientes = solicitudes.filter(s => s.estado === 'pendiente')
   const activos = empleados.filter(e => e.estado === 'activo').length
@@ -54,7 +54,13 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
   const sectoresActivos = new Set(empleados.map(e => e.sector).filter(Boolean)).size
 
   const hoy = new Date()
-  const proximosCumples = empleados
+  const hoyStr = hoy.toISOString().slice(0, 10)
+  const en7 = new Date(hoy); en7.setDate(hoy.getDate() + 7)
+  const en30 = new Date(hoy); en30.setDate(hoy.getDate() + 30)
+  const en30Str = en30.toISOString().slice(0, 10)
+
+  // ── Cumpleaños: esta semana vs próximos 30 días ───────────────────────────
+  const todosCumples = empleados
     .filter(emp => emp.fechaNacimiento)
     .map(emp => ({ emp, cumple: getBirthdayThisYear(emp.fechaNacimiento) }))
     .filter(({ cumple }) => {
@@ -62,6 +68,15 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
       return diff >= 0 && diff <= 30
     })
     .sort((a, b) => a.cumple.getTime() - b.cumple.getTime())
+  const cumpleEstaSemana = todosCumples.filter(({ cumple }) => cumple <= en7)
+  const cumpleProximo = todosCumples.filter(({ cumple }) => cumple > en7)
+
+  // ── Próximos feriados (30 días) ───────────────────────────────────────────
+  const proximosFeriados = eventos
+    .filter(ev => ev.tipo === 'feriado' && ev.fecha >= hoyStr && ev.fecha <= en30Str)
+    .sort((a, b) => a.fecha.localeCompare(b.fecha))
+
+  function parseFecha(f: string) { return new Date(f + 'T00:00:00') }
 
   return (
     <div className="page-container">
@@ -200,52 +215,128 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
         </div>
 
         {/* Aside column */}
-        <div className="space-y-6">
-          {/* Próximos cumpleaños */}
+        <div className="space-y-5">
+
+          {/* ── Próximos feriados ──────────────────────────────────────── */}
           <div className="card p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <PartyPopper className="w-4 h-4 text-pink-500" />
-              <p className="section-title text-base">Próximos cumpleaños</p>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">🇦🇷</span>
+                <p className="section-title text-base">Próximos feriados</p>
+              </div>
+              <Link href="/dashboard/eventos" className="text-xs text-brand-600 dark:text-brand-400 hover:underline">
+                Ver todos
+              </Link>
             </div>
-            {proximosCumples.length === 0 ? (
-              <p className="text-slate-400 text-sm text-center py-2">Sin cumpleaños en los próximos 30 días</p>
+            {proximosFeriados.length === 0 ? (
+              <p className="text-slate-400 text-sm text-center py-2">Sin feriados en los próximos 30 días 🎉</p>
             ) : (
-              <div className="space-y-3">
-                {proximosCumples.slice(0, 5).map(({ emp, cumple }) => (
-                  <div key={emp.id} className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center text-pink-600 dark:text-pink-400 text-xs font-bold shrink-0 overflow-hidden">
-                      {emp.foto
-                        ? <img src={emp.foto} alt="" className="w-8 h-8 object-cover" />
-                        : `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}`
-                      }
+              <div className="space-y-2">
+                {proximosFeriados.slice(0, 4).map(ev => {
+                  const evDate = parseFecha(ev.fecha)
+                  const diffDays = Math.round((evDate.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24))
+                  const esHoy = diffDays === 0
+                  const esMañana = diffDays === 1
+                  return (
+                    <div key={ev.id} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 ${
+                      esHoy ? 'bg-blue-50 dark:bg-blue-900/20' : 'bg-slate-50 dark:bg-slate-800/50'
+                    }`}>
+                      <div className={`shrink-0 w-10 h-10 rounded-lg flex flex-col items-center justify-center text-center ${
+                        esHoy ? 'bg-brand-700 text-white' : 'bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600'
+                      }`}>
+                        <span className={`text-sm font-bold leading-none ${esHoy ? 'text-white' : 'text-slate-700 dark:text-slate-200'}`}>
+                          {evDate.getDate()}
+                        </span>
+                        <span className={`text-[9px] uppercase font-medium ${esHoy ? 'text-blue-200' : 'text-slate-400'}`}>
+                          {evDate.toLocaleDateString('es-AR', { month: 'short' })}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate leading-snug">{ev.titulo}</p>
+                        <p className={`text-xs font-medium ${esHoy ? 'text-brand-600 dark:text-brand-400' : esMañana ? 'text-amber-600' : 'text-slate-400'}`}>
+                          {esHoy ? '🔴 Hoy' : esMañana ? '🟡 Mañana' : `en ${diffDays} días`}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{emp.nombre} {emp.apellido}</p>
-                      <p className="text-xs text-slate-400">
-                        {cumple.getDate()}/{cumple.toLocaleDateString('es-AR', { month: 'short' })}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
 
-          {/* Accesos rápidos */}
+          {/* ── Cumpleaños ─────────────────────────────────────────────── */}
+          <div className="card p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <PartyPopper className="w-4 h-4 text-pink-500" />
+              <p className="section-title text-base">Cumpleaños</p>
+            </div>
+
+            {todosCumples.length === 0 ? (
+              <p className="text-slate-400 text-sm text-center py-2">Sin cumpleaños en los próximos 30 días</p>
+            ) : (
+              <div className="space-y-1">
+                {/* Esta semana — destacado */}
+                {cumpleEstaSemana.length > 0 && (
+                  <>
+                    <p className="text-xs font-semibold text-pink-500 uppercase tracking-wide mb-2">🎂 Esta semana</p>
+                    {cumpleEstaSemana.map(({ emp, cumple }) => {
+                      const diffDays = Math.round((cumple.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24))
+                      return (
+                        <div key={emp.id} className="flex items-center gap-2.5 bg-pink-50 dark:bg-pink-900/10 rounded-xl px-3 py-2 mb-1">
+                          <div className="w-8 h-8 rounded-full bg-pink-200 dark:bg-pink-900/40 flex items-center justify-center text-pink-700 dark:text-pink-300 text-xs font-bold shrink-0 overflow-hidden">
+                            {emp.foto ? <img src={emp.foto} alt="" className="w-8 h-8 object-cover" />
+                              : `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}`}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">{emp.nombre} {emp.apellido}</p>
+                            <p className="text-xs text-pink-500">
+                              {diffDays === 0 ? '🎉 ¡Hoy!' : `el ${cumple.getDate()}/${cumple.toLocaleDateString('es-AR', { month: 'short' })}`}
+                            </p>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </>
+                )}
+
+                {/* Próximamente */}
+                {cumpleProximo.length > 0 && (
+                  <>
+                    {cumpleEstaSemana.length > 0 && (
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mt-3 mb-2">Próximamente</p>
+                    )}
+                    {cumpleProximo.slice(0, 3).map(({ emp, cumple }) => (
+                      <div key={emp.id} className="flex items-center gap-2.5 py-1.5">
+                        <div className="w-7 h-7 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center text-pink-600 dark:text-pink-400 text-xs font-bold shrink-0 overflow-hidden">
+                          {emp.foto ? <img src={emp.foto} alt="" className="w-7 h-7 object-cover" />
+                            : `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}`}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{emp.nombre} {emp.apellido}</p>
+                          <p className="text-xs text-slate-400">
+                            {cumple.getDate()}/{cumple.toLocaleDateString('es-AR', { month: 'short' })}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* ── Accesos rápidos ────────────────────────────────────────── */}
           <div className="card p-5">
             <p className="section-title text-base mb-4">Accesos Rápidos</p>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { label: 'Subir recibo', href: '/dashboard/recibos', icon: FileText, color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20' },
-                { label: 'Ver empleados', href: '/dashboard/empleados', icon: Users, color: 'text-purple-600 bg-purple-50 dark:bg-purple-900/20' },
-                { label: 'Comunicar', href: '/dashboard/comunicaciones', icon: Bell, color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20' },
-                { label: 'Estadísticas', href: '/dashboard/estadisticas', icon: TrendingUp, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20' },
+                { label: 'Subir recibo',  href: '/dashboard/recibos',        icon: FileText,  color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20' },
+                { label: 'Empleados',     href: '/dashboard/empleados',       icon: Users,     color: 'text-purple-600 bg-purple-50 dark:bg-purple-900/20' },
+                { label: 'Comunicar',     href: '/dashboard/comunicaciones',  icon: Bell,      color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20' },
+                { label: 'Estadísticas',  href: '/dashboard/estadisticas',    icon: TrendingUp,color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20' },
               ].map(({ label, href, icon: Icon, color }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl hover:shadow-card transition-all border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
-                >
+                <Link key={href} href={href}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl hover:shadow-card transition-all border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${color}`}>
                     <Icon className="w-5 h-5" />
                   </div>
