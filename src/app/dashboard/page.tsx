@@ -407,25 +407,32 @@ function EmployeeDashboard({ saludo, fechaStr, empleadoId }: { saludo: string, f
     <div className="page-container">
 
       {/* ── Welcome banner ─────────────────────────────────────────────────── */}
-      <div className="bg-gradient-to-r from-brand-700 to-brand-500 rounded-2xl p-6 text-white">
-        <p className="text-blue-200 text-sm font-medium capitalize">{fechaStr}</p>
-        <h1 className="text-2xl font-bold mt-1">
-          {saludo}, <span className="text-white">{empleado?.nombre}</span> 👋
-        </h1>
-        <p className="text-blue-100/80 text-sm mt-1">{empleado?.cargo} · {empleado?.sector}</p>
-        {/* Mini stats inline */}
-        <div className="flex gap-4 mt-4 flex-wrap">
-          <div className="bg-white/15 backdrop-blur rounded-xl px-3 py-2 flex items-center gap-2">
-            <Clock className="w-4 h-4 text-white/70" />
-            <span className="text-sm font-medium text-white">
-              {misPendientes.length} solicitud{misPendientes.length !== 1 ? 'es' : ''} pendiente{misPendientes.length !== 1 ? 's' : ''}
-            </span>
-          </div>
-          <div className="bg-white/15 backdrop-blur rounded-xl px-3 py-2 flex items-center gap-2">
-            <FileText className="w-4 h-4 text-white/70" />
-            <span className="text-sm font-medium text-white">
-              {ultimoRecibo ? `Último recibo: ${formatMes(ultimoRecibo.mes, ultimoRecibo.anio)}` : 'Sin recibos aún'}
-            </span>
+      <div
+        className="relative rounded-2xl p-6 text-white overflow-hidden"
+        style={{ backgroundImage: 'url(/banner-fundacion.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }}
+      >
+        {/* Capa oscura para legibilidad del texto */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/40 to-black/20 rounded-2xl" />
+        {/* Contenido */}
+        <div className="relative z-10">
+          <p className="text-blue-200 text-sm font-medium capitalize">{fechaStr}</p>
+          <h1 className="text-2xl font-bold mt-1">
+            {saludo}, <span className="text-white">{empleado?.nombre}</span> 👋
+          </h1>
+          <p className="text-blue-100/80 text-sm mt-1">{empleado?.cargo} · {empleado?.sector}</p>
+          <div className="flex gap-4 mt-4 flex-wrap">
+            <div className="bg-white/15 backdrop-blur rounded-xl px-3 py-2 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-white/70" />
+              <span className="text-sm font-medium text-white">
+                {misPendientes.length} solicitud{misPendientes.length !== 1 ? 'es' : ''} pendiente{misPendientes.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+            <div className="bg-white/15 backdrop-blur rounded-xl px-3 py-2 flex items-center gap-2">
+              <FileText className="w-4 h-4 text-white/70" />
+              <span className="text-sm font-medium text-white">
+                {ultimoRecibo ? `Último recibo: ${formatMes(ultimoRecibo.mes, ultimoRecibo.anio)}` : 'Sin recibos aún'}
+              </span>
+            </div>
           </div>
         </div>
       </div>
