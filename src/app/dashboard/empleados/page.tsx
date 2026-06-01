@@ -102,9 +102,12 @@ export default function EmpleadosPage() {
 function EmpleadosContent() {
   const {
     empleados: allEmpleados, pendingRegistrations,
-    addEmpleado, addUser, deleteEmpleado,
+    addEmpleado, deleteEmpleado,
     approvePendingRegistration, rejectPendingRegistration,
   } = useData()
+
+  const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState('')
 
   const [query, setQuery] = useState('')
   const [sectorFilter, setSectorFilter] = useState('')
@@ -159,35 +162,66 @@ function EmpleadosContent() {
     setCargoFilter(''); setIngresoDesde(''); setIngresoHasta(''); setSortBy('apellido')
   }
 
-  function handleCreate() {
+  async function handleCreate() {
     if (!form.nombre || !form.apellido || !form.email || !form.sector || !form.cargo) return
-    const empId = addEmpleado({
-      nombre: form.nombre, apellido: form.apellido, dni: form.dni,
-      fechaNacimiento: form.fechaNacimiento, email: form.email.toLowerCase().trim(),
-      telefono: form.telefono, direccion: '', foto: '', fotoCover: '', cuil: '',
-      contactoEmergencia: { nombre: '', telefono: '', relacion: '' },
-      sector: form.sector, cargo: form.cargo,
-      fechaIngreso: form.fechaIngreso,
-      tipoContrato: form.tipoContrato,
-      jornada: form.jornada,
-      supervisor: form.supervisor,
-      estado: 'activo' as EmpleadoEstado,
-      diasVacaciones: 14, diasVacacionesUsados: 0,
-    })
-    addUser({
-      id: uid(),
-      email: form.email.toLowerCase().trim(),
-      password: form.password,
-      role: 'employee',
-      empleadoId: empId,
-    })
-    setShowNuevo(false)
-    setForm({
-      nombre: '', apellido: '', dni: '', email: '', telefono: '',
-      fechaNacimiento: '', sector: '', cargo: '', tipoContrato: 'Contrato',
-      jornada: 'Full Time', fechaIngreso: new Date().toISOString().slice(0, 10),
-      supervisor: '', password: 'cambiar123',
-    })
+    if (form.password.length < 6) { setCreateError('La contraseña inicial debe tener al menos 6 caracteres.'); return }
+
+    setCreateError('')
+    setCreating(true)
+    const emailNorm = form.email.toLowerCase().trim()
+
+    try {
+      const empId = addEmpleado({
+        nombre: form.nombre, apellido: form.apellido, dni: form.dni,
+        fechaNacimiento: form.fechaNacimiento, email: emailNorm,
+        telefono: form.telefono, direccion: '', foto: '', fotoCover: '', cuil: '',
+        contactoEmergencia: { nombre: '', telefono: '', relacion: '' },
+        sector: form.sector, cargo: form.cargo,
+        fechaIngreso: form.fechaIngreso,
+        tipoContrato: form.tipoContrato,
+        jornada: form.jornada,
+        supervisor: form.supervisor,
+        estado: 'activo' as EmpleadoEstado,
+        diasVacaciones: 14, diasVacacionesUsados: 0,
+      })
+
+      // Crear cuenta de login en Supabase Auth (contraseña encriptada) + fno_users
+      const res = await fetch('/api/admin/create-auth-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: emailNorm,
+          password: form.password,
+          userId: uid(),
+          empleadoId: empId,
+          role: 'employee',
+        }),
+      })
+      const data = await res.json()
+
+      if (!data.ok) {
+        // El empleado quedó creado pero la cuenta de login falló: avisar
+        setCreating(false)
+        setCreateError(
+          data.error?.includes('already')
+            ? 'Ya existe una cuenta de login con ese email. El empleado se creó, pero revisá el email.'
+            : `El empleado se creó, pero no se pudo crear su cuenta de login: ${data.error ?? 'error desconocido'}`,
+        )
+        return
+      }
+
+      setCreating(false)
+      setShowNuevo(false)
+      setForm({
+        nombre: '', apellido: '', dni: '', email: '', telefono: '',
+        fechaNacimiento: '', sector: '', cargo: '', tipoContrato: 'Contrato',
+        jornada: 'Full Time', fechaIngreso: new Date().toISOString().slice(0, 10),
+        supervisor: '', password: 'cambiar123',
+      })
+    } catch {
+      setCreating(false)
+      setCreateError('Error de conexión al crear la cuenta. Intentá de nuevo.')
+    }
   }
 
   return (
@@ -458,13 +492,18 @@ function EmpleadosContent() {
 
       {/* Modal Nuevo Empleado */}
       {showNuevo && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowNuevo(false)}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { if (!creating) { setShowNuevo(false); setCreateError('') } }}>
           <div className="card w-full max-w-lg max-h-[85vh] overflow-y-auto animate-scale-in" onClick={e => e.stopPropagation()}>
             <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <p className="section-title">Nuevo Empleado</p>
-              <button onClick={() => setShowNuevo(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+              <button onClick={() => { setShowNuevo(false); setCreateError('') }} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
             </div>
             <div className="p-5 space-y-4">
+              {createError && (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-lg px-4 py-2.5 text-sm">
+                  {createError}
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="form-label">Nombre *</label>
@@ -532,16 +571,18 @@ function EmpleadosContent() {
               <div>
                 <label className="form-label">Contraseña inicial</label>
                 <input className="form-input" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="cambiar123" />
-                <p className="text-xs text-slate-400 mt-1">El empleado puede cambiarla desde su perfil.</p>
+                <p className="text-xs text-slate-400 mt-1">El empleado podrá cambiarla con el link de recuperación o desde su perfil.</p>
               </div>
               <div className="flex gap-2 justify-end pt-2">
-                <button onClick={() => setShowNuevo(false)} className="btn-secondary">Cancelar</button>
+                <button onClick={() => { setShowNuevo(false); setCreateError('') }} disabled={creating} className="btn-secondary disabled:opacity-50">Cancelar</button>
                 <button
                   onClick={handleCreate}
-                  disabled={!form.nombre || !form.apellido || !form.email || !form.sector || !form.cargo}
+                  disabled={creating || !form.nombre || !form.apellido || !form.email || !form.sector || !form.cargo}
                   className="btn-primary disabled:opacity-50"
                 >
-                  Crear empleado
+                  {creating
+                    ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Creando...</>
+                    : 'Crear empleado'}
                 </button>
               </div>
             </div>
