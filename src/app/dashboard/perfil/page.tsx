@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { useData } from '@/contexts/DataContext'
+import { supabase } from '@/lib/supabase'
 import { formatFecha, calcularAntiguedad, calcularEdad } from '@/lib/utils'
 import type { Empleado } from '@/types'
 import { SECTORES, CARGOS_POR_SECTOR } from '@/lib/mockData'
@@ -14,11 +14,11 @@ import {
 
 export default function PerfilPage() {
   const { empleado, user, updateEmpleado } = useAuth()
-  const { users, updateUserPassword } = useData()
   const [editMode, setEditMode] = useState(false)
   const [editPass, setEditPass] = useState(false)
   const [showOld, setShowOld] = useState(false)
   const [showNew, setShowNew] = useState(false)
+  const [savingPass, setSavingPass] = useState(false)
   const [passMsg, setPassMsg] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null)
 
   const [form, setForm] = useState({
@@ -107,13 +107,7 @@ export default function PerfilPage() {
     reader.readAsDataURL(file)
   }
 
-  function handlePasswordChange() {
-    const userRecord = users.find(u => u.id === user!.id)
-    if (!userRecord) return
-    if (passForm.old !== userRecord.password) {
-      setPassMsg({ type: 'err', msg: 'La contraseña actual es incorrecta.' })
-      return
-    }
+  async function handlePasswordChange() {
     if (passForm.nueva.length < 6) {
       setPassMsg({ type: 'err', msg: 'La nueva contraseña debe tener al menos 6 caracteres.' })
       return
@@ -122,10 +116,39 @@ export default function PerfilPage() {
       setPassMsg({ type: 'err', msg: 'Las contraseñas nuevas no coinciden.' })
       return
     }
-    updateUserPassword(user!.id, passForm.nueva)
-    setPassMsg({ type: 'ok', msg: 'Contraseña actualizada correctamente.' })
-    setPassForm({ old: '', nueva: '', confirm: '' })
-    setTimeout(() => { setPassMsg(null); setEditPass(false) }, 2500)
+    if (!supabase || !empleado?.email) {
+      setPassMsg({ type: 'err', msg: 'Error de conexión. Intentá de nuevo.' })
+      return
+    }
+
+    setSavingPass(true)
+    try {
+      // 1. Verificar la contraseña actual reautenticando
+      const { error: signErr } = await supabase.auth.signInWithPassword({
+        email: empleado.email,
+        password: passForm.old,
+      })
+      if (signErr) {
+        setSavingPass(false)
+        setPassMsg({ type: 'err', msg: 'La contraseña actual es incorrecta.' })
+        return
+      }
+
+      // 2. Actualizar a la nueva contraseña (encriptada por Supabase Auth)
+      const { error: updErr } = await supabase.auth.updateUser({ password: passForm.nueva })
+      setSavingPass(false)
+      if (updErr) {
+        setPassMsg({ type: 'err', msg: 'No se pudo actualizar la contraseña. Intentá de nuevo.' })
+        return
+      }
+
+      setPassMsg({ type: 'ok', msg: 'Contraseña actualizada correctamente.' })
+      setPassForm({ old: '', nueva: '', confirm: '' })
+      setTimeout(() => { setPassMsg(null); setEditPass(false) }, 2500)
+    } catch {
+      setSavingPass(false)
+      setPassMsg({ type: 'err', msg: 'Error de conexión. Intentá de nuevo.' })
+    }
   }
 
   return (
@@ -265,6 +288,11 @@ export default function PerfilPage() {
             </Field>
             <Field label="Email" icon={<Mail className="w-3.5 h-3.5 text-slate-400" />}>
               <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.email}</span>
+              {editMode && (
+                <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
+                  <Lock className="w-3 h-3" /> El email no se puede cambiar. Contactá a RRHH si necesitás actualizarlo.
+                </p>
+              )}
             </Field>
             <Field label="Teléfono">
               {editMode
@@ -435,8 +463,10 @@ export default function PerfilPage() {
               >
                 Cancelar
               </button>
-              <button onClick={handlePasswordChange} className="btn-primary">
-                <CheckCircle2 className="w-4 h-4" /> Actualizar contraseña
+              <button onClick={handlePasswordChange} disabled={savingPass} className="btn-primary disabled:opacity-50">
+                {savingPass
+                  ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Guardando...</>
+                  : <><CheckCircle2 className="w-4 h-4" /> Actualizar contraseña</>}
               </button>
             </div>
           </div>
