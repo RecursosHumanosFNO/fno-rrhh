@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { formatFecha, calcularAntiguedad, calcularEdad } from '@/lib/utils'
@@ -13,7 +14,8 @@ import {
 } from 'lucide-react'
 
 export default function PerfilPage() {
-  const { empleado, user, updateEmpleado } = useAuth()
+  const { empleado, user, updateEmpleado, logout } = useAuth()
+  const router = useRouter()
   const [editMode, setEditMode] = useState(false)
   const [editPass, setEditPass] = useState(false)
   const [showNew, setShowNew] = useState(false)
@@ -143,9 +145,13 @@ export default function PerfilPage() {
         body: JSON.stringify({ type: 'password_changed', data: { nombre: empleado.nombre, email: empleado.email } }),
       }).catch(() => { /* el email es no crítico */ })
 
-      setPassMsg({ type: 'ok', msg: 'Contraseña actualizada. Te enviamos un aviso por email.' })
+      setPassMsg({ type: 'ok', msg: 'Contraseña actualizada. Por seguridad, vas a iniciar sesión de nuevo...' })
       setPassForm({ nueva: '', confirm: '' })
-      setTimeout(() => { setPassMsg(null); setEditPass(false) }, 3000)
+      // Por seguridad, cerrar sesión y volver al login para entrar con la nueva contraseña
+      setTimeout(() => {
+        logout()
+        router.replace('/login')
+      }, 2500)
     } catch {
       setSavingPass(false)
       setPassMsg({ type: 'err', msg: 'El servidor tardó en responder. Intentá de nuevo en un momento.' })
