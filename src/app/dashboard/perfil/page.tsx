@@ -20,6 +20,7 @@ export default function PerfilPage() {
   const [showNew, setShowNew] = useState(false)
   const [savingPass, setSavingPass] = useState(false)
   const [passMsg, setPassMsg] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null)
+  const [oldErr, setOldErr] = useState(false)
 
   const [form, setForm] = useState({
     nombre: empleado?.nombre ?? '',
@@ -108,12 +109,17 @@ export default function PerfilPage() {
   }
 
   async function handlePasswordChange() {
+    setOldErr(false)
+    if (!passForm.old) {
+      setPassMsg({ type: 'err', msg: 'Ingresá tu contraseña actual.' })
+      return
+    }
     if (passForm.nueva.length < 6) {
       setPassMsg({ type: 'err', msg: 'La nueva contraseña debe tener al menos 6 caracteres.' })
       return
     }
     if (passForm.nueva !== passForm.confirm) {
-      setPassMsg({ type: 'err', msg: 'Las contraseñas nuevas no coinciden.' })
+      setPassMsg({ type: 'err', msg: 'La confirmación no coincide con la nueva contraseña.' })
       return
     }
     if (!supabase || !empleado?.email) {
@@ -121,35 +127,53 @@ export default function PerfilPage() {
       return
     }
 
+    // Timeout para que nunca quede girando si el servidor no responde
+    const timeout = <T,>(p: PromiseLike<T>) =>
+      Promise.race([p, new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout')), 12000))])
+
     setSavingPass(true)
+    setPassMsg(null)
     try {
       // 1. Verificar la contraseña actual reautenticando
-      const { error: signErr } = await supabase.auth.signInWithPassword({
+      const { error: signErr } = await timeout(supabase.auth.signInWithPassword({
         email: empleado.email,
         password: passForm.old,
-      })
+      }))
       if (signErr) {
         setSavingPass(false)
+        setOldErr(true)
         setPassMsg({ type: 'err', msg: 'La contraseña actual es incorrecta.' })
         return
       }
 
       // 2. Actualizar a la nueva contraseña (encriptada por Supabase Auth)
-      const { error: updErr } = await supabase.auth.updateUser({ password: passForm.nueva })
+      const { error: updErr } = await timeout(supabase.auth.updateUser({ password: passForm.nueva }))
       setSavingPass(false)
       if (updErr) {
         setPassMsg({ type: 'err', msg: 'No se pudo actualizar la contraseña. Intentá de nuevo.' })
         return
       }
 
-      setPassMsg({ type: 'ok', msg: 'Contraseña actualizada correctamente.' })
+      // 3. Avisar por email (sin incluir la contraseña)
+      fetch('/api/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'password_changed', data: { nombre: empleado.nombre, email: empleado.email } }),
+      }).catch(() => { /* el email es no crítico */ })
+
+      setPassMsg({ type: 'ok', msg: 'Contraseña actualizada. Te enviamos un aviso por email.' })
       setPassForm({ old: '', nueva: '', confirm: '' })
-      setTimeout(() => { setPassMsg(null); setEditPass(false) }, 2500)
+      setTimeout(() => { setPassMsg(null); setEditPass(false) }, 3000)
     } catch {
       setSavingPass(false)
-      setPassMsg({ type: 'err', msg: 'Error de conexión. Intentá de nuevo.' })
+      setPassMsg({ type: 'err', msg: 'El servidor tardó en responder. Intentá de nuevo en un momento.' })
     }
   }
+
+  // Validaciones en vivo del formulario de contraseña
+  const nuevaCorta = passForm.nueva.length > 0 && passForm.nueva.length < 6
+  const confirmNoCoincide = passForm.confirm.length > 0 && passForm.nueva !== passForm.confirm
+  const passFormValido = passForm.old.length > 0 && passForm.nueva.length >= 6 && passForm.nueva === passForm.confirm
 
   return (
     <div className="page-container max-w-4xl">
@@ -421,22 +445,23 @@ export default function PerfilPage() {
               <div className="relative">
                 <input
                   type={showOld ? 'text' : 'password'}
-                  className="form-input pr-10"
+                  className={`form-input pr-10 ${oldErr ? 'border-red-400 focus:ring-red-400/30 focus:border-red-400' : ''}`}
                   placeholder="••••••••"
                   value={passForm.old}
-                  onChange={e => setPassForm(p => ({ ...p, old: e.target.value }))}
+                  onChange={e => { setPassForm(p => ({ ...p, old: e.target.value })); setOldErr(false) }}
                 />
                 <button type="button" onClick={() => setShowOld(!showOld)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
                   {showOld ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              {oldErr && <p className="text-xs text-red-500 mt-1">La contraseña actual es incorrecta.</p>}
             </div>
             <div>
               <label className="form-label">Nueva contraseña</label>
               <div className="relative">
                 <input
                   type={showNew ? 'text' : 'password'}
-                  className="form-input pr-10"
+                  className={`form-input pr-10 ${nuevaCorta ? 'border-red-400 focus:ring-red-400/30 focus:border-red-400' : ''}`}
                   placeholder="Mínimo 6 caracteres"
                   value={passForm.nueva}
                   onChange={e => setPassForm(p => ({ ...p, nueva: e.target.value }))}
@@ -445,16 +470,18 @@ export default function PerfilPage() {
                   {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              {nuevaCorta && <p className="text-xs text-red-500 mt-1">Debe tener al menos 6 caracteres.</p>}
             </div>
             <div>
               <label className="form-label">Confirmar nueva contraseña</label>
               <input
                 type="password"
-                className="form-input"
+                className={`form-input ${confirmNoCoincide ? 'border-red-400 focus:ring-red-400/30 focus:border-red-400' : ''}`}
                 placeholder="••••••••"
                 value={passForm.confirm}
                 onChange={e => setPassForm(p => ({ ...p, confirm: e.target.value }))}
               />
+              {confirmNoCoincide && <p className="text-xs text-red-500 mt-1">No coincide con la nueva contraseña.</p>}
             </div>
             <div className="flex gap-2">
               <button
@@ -463,7 +490,7 @@ export default function PerfilPage() {
               >
                 Cancelar
               </button>
-              <button onClick={handlePasswordChange} disabled={savingPass} className="btn-primary disabled:opacity-50">
+              <button onClick={handlePasswordChange} disabled={savingPass || !passFormValido} className="btn-primary disabled:opacity-50">
                 {savingPass
                   ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Guardando...</>
                   : <><CheckCircle2 className="w-4 h-4" /> Actualizar contraseña</>}

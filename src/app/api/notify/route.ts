@@ -241,6 +241,23 @@ export async function POST(req: NextRequest) {
       })
     }
 
+    /* ── Contraseña cambiada → empleado (aviso de seguridad) ───────────────── */
+    else if (type === 'password_changed') {
+      await transporter.sendMail({
+        from, to: data.email,
+        subject: `🔒 Tu contraseña del Portal RRHH fue cambiada`,
+        html: base(`
+          <h3 style="color:${BRAND};margin-top:0;">Tu contraseña fue actualizada</h3>
+          <p>Hola <strong>${data.nombre}</strong>,</p>
+          <p style="color:#64748b;">Te avisamos que la contraseña de tu cuenta en el Portal RRHH de la <strong>Fundación Neuquén Oeste</strong> fue cambiada correctamente.</p>
+          <div style="background:#fef3c7;border-radius:8px;padding:12px 16px;margin:20px 0;">
+            <p style="margin:0;color:#92400e;font-size:13px;">⚠️ Si <strong>no</strong> fuiste vos quien hizo este cambio, comunicate de inmediato con el área de RRHH: rrhhfundacionnqnoeste@gmail.com</p>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-top:24px;">Por tu seguridad, nunca compartimos tu contraseña por email.</p>
+        `),
+      })
+    }
+
     console.log('[notify] ✅ Email enviado correctamente, tipo:', type)
     return NextResponse.json({ ok: true })
   } catch (err) {
