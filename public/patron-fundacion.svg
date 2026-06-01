@@ -7,20 +7,16 @@
       <stop offset="1" stop-color="#3b73b8"/>
     </linearGradient>
 
-    <!-- Monograma "N" de la Fundación (dos paralelogramos inclinados en zigzag) -->
-    <g id="nFno">
-      <rect x="6"  y="4" width="14" height="46" rx="7" transform="rotate(26 13 27)" fill="#ffffff"/>
-      <rect x="26" y="12" width="14" height="46" rx="7" transform="rotate(26 33 35)" fill="#ffffff"/>
-    </g>
-
-    <!-- Patrón simétrico, separado y con baja opacidad (poco contraste) -->
-    <pattern id="tileFno" width="160" height="160" patternUnits="userSpaceOnUse">
-      <use href="#nFno" x="55" y="50" opacity="0.07"/>
+    <!-- Patrón: letra "N" inclinada 45°, repetida simétricamente y semitransparente -->
+    <pattern id="tileFno" width="150" height="150" patternUnits="userSpaceOnUse">
+      <g transform="translate(75,75) rotate(45)">
+        <text text-anchor="middle" dominant-baseline="central"
+          font-family="Arial, Helvetica, sans-serif" font-weight="800" font-size="68"
+          fill="#ffffff" opacity="0.08">N</text>
+      </g>
     </pattern>
   </defs>
 
-  <!-- Fondo con degradado -->
   <rect width="1600" height="500" fill="url(#bgFno)"/>
-  <!-- Patrón de "N" repetidas por encima -->
   <rect width="1600" height="500" fill="url(#tileFno)"/>
 </svg>
