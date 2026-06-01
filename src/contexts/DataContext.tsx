@@ -379,12 +379,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
     // Solo conectar realtime cuando hay sesión activa
     const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
-        setupChannel()
-        syncFromSupabase()
-      } else {
-        if (channel) { supabase!.removeChannel(channel); channel = null }
-      }
+      // Diferir con setTimeout(0): evita el deadlock del lock interno de Supabase
+      // (sin esto, updateUser/signIn quedan colgados al rearmar realtime + queries).
+      setTimeout(() => {
+        if (session) {
+          setupChannel()
+          syncFromSupabase()
+        } else {
+          if (channel) { supabase!.removeChannel(channel); channel = null }
+        }
+      }, 0)
     })
 
     return () => {

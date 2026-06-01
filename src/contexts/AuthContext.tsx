@@ -48,24 +48,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        const user = await loadProfile(session.user.id)
-        if (user) {
-          setAuth(prev => ({
-            user,
-            // Si ya teníamos el empleado cargado, lo mantenemos; sino lo sincroniza el efecto de abajo
-            empleado: prev.empleado?.id === user.empleadoId ? prev.empleado : null,
-            isAuthenticated: true,
-          }))
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      // Diferir con setTimeout(0): NO ejecutar trabajo async dentro del callback,
+      // porque Supabase mantiene un lock interno y se produce un deadlock
+      // (ej: updateUser/signIn quedan colgados). Al diferir, el lock se libera.
+      setTimeout(async () => {
+        if (session?.user) {
+          const user = await loadProfile(session.user.id)
+          if (user) {
+            setAuth(prev => ({
+              user,
+              empleado: prev.empleado?.id === user.empleadoId ? prev.empleado : null,
+              isAuthenticated: true,
+            }))
+          } else {
+            setAuth({ user: null, empleado: null, isAuthenticated: false })
+          }
         } else {
-          // Auth válido pero sin perfil en fno_users (no debería ocurrir en uso normal)
           setAuth({ user: null, empleado: null, isAuthenticated: false })
         }
-      } else {
-        setAuth({ user: null, empleado: null, isAuthenticated: false })
-      }
-      setIsLoading(false)
+        setIsLoading(false)
+      }, 0)
     })
 
     return () => subscription.unsubscribe()
