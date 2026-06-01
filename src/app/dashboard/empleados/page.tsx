@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useRouter } from 'next/navigation'
@@ -11,6 +11,7 @@ import {
 import {
   Search, Users, Plus, Download, LayoutGrid, List,
   Mail, Building2, Calendar, ChevronRight, X, CheckCircle2, XCircle,
+  SlidersHorizontal, ArrowUpDown,
 } from 'lucide-react'
 import Link from 'next/link'
 import type { EmpleadoEstado, Empleado } from '@/types'
@@ -108,9 +109,20 @@ function EmpleadosContent() {
   const [query, setQuery] = useState('')
   const [sectorFilter, setSectorFilter] = useState('')
   const [estadoFilter, setEstadoFilter] = useState('')
+  const [cargoFilter, setCargoFilter] = useState('')
+  const [ingresoDesde, setIngresoDesde] = useState('')
+  const [ingresoHasta, setIngresoHasta] = useState('')
+  const [sortBy, setSortBy] = useState<'apellido' | 'reciente' | 'antiguo'>('apellido')
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const [view, setView] = useState<'grid' | 'list'>('grid')
   const [showNuevo, setShowNuevo] = useState(false)
   const [showPending, setShowPending] = useState(false)
+
+  // Cargos únicos para el filtro (ordenados alfabéticamente)
+  const cargosUnicos = useMemo(
+    () => Array.from(new Set(allEmpleados.map(e => e.cargo).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'es')),
+    [allEmpleados],
+  )
 
   const [form, setForm] = useState({
     nombre: '', apellido: '', dni: '', email: '', telefono: '',
@@ -119,14 +131,33 @@ function EmpleadosContent() {
     supervisor: '', password: 'cambiar123',
   })
 
-  const filtered = allEmpleados.filter(e => {
-    const matchQuery = `${e.nombre} ${e.apellido} ${e.cargo} ${e.email} ${e.dni}`.toLowerCase().includes(query.toLowerCase())
-    const matchSector = !sectorFilter || e.sector === sectorFilter
-    const matchEstado = !estadoFilter || e.estado === estadoFilter
-    return matchQuery && matchSector && matchEstado
-  })
+  const filtered = useMemo(() => {
+    const list = allEmpleados.filter(e => {
+      const matchQuery = `${e.nombre} ${e.apellido} ${e.cargo} ${e.email} ${e.dni}`.toLowerCase().includes(query.toLowerCase())
+      const matchSector = !sectorFilter || e.sector === sectorFilter
+      const matchEstado = !estadoFilter || e.estado === estadoFilter
+      const matchCargo = !cargoFilter || e.cargo === cargoFilter
+      const matchDesde = !ingresoDesde || (e.fechaIngreso && e.fechaIngreso >= ingresoDesde)
+      const matchHasta = !ingresoHasta || (e.fechaIngreso && e.fechaIngreso <= ingresoHasta)
+      return matchQuery && matchSector && matchEstado && matchCargo && matchDesde && matchHasta
+    })
+    list.sort((a, b) => {
+      if (sortBy === 'apellido') return `${a.apellido} ${a.nombre}`.localeCompare(`${b.apellido} ${b.nombre}`, 'es')
+      // reciente: ingreso descendente | antiguo: ingreso ascendente
+      const fa = a.fechaIngreso || ''
+      const fb = b.fechaIngreso || ''
+      return sortBy === 'reciente' ? fb.localeCompare(fa) : fa.localeCompare(fb)
+    })
+    return list
+  }, [allEmpleados, query, sectorFilter, estadoFilter, cargoFilter, ingresoDesde, ingresoHasta, sortBy])
 
-  const hasFilters = !!query || !!sectorFilter || !!estadoFilter
+  const hasFilters = !!query || !!sectorFilter || !!estadoFilter || !!cargoFilter || !!ingresoDesde || !!ingresoHasta
+  const hasAdvanced = !!cargoFilter || !!ingresoDesde || !!ingresoHasta || sortBy !== 'apellido'
+
+  function limpiarFiltros() {
+    setQuery(''); setSectorFilter(''); setEstadoFilter('')
+    setCargoFilter(''); setIngresoDesde(''); setIngresoHasta(''); setSortBy('apellido')
+  }
 
   function handleCreate() {
     if (!form.nombre || !form.apellido || !form.email || !form.sector || !form.cargo) return
@@ -256,9 +287,21 @@ function EmpleadosContent() {
           <option value="licencia">En Licencia</option>
           <option value="vacaciones">De Vacaciones</option>
         </select>
+        <button
+          onClick={() => setShowAdvanced(v => !v)}
+          className={`flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg border transition-colors ${
+            showAdvanced || hasAdvanced
+              ? 'border-brand-300 dark:border-brand-700 text-brand-700 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/20'
+              : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+          }`}
+        >
+          <SlidersHorizontal className="w-3.5 h-3.5" />
+          Filtros avanzados
+          {hasAdvanced && <span className="w-2 h-2 rounded-full bg-brand-500" />}
+        </button>
         {hasFilters && (
           <button
-            onClick={() => { setQuery(''); setSectorFilter(''); setEstadoFilter('') }}
+            onClick={limpiarFiltros}
             className="text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 flex items-center gap-1"
           >
             <X className="w-3.5 h-3.5" /> Limpiar
@@ -278,6 +321,37 @@ function EmpleadosContent() {
             <List className="w-4 h-4" />
           </button>
         </div>
+
+        {/* Fila de filtros avanzados */}
+        {showAdvanced && (
+          <div className="w-full flex flex-wrap gap-3 items-end pt-3 mt-1 border-t border-slate-100 dark:border-slate-800 animate-fade-in">
+            <div>
+              <label className="text-xs font-medium text-slate-500 dark:text-slate-400 block mb-1">Cargo</label>
+              <select className="form-select w-auto text-sm" value={cargoFilter} onChange={e => setCargoFilter(e.target.value)}>
+                <option value="">Todos los cargos</option>
+                {cargosUnicos.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-slate-500 dark:text-slate-400 block mb-1">Ingreso desde</label>
+              <input type="date" className="form-input w-auto text-sm" value={ingresoDesde} onChange={e => setIngresoDesde(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-slate-500 dark:text-slate-400 block mb-1">Ingreso hasta</label>
+              <input type="date" className="form-input w-auto text-sm" value={ingresoHasta} onChange={e => setIngresoHasta(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-slate-500 dark:text-slate-400 block mb-1 flex items-center gap-1">
+                <ArrowUpDown className="w-3 h-3" /> Ordenar por
+              </label>
+              <select className="form-select w-auto text-sm" value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)}>
+                <option value="apellido">Apellido (A-Z)</option>
+                <option value="reciente">Ingreso más reciente</option>
+                <option value="antiguo">Mayor antigüedad</option>
+              </select>
+            </div>
+          </div>
+        )}
       </div>
 
       {filtered.length === 0 ? (
