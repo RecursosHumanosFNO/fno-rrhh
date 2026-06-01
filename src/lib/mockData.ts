@@ -3,6 +3,7 @@ import type { User, Empleado, Recibo, Solicitud, Novedad, Evento, Ticket } from 
 export const SECTORES = [
   'Dirección General',
   'Administración',
+  'Instituto ISEI',
   'Colegio Primario',
   'Secundario',
   'Secundario Adultos',
@@ -49,18 +50,31 @@ export const PUESTOS = [
 
 export const CARGOS_POR_SECTOR: Record<string, string[]> = {
   'Dirección General': [
+    'Presidente de la Fundación',
+    'Representante Legal y Rector',
+    'Secretario/a de la Fundación',
     'Director/a General',
-    'Jefe/a de Recursos Humanos',
     'Coordinador/a General',
     'Asistente de Dirección',
   ],
   'Administración': [
+    'Comunicación / Redes Sociales',
+    'Recursos Humanos',
+    'Gestión de Cobranzas',
+    'Contable',
     'Administrativo/a',
     'Contador/a',
     'Tesorero/a',
     'Secretario/a',
     'Recepcionista',
     'Auxiliar Administrativo/a',
+  ],
+  'Instituto ISEI': [
+    'Coordinador/a Académico/a',
+    'Administrativo/a',
+    'Gestión de Alumnos',
+    'Profesor/a',
+    'Docente',
   ],
   'Colegio Primario': [
     'Maestro/a de Grado',
