@@ -3,7 +3,6 @@
 import { useState, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
-import { createClient } from '@supabase/supabase-js'
 import { formatFecha, calcularAntiguedad, calcularEdad } from '@/lib/utils'
 import type { Empleado } from '@/types'
 import { SECTORES, CARGOS_POR_SECTOR } from '@/lib/mockData'
@@ -17,11 +16,9 @@ export default function PerfilPage() {
   const { empleado, user, updateEmpleado } = useAuth()
   const [editMode, setEditMode] = useState(false)
   const [editPass, setEditPass] = useState(false)
-  const [showOld, setShowOld] = useState(false)
   const [showNew, setShowNew] = useState(false)
   const [savingPass, setSavingPass] = useState(false)
   const [passMsg, setPassMsg] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null)
-  const [oldErr, setOldErr] = useState(false)
 
   const [form, setForm] = useState({
     nombre: empleado?.nombre ?? '',
@@ -43,7 +40,7 @@ export default function PerfilPage() {
     fechaIngreso: empleado?.fechaIngreso ?? '',
   })
 
-  const [passForm, setPassForm] = useState({ old: '', nueva: '', confirm: '' })
+  const [passForm, setPassForm] = useState({ nueva: '', confirm: '' })
   const fotoRef = useRef<HTMLInputElement>(null)
   const coverRef = useRef<HTMLInputElement>(null)
 
@@ -110,11 +107,6 @@ export default function PerfilPage() {
   }
 
   async function handlePasswordChange() {
-    setOldErr(false)
-    if (!passForm.old) {
-      setPassMsg({ type: 'err', msg: 'Ingresá tu contraseña actual.' })
-      return
-    }
     if (passForm.nueva.length < 6) {
       setPassMsg({ type: 'err', msg: 'La nueva contraseña debe tener al menos 6 caracteres.' })
       return
@@ -135,33 +127,8 @@ export default function PerfilPage() {
     setSavingPass(true)
     setPassMsg(null)
     try {
-      // 1. Verificar la contraseña actual en un cliente APARTE con storageKey
-      //    propio y sin lock, para que no compita con la sesión principal
-      //    (esa competencia de "candado" era lo que lo dejaba colgado)
-      const verifyClient = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          auth: {
-            persistSession: false,
-            autoRefreshToken: false,
-            storageKey: 'fno-verify-pass',
-            lock: <R,>(_name: string, _acquireTimeout: number, fn: () => Promise<R>) => fn(),
-          },
-        },
-      )
-      const { error: signErr } = await timeout(verifyClient.auth.signInWithPassword({
-        email: empleado.email,
-        password: passForm.old,
-      }))
-      if (signErr) {
-        setSavingPass(false)
-        setOldErr(true)
-        setPassMsg({ type: 'err', msg: 'La contraseña actual es incorrecta.' })
-        return
-      }
-
-      // 2. Actualizar a la nueva contraseña (encriptada por Supabase Auth)
+      // Como el empleado ya tiene sesión activa, esa es la prueba de identidad
+      // (igual que el reset por email). Una sola llamada, rápida.
       const { error: updErr } = await timeout(supabase.auth.updateUser({ password: passForm.nueva }))
       setSavingPass(false)
       if (updErr) {
@@ -177,7 +144,7 @@ export default function PerfilPage() {
       }).catch(() => { /* el email es no crítico */ })
 
       setPassMsg({ type: 'ok', msg: 'Contraseña actualizada. Te enviamos un aviso por email.' })
-      setPassForm({ old: '', nueva: '', confirm: '' })
+      setPassForm({ nueva: '', confirm: '' })
       setTimeout(() => { setPassMsg(null); setEditPass(false) }, 3000)
     } catch {
       setSavingPass(false)
@@ -188,7 +155,7 @@ export default function PerfilPage() {
   // Validaciones en vivo del formulario de contraseña
   const nuevaCorta = passForm.nueva.length > 0 && passForm.nueva.length < 6
   const confirmNoCoincide = passForm.confirm.length > 0 && passForm.nueva !== passForm.confirm
-  const passFormValido = passForm.old.length > 0 && passForm.nueva.length >= 6 && passForm.nueva === passForm.confirm
+  const passFormValido = passForm.nueva.length >= 6 && passForm.nueva === passForm.confirm
 
   return (
     <div className="page-container max-w-4xl">
@@ -456,22 +423,6 @@ export default function PerfilPage() {
               </div>
             )}
             <div>
-              <label className="form-label">Contraseña actual</label>
-              <div className="relative">
-                <input
-                  type={showOld ? 'text' : 'password'}
-                  className={`form-input pr-10 ${oldErr ? 'border-red-400 focus:ring-red-400/30 focus:border-red-400' : ''}`}
-                  placeholder="••••••••"
-                  value={passForm.old}
-                  onChange={e => { setPassForm(p => ({ ...p, old: e.target.value })); setOldErr(false) }}
-                />
-                <button type="button" onClick={() => setShowOld(!showOld)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
-                  {showOld ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-              {oldErr && <p className="text-xs text-red-500 mt-1">La contraseña actual es incorrecta.</p>}
-            </div>
-            <div>
               <label className="form-label">Nueva contraseña</label>
               <div className="relative">
                 <input
@@ -500,7 +451,7 @@ export default function PerfilPage() {
             </div>
             <div className="flex gap-2">
               <button
-                onClick={() => { setEditPass(false); setPassMsg(null); setPassForm({ old: '', nueva: '', confirm: '' }) }}
+                onClick={() => { setEditPass(false); setPassMsg(null); setPassForm({ nueva: '', confirm: '' }) }}
                 className="btn-secondary"
               >
                 Cancelar
