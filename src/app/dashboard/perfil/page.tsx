@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 import { formatFecha, calcularAntiguedad, calcularEdad } from '@/lib/utils'
 import type { Empleado } from '@/types'
 import { SECTORES, CARGOS_POR_SECTOR } from '@/lib/mockData'
@@ -129,13 +130,19 @@ export default function PerfilPage() {
 
     // Timeout para que nunca quede girando si el servidor no responde
     const timeout = <T,>(p: PromiseLike<T>) =>
-      Promise.race([p, new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout')), 12000))])
+      Promise.race([p, new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout')), 10000))])
 
     setSavingPass(true)
     setPassMsg(null)
     try {
-      // 1. Verificar la contraseña actual reautenticando
-      const { error: signErr } = await timeout(supabase.auth.signInWithPassword({
+      // 1. Verificar la contraseña actual en un cliente APARTE (no toca tu sesión
+      //    ni dispara recargas de datos → es rápido y no se cuelga)
+      const verifyClient = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        { auth: { persistSession: false, autoRefreshToken: false } },
+      )
+      const { error: signErr } = await timeout(verifyClient.auth.signInWithPassword({
         email: empleado.email,
         password: passForm.old,
       }))
