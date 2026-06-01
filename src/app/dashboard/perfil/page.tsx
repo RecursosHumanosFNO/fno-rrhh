@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { formatFecha, calcularAntiguedad, calcularEdad } from '@/lib/utils'
@@ -14,8 +13,7 @@ import {
 } from 'lucide-react'
 
 export default function PerfilPage() {
-  const { empleado, user, updateEmpleado, logout } = useAuth()
-  const router = useRouter()
+  const { empleado, user, updateEmpleado } = useAuth()
   const [editMode, setEditMode] = useState(false)
   const [editPass, setEditPass] = useState(false)
   const [showNew, setShowNew] = useState(false)
@@ -147,10 +145,12 @@ export default function PerfilPage() {
 
       setPassMsg({ type: 'ok', msg: 'Contraseña actualizada. Por seguridad, vas a iniciar sesión de nuevo...' })
       setPassForm({ nueva: '', confirm: '' })
-      // Por seguridad, cerrar sesión y volver al login para entrar con la nueva contraseña
-      setTimeout(() => {
-        logout()
-        router.replace('/login')
+      // Por seguridad: cerrar sesión local y forzar recarga completa al login.
+      // (scope 'local' es instantáneo y no se cuelga; el reload garantiza
+      //  que no haya carrera con el evento USER_UPDATED que re-autentica)
+      setTimeout(async () => {
+        await supabase!.auth.signOut({ scope: 'local' }).catch(() => {})
+        window.location.href = '/login'
       }, 2500)
     } catch {
       setSavingPass(false)
