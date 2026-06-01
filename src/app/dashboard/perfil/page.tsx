@@ -135,12 +135,20 @@ export default function PerfilPage() {
     setSavingPass(true)
     setPassMsg(null)
     try {
-      // 1. Verificar la contraseña actual en un cliente APARTE (no toca tu sesión
-      //    ni dispara recargas de datos → es rápido y no se cuelga)
+      // 1. Verificar la contraseña actual en un cliente APARTE con storageKey
+      //    propio y sin lock, para que no compita con la sesión principal
+      //    (esa competencia de "candado" era lo que lo dejaba colgado)
       const verifyClient = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        { auth: { persistSession: false, autoRefreshToken: false } },
+        {
+          auth: {
+            persistSession: false,
+            autoRefreshToken: false,
+            storageKey: 'fno-verify-pass',
+            lock: <R,>(_name: string, _acquireTimeout: number, fn: () => Promise<R>) => fn(),
+          },
+        },
       )
       const { error: signErr } = await timeout(verifyClient.auth.signInWithPassword({
         email: empleado.email,
