@@ -25,6 +25,7 @@ const dir = path.join('backup', fecha)
 fs.mkdirSync(dir, { recursive: true })
 
 // Tablas a respaldar (campos a excluir por privacidad)
+// Nota: fno_eventos NO existe (los eventos viven en el código, no en la DB).
 const TABLAS = [
   { tabla: 'fno_empleados',   excluir: [] },
   { tabla: 'fno_users',       excluir: ['password'] },
@@ -33,7 +34,7 @@ const TABLAS = [
   { tabla: 'fno_novedades',   excluir: [] },
   { tabla: 'fno_tickets',     excluir: [] },
   { tabla: 'fno_pending',     excluir: ['password'] },
-  { tabla: 'fno_eventos',     excluir: [] },
+  { tabla: 'fno_notifs',      excluir: [] },
 ]
 
 // Llama directamente a la REST API de Supabase (PostgREST)
@@ -70,7 +71,10 @@ async function exportarTabla({ tabla, excluir }) {
 }
 
 async function main() {
-  console.log(`\n🗄️  Backup Fundación Neuquén Oeste — ${fecha}\n`)
+  console.log(`\n🗄️  Backup Fundación Neuquén Oeste — ${fecha}`)
+  // Mostrar a qué proyecto apunta (la URL no es secreta, es pública/NEXT_PUBLIC).
+  // Sirve para verificar que los secrets de GitHub apunten al proyecto correcto.
+  console.log(`🔗  Proyecto: ${SUPABASE_URL}\n`)
 
   const resumen = { fecha, tablas: {}, totalRegistros: 0, generadoEn: new Date().toISOString() }
   let errores = 0
