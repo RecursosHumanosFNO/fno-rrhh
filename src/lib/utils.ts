@@ -220,12 +220,11 @@ export const NOVEDAD_CATEGORIA_COLOR: Record<NovedadCategoria, string> = {
   ...EVENTO_TIPO_COLOR,
 }
 
-// Lista ordenada para selects/filtros de novedades
+// Lista ordenada para selects/filtros de novedades (curada)
 export const NOVEDAD_CATEGORIAS: NovedadCategoria[] = [
   'comunicado', 'novedad', 'alerta', 'evento', 'cumpleanos',
   'feriado', 'jornada', 'acto', 'capacitacion', 'reunion',
-  'receso', 'proyecto', 'institucional', 'reunion_padres',
-  'examen', 'inscripciones', 'salida', 'religioso', 'otro',
+  'receso', 'institucional', 'otro',
 ]
 
 export function getInitials(nombre: string, apellido: string): string {
