@@ -665,7 +665,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const addPendingRegistration = useCallback((reg: Omit<PendingRegistration, 'id' | 'fechaSolicitud'>) => {
     const newReg: PendingRegistration = { ...reg, id: uid(), fechaSolicitud: new Date().toISOString().slice(0, 10) }
     setPending(prev => [...prev, newReg])
-    addNotification({ texto: `Nueva solicitud de acceso: ${reg.nombre} ${reg.apellido}`, tipo: 'registro' })
+    addNotification({ texto: `Nueva solicitud de acceso: ${reg.nombre} ${reg.apellido}`, tipo: 'registro', soloAdmin: true })
     if (supabase) {
       supabase.from('fno_pending').insert({
         id: newReg.id, nombre: reg.nombre, apellido: reg.apellido, dni: reg.dni,
@@ -695,17 +695,22 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setEmpleados(prev => [...prev, nuevoEmpleado])
     setUsers(prev => [...prev, nuevoUser])
     setPending(prev => prev.filter(p => p.id !== id))
-    addNotification({ texto: `Acceso aprobado para ${reg.nombre} ${reg.apellido}`, tipo: 'registro' })
+    addNotification({ texto: `Acceso aprobado para ${reg.nombre} ${reg.apellido}`, tipo: 'registro', soloAdmin: true })
     if (supabase) {
       supabase.from('fno_empleados').insert(mapEmpleadoToSupabase(nuevoEmpleado)).then(({ error }) => {
         if (error) console.error('[supabase] insert fno_empleados (approve):', error)
       })
       supabase.from('fno_pending').delete().eq('id', id).then()
       // Crear usuario en Supabase Auth + fno_users via ruta server-side (contraseña encriptada)
+      // Obtener el empleadoId del admin logueado para verificación server-side
+      const session = typeof window !== 'undefined'
+        ? (() => { try { return JSON.parse(localStorage.getItem('fno_session') ?? '{}') } catch { return {} } })()
+        : {}
+      const requesterId = session?.user?.empleadoId ?? ''
       fetch('/api/admin/create-auth-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: reg.email, password: reg.password, userId, empleadoId, role: 'employee' }),
+        body: JSON.stringify({ email: reg.email, password: reg.password, userId, empleadoId, role: 'employee', requesterId }),
       }).catch(err => console.error('[auth] create-auth-user:', err))
     }
     sendEmail('registration_approved', { nombre: reg.nombre, email: reg.email })
@@ -729,7 +734,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const reg = pendingRegistrations.find(p => p.id === id)
     setPending(prev => prev.filter(p => p.id !== id))
     if (reg) {
-      addNotification({ texto: `Solicitud de acceso rechazada: ${reg.nombre} ${reg.apellido}`, tipo: 'registro' })
+      addNotification({ texto: `Solicitud de acceso rechazada: ${reg.nombre} ${reg.apellido}`, tipo: 'registro', soloAdmin: true })
       if (supabase) supabase.from('fno_pending').delete().eq('id', id).then()
       sendEmail('registration_rejected', { nombre: reg.nombre, email: reg.email })
     }

@@ -12,17 +12,28 @@ function getSupabase() {
 
 // POST /api/admin/create-auth-user
 // Crea un usuario en Supabase Auth y su registro en fno_users
-// Solo se llama desde el servidor al aprobar un registro pendiente
+// Solo lo puede llamar un admin verificado (requesterId debe ser admin en DB)
 export async function POST(req: NextRequest) {
   try {
-    const { email, password, userId, empleadoId, role } = await req.json()
+    const { email, password, userId, empleadoId, role, requesterId } = await req.json()
 
-    if (!email || !password || !userId || !empleadoId || !role) {
+    if (!email || !password || !userId || !empleadoId || !role || !requesterId) {
       return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 })
     }
 
     const sb = getSupabase()
     if (!sb) return NextResponse.json({ error: 'Servidor no configurado' }, { status: 503 })
+
+    // Verificar que quien hace el request es admin en la DB
+    const { data: requester } = await sb
+      .from('fno_users')
+      .select('role')
+      .eq('empleado_id', requesterId)
+      .maybeSingle()
+
+    if (requester?.role !== 'admin') {
+      return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
+    }
 
     // 1. Crear usuario en Supabase Auth (contraseña encriptada automáticamente)
     const { data: authData, error: authErr } = await sb.auth.admin.createUser({

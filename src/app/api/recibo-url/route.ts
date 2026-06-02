@@ -27,28 +27,35 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Supabase no configurado' }, { status: 503 })
     }
 
-    // 1. Verificar si el solicitante es admin
+    // 1. Verificar que el solicitante existe en la base de datos
     const { data: userRecord } = await sb
       .from('fno_users')
-      .select('role')
+      .select('role, empleado_id')
       .eq('empleado_id', empleadoId)
       .maybeSingle()
 
-    const isAdmin = userRecord?.role === 'admin'
+    // Si el empleadoId no existe en la DB, denegar siempre
+    if (!userRecord) {
+      return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
+    }
+
+    const isAdmin = userRecord.role === 'admin'
 
     if (!isAdmin) {
-      // 2. Verificar que el recibo pertenece a este empleado
+      // 2a. Verificar por PATH: el path siempre empieza con {empleadoId}/
+      //     Esto evita que alguien use un UUID ajeno para saltear el control.
+      if (!path.startsWith(`${empleadoId}/`)) {
+        return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
+      }
+
+      // 2b. Verificar además en la tabla que el recibo pertenece a este empleado
       const { data: recibo } = await sb
         .from('fno_recibos')
         .select('empleado_id')
         .eq('archivo_url', path)
         .maybeSingle()
 
-      if (!recibo) {
-        return NextResponse.json({ error: 'Recibo no encontrado' }, { status: 404 })
-      }
-
-      if (recibo.empleado_id !== empleadoId) {
+      if (!recibo || recibo.empleado_id !== empleadoId) {
         return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
       }
     }
