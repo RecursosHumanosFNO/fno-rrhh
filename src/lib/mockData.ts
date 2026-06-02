@@ -180,17 +180,8 @@ export const recibos: Recibo[] = []
 
 export const solicitudes: Solicitud[] = []
 
-export const novedades: Novedad[] = [
-  {
-    id: 'n1',
-    titulo: 'Bienvenidos al Portal de la Fundación Neuquén Oeste',
-    contenido: 'Este es el portal interno de la Fundación Neuquén Oeste. Desde acá vas a poder consultar el calendario institucional, gestionar tus solicitudes y permisos, acceder a tus recibos de sueldo, comunicarte con el área de RRHH y mantenerte al día con las novedades de la institución. Ante cualquier consulta, escribinos a RRHH.',
-    categoria: 'novedad',
-    fechaPublicacion: '2026-05-26',
-    autor: 'RRHH',
-    importante: true,
-  },
-]
+// Las novedades viven en Supabase (las crea el admin). Sin seed local.
+export const novedades: Novedad[] = []
 
 export const tickets: Ticket[] = []
 

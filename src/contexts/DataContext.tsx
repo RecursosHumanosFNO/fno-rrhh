@@ -316,7 +316,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       if (recRes.data)
         setRecibos(recRes.data.map((r: Record<string, unknown>) => mapSupabaseToRecibo(r)))
 
-      if (novRes.data && novRes.data.length > 0)
+      // Novedades: Supabase es la fuente de verdad (refleja también borrados → limpia seeds viejos)
+      if (novRes.data)
         setNovedades(novRes.data.map((r: Record<string, unknown>) => mapSupabaseToNovedad(r)))
 
       if (tickRes.data)
