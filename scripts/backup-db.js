@@ -10,7 +10,13 @@ const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABAS
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
-  console.error('❌ Faltan variables: SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY')
+  console.error('❌ Faltan variables de entorno.')
+  console.error('   SUPABASE_URL:', SUPABASE_URL ? '✅ presente' : '❌ FALTA')
+  console.error('   SUPABASE_SERVICE_ROLE_KEY:', SUPABASE_KEY ? '✅ presente' : '❌ FALTA')
+  console.error('')
+  console.error('   → Agregá los secrets en GitHub:')
+  console.error('     Settings → Secrets and variables → Actions → New repository secret')
+  console.error('     NEXT_PUBLIC_SUPABASE_URL  y  SUPABASE_SERVICE_ROLE_KEY')
   process.exit(1)
 }
 
