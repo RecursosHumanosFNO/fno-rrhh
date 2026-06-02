@@ -14,6 +14,7 @@ import {
   ExternalLink,
 } from 'lucide-react'
 import Link from 'next/link'
+import WeatherBadge from '@/components/WeatherBadge'
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -89,8 +90,9 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <p className="text-blue-200 text-sm font-medium capitalize">{fechaStr}</p>
-            <h1 className="text-2xl font-bold text-white mt-1">
+            <h1 className="text-2xl font-bold text-white mt-1 flex items-center gap-2 flex-wrap">
               {saludo}, <span className="text-white">Administrador</span> 👋
+              <WeatherBadge className="inline-flex items-center gap-1 text-base font-semibold bg-white/15 backdrop-blur rounded-full px-2.5 py-1" />
             </h1>
           </div>
           <div className="flex gap-2 flex-wrap">
@@ -422,8 +424,9 @@ function EmployeeDashboard({ saludo, fechaStr, empleadoId }: { saludo: string, f
         {/* Contenido */}
         <div className="relative z-10">
           <p className="text-blue-200 text-sm font-medium capitalize">{fechaStr}</p>
-          <h1 className="text-2xl font-bold mt-1">
+          <h1 className="text-2xl font-bold mt-1 flex items-center gap-2 flex-wrap">
             {saludo}, <span className="text-white">{empleado?.nombre}</span> 👋
+            <WeatherBadge className="inline-flex items-center gap-1 text-base font-semibold bg-white/15 backdrop-blur rounded-full px-2.5 py-1" />
           </h1>
           <p className="text-blue-100/80 text-sm mt-1">{empleado?.cargo} · {empleado?.sector}</p>
           <div className="flex gap-4 mt-4 flex-wrap">
