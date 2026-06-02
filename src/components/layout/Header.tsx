@@ -168,7 +168,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
         </div>
 
         {showSearch && q.length > 1 && (
-          <div className="absolute top-full mt-1 left-0 right-0 card shadow-lg z-50 overflow-hidden animate-scale-in">
+          <div className="absolute top-full mt-1 left-0 right-0 card !bg-white dark:!bg-slate-900 shadow-xl z-50 overflow-hidden animate-scale-in">
             {searchResults.length === 0 ? (
               <div className="px-4 py-3">
                 <p className="text-sm text-slate-400 text-center">Sin resultados para "{query}"</p>
@@ -226,7 +226,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
           </button>
 
           {showNotifs && (
-            <div className="absolute right-0 top-12 w-80 card shadow-lg z-50 overflow-hidden animate-scale-in">
+            <div className="absolute right-0 top-12 w-80 card !bg-white dark:!bg-slate-900 shadow-xl z-50 overflow-hidden animate-scale-in">
               <div className="p-3 border-b border-sky-100 dark:border-slate-800 flex items-center justify-between">
                 <p className="font-semibold text-sm text-slate-800 dark:text-slate-100">
                   Notificaciones
@@ -295,7 +295,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
           </button>
 
           {showDropdown && (
-            <div className="absolute right-0 top-12 w-48 card shadow-lg z-50 overflow-hidden animate-scale-in">
+            <div className="absolute right-0 top-12 w-48 card !bg-white dark:!bg-slate-900 shadow-xl z-50 overflow-hidden animate-scale-in">
               <div className="p-1">
                 <Link
                   href="/dashboard/perfil"
