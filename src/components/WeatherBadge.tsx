@@ -10,17 +10,19 @@ import {
 const LAT = -38.9516
 const LON = -68.0591
 
-// Mapea el código WMO + día/noche a un ícono y su color real
+// Mapea el código WMO + día/noche a un ícono y su color real.
+// Los íconos de lucide son de contorno: agregamos `fill-*` para que se
+// vean macizos/coloreados (sol amarillo, nube gris, etc.).
 function weatherFor(code: number, isDay: boolean): { Icon: React.ElementType; color: string } {
-  if (code === 0) return { Icon: isDay ? Sun : Moon, color: isDay ? 'text-yellow-400' : 'text-indigo-200' }
-  if (code === 1 || code === 2) return { Icon: isDay ? CloudSun : CloudMoon, color: isDay ? 'text-amber-300' : 'text-slate-300' }
-  if (code === 3) return { Icon: Cloud, color: 'text-gray-300' }
-  if (code === 45 || code === 48) return { Icon: CloudFog, color: 'text-gray-400' }
-  if (code >= 51 && code <= 57) return { Icon: CloudDrizzle, color: 'text-sky-300' }
-  if ((code >= 61 && code <= 67) || (code >= 80 && code <= 82)) return { Icon: CloudRain, color: 'text-blue-400' }
-  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return { Icon: CloudSnow, color: 'text-cyan-200' }
-  if (code >= 95) return { Icon: CloudLightning, color: 'text-yellow-300' }
-  return { Icon: Cloud, color: 'text-gray-300' }
+  if (code === 0) return { Icon: isDay ? Sun : Moon, color: isDay ? 'text-yellow-400 fill-yellow-400' : 'text-slate-200 fill-slate-200' }
+  if (code === 1 || code === 2) return { Icon: isDay ? CloudSun : CloudMoon, color: isDay ? 'text-amber-300 fill-amber-300/80' : 'text-slate-300 fill-slate-300/80' }
+  if (code === 3) return { Icon: Cloud, color: 'text-slate-300 fill-slate-400' }
+  if (code === 45 || code === 48) return { Icon: CloudFog, color: 'text-gray-300 fill-gray-400' }
+  if (code >= 51 && code <= 57) return { Icon: CloudDrizzle, color: 'text-sky-300 fill-sky-400/80' }
+  if ((code >= 61 && code <= 67) || (code >= 80 && code <= 82)) return { Icon: CloudRain, color: 'text-blue-300 fill-blue-400/80' }
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return { Icon: CloudSnow, color: 'text-cyan-200 fill-cyan-300/70' }
+  if (code >= 95) return { Icon: CloudLightning, color: 'text-yellow-300 fill-slate-400/70' }
+  return { Icon: Cloud, color: 'text-slate-300 fill-slate-400' }
 }
 
 interface WeatherData { temp: number; code: number; isDay: boolean }
