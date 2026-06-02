@@ -274,13 +274,8 @@ export default function FundacionPage() {
             </div>
             <div className="w-px h-10 bg-white/20" />
             <div className="text-center">
-              <p className="text-2xl font-bold text-white">+500</p>
+              <p className="text-2xl font-bold text-white">+1000</p>
               <p className="text-blue-200 text-xs">Estudiantes anuales</p>
-            </div>
-            <div className="w-px h-10 bg-white/20" />
-            <div className="text-center">
-              <p className="text-2xl font-bold text-white">6</p>
-              <p className="text-blue-200 text-xs">Programas activos</p>
             </div>
           </div>
         </div>
