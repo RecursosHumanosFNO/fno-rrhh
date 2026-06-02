@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase'
 import {
   FileText, Download, Upload, Search, X, CheckCircle2,
   Loader2, AlertCircle, Eye, Cloud, HardDrive, Lock,
-  Layers, ChevronRight, AlertTriangle, CheckCheck, User,
+  Layers, ChevronRight, AlertTriangle, CheckCheck, User, Trash2,
 } from 'lucide-react'
 
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -47,7 +47,7 @@ function extractMontoFromFilename(name: string, dniFound: string): string {
 
 export default function RecibosPage() {
   const { user } = useAuth()
-  const { empleados, recibos, addRecibo, addNotification } = useData()
+  const { empleados, recibos, addRecibo, deleteRecibo, addNotification } = useData()
   const isAdmin = user?.role === 'admin'
 
   // ── Estado filtros/tabla ───────────────────────────────────────────────
@@ -55,6 +55,23 @@ export default function RecibosPage() {
   const [mesFilter, setMesFilter] = useState('')
   const [anioFilter, setAnioFilter] = useState('2026')
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; archivoUrl?: string; label: string } | null>(null)
+  const [deleting, setDeleting] = useState(false)
+
+  async function handleDeleteRecibo() {
+    if (!confirmDelete) return
+    setDeleting(true)
+    try {
+      // Borrar el PDF del Storage (si tiene)
+      if (confirmDelete.archivoUrl && supabase) {
+        await supabase.storage.from('fno-recibos').remove([confirmDelete.archivoUrl]).catch(() => {})
+      }
+      deleteRecibo(confirmDelete.id)
+    } finally {
+      setDeleting(false)
+      setConfirmDelete(null)
+    }
+  }
 
   // ── Estado carga individual ────────────────────────────────────────────
   const [showUpload, setShowUpload] = useState(false)
@@ -405,24 +422,59 @@ export default function RecibosPage() {
                       <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{formatMonto(r.monto)}</span>
                     </td>
                     <td className="table-cell text-right">
-                      <button
-                        onClick={() => handleDescargar(r)}
-                        disabled={!tieneArchivo || isDownloading}
-                        className={`inline-flex items-center gap-1.5 text-sm py-1.5 px-3 rounded-lg transition-colors ${
-                          tieneArchivo
-                            ? 'bg-brand-700 hover:bg-brand-600 text-white disabled:opacity-70'
-                            : 'border border-slate-200 dark:border-slate-700 text-slate-400 cursor-not-allowed opacity-50'
-                        }`}
-                      >
-                        {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : tieneArchivo ? <Eye className="w-4 h-4" /> : <Download className="w-4 h-4" />}
-                        <span className="hidden sm:inline">{isDownloading ? 'Cargando...' : tieneArchivo ? 'Ver PDF' : 'Sin archivo'}</span>
-                      </button>
+                      <div className="inline-flex items-center gap-2 justify-end">
+                        <button
+                          onClick={() => handleDescargar(r)}
+                          disabled={!tieneArchivo || isDownloading}
+                          className={`inline-flex items-center gap-1.5 text-sm py-1.5 px-3 rounded-lg transition-colors ${
+                            tieneArchivo
+                              ? 'bg-brand-700 hover:bg-brand-600 text-white disabled:opacity-70'
+                              : 'border border-slate-200 dark:border-slate-700 text-slate-400 cursor-not-allowed opacity-50'
+                          }`}
+                        >
+                          {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : tieneArchivo ? <Eye className="w-4 h-4" /> : <Download className="w-4 h-4" />}
+                          <span className="hidden sm:inline">{isDownloading ? 'Cargando...' : tieneArchivo ? 'Ver PDF' : 'Sin archivo'}</span>
+                        </button>
+                        {isAdmin && (
+                          <button
+                            onClick={() => setConfirmDelete({ id: r.id, archivoUrl: r.archivoUrl, label: `${emp ? `${emp.nombre} ${emp.apellido}` : 'empleado'} — ${formatMes(r.mes, r.anio)}` })}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                            title="Eliminar recibo"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 )
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Modal confirmar eliminación de recibo */}
+      {confirmDelete && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { if (!deleting) setConfirmDelete(null) }}>
+          <div className="card w-full max-w-sm animate-scale-in" onClick={e => e.stopPropagation()}>
+            <div className="p-6 text-center">
+              <div className="w-14 h-14 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="w-7 h-7 text-red-500" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">¿Eliminar recibo?</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+                {confirmDelete.label}. Se borrará el registro y el PDF. No se puede deshacer.
+              </p>
+              <div className="flex gap-3">
+                <button onClick={() => setConfirmDelete(null)} disabled={deleting} className="btn-secondary flex-1 justify-center disabled:opacity-50">Cancelar</button>
+                <button onClick={handleDeleteRecibo} disabled={deleting}
+                  className="flex-1 justify-center px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors disabled:opacity-50 inline-flex items-center gap-2">
+                  {deleting ? <><Loader2 className="w-4 h-4 animate-spin" /> Eliminando...</> : 'Sí, eliminar'}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

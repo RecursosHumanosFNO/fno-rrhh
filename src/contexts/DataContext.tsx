@@ -39,6 +39,7 @@ interface DataContextType {
   deleteEvento: (id: string) => void
   // Recibos
   addRecibo: (r: Omit<Recibo, 'id'>) => void
+  deleteRecibo: (id: string) => void
   // Tickets
   addTicket: (t: Omit<Ticket, 'id' | 'fechaCreacion' | 'fechaActualizacion' | 'estado'>) => void
   respondTicket: (id: string, respuesta: string, estado: TicketEstado) => void
@@ -657,6 +658,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     })
   }, [addNotification])
 
+  const deleteRecibo = useCallback((id: string) => {
+    setRecibos(prev => prev.filter(r => r.id !== id))
+    if (supabase) supabase.from('fno_recibos').delete().eq('id', id).then(({ error }) => {
+      if (error) console.error('[supabase] delete fno_recibos:', error)
+    })
+  }, [])
+
   // ── Tickets ────────────────────────────────────────────────────────────────
   const addTicket = useCallback((t: Omit<Ticket, 'id' | 'fechaCreacion' | 'fechaActualizacion' | 'estado'>) => {
     const hoy = new Date().toISOString().slice(0, 10)
@@ -813,7 +821,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       addSolicitud, approveSolicitud, rejectSolicitud, cancelSolicitud,
       addNovedad, updateNovedad, deleteNovedad,
       addEvento, updateEvento, deleteEvento,
-      addRecibo,
+      addRecibo, deleteRecibo,
       addTicket, respondTicket,
       addUser, updateUserPassword, setUserRole, getUserByEmail, getPendingByEmail,
       addPendingRegistration, approvePendingRegistration, rejectPendingRegistration, refreshPending,
