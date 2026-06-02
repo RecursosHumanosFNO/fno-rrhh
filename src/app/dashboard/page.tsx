@@ -501,36 +501,31 @@ function EmployeeDashboard({ saludo, fechaStr, empleadoId }: { saludo: string, f
       {/* ── Acciones rápidas — una por acción ─────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: 'Nueva solicitud',   href: '/dashboard/solicitudes',  icon: Plus,           bg: 'bg-brand-700 hover:bg-brand-600 text-white',                         desc: 'Permisos, licencias...' },
-          { label: 'Mis recibos',        href: '/dashboard/recibos',       icon: FileText,       bg: 'bg-emerald-600 hover:bg-emerald-500 text-white',                      desc: 'Ver y descargar PDF' },
-          { label: 'Soporte RRHH',       href: '/dashboard/portal-rrhh',   icon: HeadphonesIcon, bg: 'bg-slate-700 hover:bg-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 text-white', desc: 'Consultas y tickets' },
-          { label: 'La Fundación',       href: 'https://fundacionnqnoeste.com/', icon: ExternalLink, bg: 'bg-violet-600 hover:bg-violet-500 text-white', desc: 'Sitio institucional', external: true },
-        ].map(({ label, href, icon: Icon, bg, desc, external }) => (
-          external
-            ? (
-              <a key={href} href={href} target="_blank" rel="noopener noreferrer"
-                className={`${bg} rounded-2xl p-4 flex flex-col items-center text-center gap-2 transition-colors shadow-sm`}>
-                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+          { label: 'Nueva solicitud',   href: '/dashboard/solicitudes',  icon: Plus,           bg: 'bg-gradient-to-br from-brand-500 to-brand-800',     desc: 'Permisos, licencias...' },
+          { label: 'Mis recibos',        href: '/dashboard/recibos',       icon: FileText,       bg: 'bg-gradient-to-br from-emerald-400 to-emerald-700', desc: 'Ver y descargar PDF' },
+          { label: 'Soporte RRHH',       href: '/dashboard/portal-rrhh',   icon: HeadphonesIcon, bg: 'bg-gradient-to-br from-slate-500 to-slate-800',     desc: 'Consultas y tickets' },
+          { label: 'La Fundación',       href: 'https://fundacionnqnoeste.com/', icon: ExternalLink, bg: 'bg-gradient-to-br from-violet-500 to-violet-800', desc: 'Sitio institucional', external: true },
+        ].map(({ label, href, icon: Icon, bg, desc, external }) => {
+          const cls = `${bg} relative overflow-hidden rounded-2xl p-4 flex flex-col items-center text-center gap-2 text-white shadow-lg ring-1 ring-white/15 transition-all hover:brightness-110 hover:shadow-xl hover:-translate-y-0.5`
+          const inner = (
+            <>
+              {/* Brillo metalizado */}
+              <div className="absolute inset-0 bg-gradient-to-b from-white/25 via-white/5 to-transparent pointer-events-none" />
+              <div className="relative z-10 flex flex-col items-center gap-2">
+                <div className="w-10 h-10 bg-white/25 rounded-xl flex items-center justify-center shadow-inner">
                   <Icon className="w-5 h-5" />
                 </div>
                 <div>
                   <p className="text-sm font-semibold">{label}</p>
-                  <p className="text-xs opacity-75 mt-0.5">{desc}</p>
+                  <p className="text-xs opacity-80 mt-0.5">{desc}</p>
                 </div>
-              </a>
-            ) : (
-              <Link key={href} href={href}
-                className={`${bg} rounded-2xl p-4 flex flex-col items-center text-center gap-2 transition-colors shadow-sm`}>
-                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                  <Icon className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold">{label}</p>
-                  <p className="text-xs opacity-75 mt-0.5">{desc}</p>
-                </div>
-              </Link>
-            )
-        ))}
+              </div>
+            </>
+          )
+          return external
+            ? <a key={href} href={href} target="_blank" rel="noopener noreferrer" className={cls}>{inner}</a>
+            : <Link key={href} href={href} className={cls}>{inner}</Link>
+        })}
       </div>
 
       {/* ── Solicitudes recientes + Novedades ─────────────────────────────── */}
