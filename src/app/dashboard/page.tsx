@@ -90,24 +90,24 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <p className="text-blue-200 text-sm font-medium capitalize">{fechaStr}</p>
-            <h1 className="text-2xl font-bold text-white mt-1 flex items-center gap-2 flex-wrap">
+            <h1 className="text-2xl font-bold text-white mt-1">
               {saludo}, <span className="text-white">Administrador</span> 👋
-              <WeatherBadge className="inline-flex items-center gap-1 text-base font-semibold bg-white/15 backdrop-blur rounded-full px-2.5 py-1" />
             </h1>
+            <div className="flex gap-2 flex-wrap mt-4">
+              <Link href="/dashboard/empleados" className="btn-primary">
+                <Plus className="w-4 h-4" /> Nuevo Empleado
+              </Link>
+              <Link href="/dashboard/solicitudes" className="btn-secondary">
+                {pendientes.length > 0 && (
+                  <span className="w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                    {pendientes.length}
+                  </span>
+                )}
+                Solicitudes
+              </Link>
+            </div>
           </div>
-          <div className="flex gap-2 flex-wrap">
-            <Link href="/dashboard/empleados" className="btn-primary">
-              <Plus className="w-4 h-4" /> Nuevo Empleado
-            </Link>
-            <Link href="/dashboard/solicitudes" className="btn-secondary">
-              {pendientes.length > 0 && (
-                <span className="w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
-                  {pendientes.length}
-                </span>
-              )}
-              Solicitudes
-            </Link>
-          </div>
+          <WeatherBadge className="shrink-0 flex flex-col items-end" />
         </div>
       </div>
 
@@ -422,27 +422,29 @@ function EmployeeDashboard({ saludo, fechaStr, empleadoId }: { saludo: string, f
         {/* Capa azul institucional para legibilidad del texto (se funde con la aurora) */}
         <div className="absolute inset-0 bg-gradient-to-r from-brand-900/85 via-brand-700/55 to-brand-500/25 rounded-2xl" />
         {/* Contenido */}
-        <div className="relative z-10">
-          <p className="text-blue-200 text-sm font-medium capitalize">{fechaStr}</p>
-          <h1 className="text-2xl font-bold mt-1 flex items-center gap-2 flex-wrap">
-            {saludo}, <span className="text-white">{empleado?.nombre}</span> 👋
-            <WeatherBadge className="inline-flex items-center gap-1 text-base font-semibold bg-white/15 backdrop-blur rounded-full px-2.5 py-1" />
-          </h1>
-          <p className="text-blue-100/80 text-sm mt-1">{empleado?.cargo} · {empleado?.sector}</p>
-          <div className="flex gap-4 mt-4 flex-wrap">
-            <div className="bg-white/15 backdrop-blur rounded-xl px-3 py-2 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-white/70" />
-              <span className="text-sm font-medium text-white">
-                {misPendientes.length} solicitud{misPendientes.length !== 1 ? 'es' : ''} pendiente{misPendientes.length !== 1 ? 's' : ''}
-              </span>
-            </div>
-            <div className="bg-white/15 backdrop-blur rounded-xl px-3 py-2 flex items-center gap-2">
-              <FileText className="w-4 h-4 text-white/70" />
-              <span className="text-sm font-medium text-white">
-                {ultimoRecibo ? `Último recibo: ${formatMes(ultimoRecibo.mes, ultimoRecibo.anio)}` : 'Sin recibos aún'}
-              </span>
+        <div className="relative z-10 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-blue-200 text-sm font-medium capitalize">{fechaStr}</p>
+            <h1 className="text-2xl font-bold mt-1">
+              {saludo}, <span className="text-white">{empleado?.nombre}</span> 👋
+            </h1>
+            <p className="text-blue-100/80 text-sm mt-1">{empleado?.cargo} · {empleado?.sector}</p>
+            <div className="flex gap-4 mt-4 flex-wrap">
+              <div className="bg-white/15 backdrop-blur rounded-xl px-3 py-2 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-white/70" />
+                <span className="text-sm font-medium text-white">
+                  {misPendientes.length} solicitud{misPendientes.length !== 1 ? 'es' : ''} pendiente{misPendientes.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+              <div className="bg-white/15 backdrop-blur rounded-xl px-3 py-2 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-white/70" />
+                <span className="text-sm font-medium text-white">
+                  {ultimoRecibo ? `Último recibo: ${formatMes(ultimoRecibo.mes, ultimoRecibo.anio)}` : 'Sin recibos aún'}
+                </span>
+              </div>
             </div>
           </div>
+          <WeatherBadge className="shrink-0 flex flex-col items-end" />
         </div>
       </div>
 
