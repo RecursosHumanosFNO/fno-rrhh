@@ -80,26 +80,32 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
 
   return (
     <div className="page-container">
-      {/* Welcome */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
-            {saludo}, <span className="text-brand-700 dark:text-brand-400">Administrador</span> 👋
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1 capitalize">{fechaStr}</p>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <Link href="/dashboard/empleados" className="btn-primary">
-            <Plus className="w-4 h-4" /> Nuevo Empleado
-          </Link>
-          <Link href="/dashboard/solicitudes" className="btn-secondary">
-            {pendientes.length > 0 && (
-              <span className="w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
-                {pendientes.length}
-              </span>
-            )}
-            Solicitudes
-          </Link>
+      {/* Welcome banner con foto institucional */}
+      <div
+        className="relative rounded-2xl p-6 overflow-hidden"
+        style={{ backgroundImage: 'url(/banner-fundacion.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/45 to-black/20 rounded-2xl" />
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <p className="text-blue-200 text-sm font-medium capitalize">{fechaStr}</p>
+            <h1 className="text-2xl font-bold text-white mt-1">
+              {saludo}, <span className="text-white">Administrador</span> 👋
+            </h1>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <Link href="/dashboard/empleados" className="btn-primary">
+              <Plus className="w-4 h-4" /> Nuevo Empleado
+            </Link>
+            <Link href="/dashboard/solicitudes" className="btn-secondary">
+              {pendientes.length > 0 && (
+                <span className="w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                  {pendientes.length}
+                </span>
+              )}
+              Solicitudes
+            </Link>
+          </div>
         </div>
       </div>
 

@@ -221,6 +221,28 @@ function mapNotifToSupabase(n: AppNotification) {
   }
 }
 
+// ── Mappers Supabase ↔ Evento ─────────────────────────────────────────────────
+function mapSupabaseToEvento(row: Record<string, unknown>): Evento {
+  return {
+    id: row.id as string,
+    titulo: row.titulo as string,
+    fecha: row.fecha as string,
+    tipo: row.tipo as Evento['tipo'],
+    descripcion: (row.descripcion as string) || undefined,
+    empleadoId: (row.empleado_id as string) || undefined,
+  }
+}
+function mapEventoToSupabase(e: Evento) {
+  return {
+    id: e.id, titulo: e.titulo, fecha: e.fecha, tipo: e.tipo,
+    descripcion: e.descripcion ?? '', empleado_id: e.empleadoId ?? null,
+  }
+}
+
+// IDs de los eventos institucionales fijos (feriados, actos, jornadas) que viven
+// en el código (mockData) y NO en la base. Sirve para no duplicarlos al sincronizar.
+const EVENTOS_FIJOS_IDS = new Set(initial.eventos.map(e => e.id))
+
 // ── Realtime upsert helpers ────────────────────────────────────────────────────
 function upsert<T extends { id: string }>(prev: T[], item: T): T[] {
   const i = prev.findIndex(x => x.id === item.id)
@@ -259,7 +281,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const syncFromSupabase = useCallback(async () => {
     if (!supabase) return
     try {
-      const [usersRes, pendingRes, empRes, solRes, recRes, novRes, tickRes, notifRes] = await Promise.all([
+      const [usersRes, pendingRes, empRes, solRes, recRes, novRes, tickRes, notifRes, evtRes] = await Promise.all([
         supabase.from('fno_users').select('id, email, role, empleado_id'),
         supabase.from('fno_pending').select('*'),
         supabase.from('fno_empleados').select('*'),
@@ -268,6 +290,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         supabase.from('fno_novedades').select('*'),
         supabase.from('fno_tickets').select('*'),
         supabase.from('fno_notifs').select('*'),
+        supabase.from('fno_eventos').select('*'),
       ])
 
       if (usersRes.data && usersRes.data.length > 0)
@@ -301,6 +324,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
       if (notifRes.data && notifRes.data.length > 0)
         setNotifications(notifRes.data.map((r: Record<string, unknown>) => mapSupabaseToNotif(r)))
+
+      // Eventos: combinar los fijos del código (feriados/actos/jornadas) con los custom de la base
+      if (evtRes.data) {
+        const custom = evtRes.data
+          .filter((r: Record<string, unknown>) => !EVENTOS_FIJOS_IDS.has(r.id as string))
+          .map((r: Record<string, unknown>) => mapSupabaseToEvento(r))
+        setEventos([...initial.eventos, ...custom].sort((a, b) => a.fecha.localeCompare(b.fecha)))
+      }
 
     } catch (e) {
       console.error('[sync] Supabase sync error:', e)
@@ -371,6 +402,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'fno_notifs' }, ({ eventType, new: n, old: o }) => {
           if (eventType === 'DELETE') setNotifications(prev => prev.filter(x => x.id !== (o as { id: string }).id))
           else setNotifications(prev => upsertHead(prev, mapSupabaseToNotif(n as Record<string, unknown>)))
+        })
+        // Eventos (custom; los fijos viven en el código)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'fno_eventos' }, ({ eventType, new: n, old: o }) => {
+          if (eventType === 'DELETE') setEventos(prev => prev.filter(e => e.id !== (o as { id: string }).id))
+          else setEventos(prev => {
+            const ev = mapSupabaseToEvento(n as Record<string, unknown>)
+            const sinViejo = prev.filter(e => e.id !== ev.id)
+            return [...sinViejo, ev].sort((a, b) => a.fecha.localeCompare(b.fecha))
+          })
         })
         .subscribe((status) => {
           console.log('[realtime] status:', status)
@@ -567,17 +607,30 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const addEvento = useCallback((e: Omit<Evento, 'id'>) => {
     const nuevo: Evento = { ...e, id: uid() }
     setEventos(prev => [...prev, nuevo].sort((a, b) => a.fecha.localeCompare(b.fecha)))
+    if (supabase) supabase.from('fno_eventos').insert(mapEventoToSupabase(nuevo)).then(({ error }) => {
+      if (error) console.error('[supabase] insert fno_eventos:', error)
+    })
   }, [])
 
   const updateEvento = useCallback((id: string, data: Partial<Omit<Evento, 'id'>>) => {
-    setEventos(prev => prev
-      .map(e => e.id === id ? { ...e, ...data } : e)
-      .sort((a, b) => a.fecha.localeCompare(b.fecha))
-    )
+    setEventos(prev => {
+      const updated = prev
+        .map(e => e.id === id ? { ...e, ...data } : e)
+        .sort((a, b) => a.fecha.localeCompare(b.fecha))
+      // Solo persisten los eventos custom (los fijos viven en el código)
+      if (supabase && !EVENTOS_FIJOS_IDS.has(id)) {
+        const full = updated.find(e => e.id === id)
+        if (full) supabase.from('fno_eventos').upsert(mapEventoToSupabase(full)).then()
+      }
+      return updated
+    })
   }, [])
 
   const deleteEvento = useCallback((id: string) => {
     setEventos(prev => prev.filter(e => e.id !== id))
+    if (supabase && !EVENTOS_FIJOS_IDS.has(id)) {
+      supabase.from('fno_eventos').delete().eq('id', id).then()
+    }
   }, [])
 
   // ── Recibos ────────────────────────────────────────────────────────────────

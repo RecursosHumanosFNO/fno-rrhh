@@ -3,6 +3,7 @@
 import {
   Heart, Eye, Star, BookOpen, Leaf, Sparkles,
   MapPin, GraduationCap, Trophy, Users, Navigation,
+  Dumbbell, Scale, Building2, School, Monitor,
 } from 'lucide-react'
 import Image from 'next/image'
 
@@ -17,40 +18,64 @@ const VALORES = [
 
 const HITOS = [
   {
-    year: '1996',
-    title: 'Los orígenes deportivos',
-    desc: 'La Fundación nace con foco en el deporte como herramienta de inclusión social para niños y jóvenes del barrio Neuquén Oeste.',
-    icon: Trophy,
+    year: '1986',
+    title: 'El sueño',
+    desc: 'El 15 de abril de 1986 nace en Neuquén el sueño de la Fundación: acompañar a la comunidad del oeste a través del deporte, la educación y los valores.',
+    icon: Sparkles,
   },
   {
-    year: '2004',
-    title: 'Colegio Neuquén Oeste',
-    desc: 'Se crea el Colegio Neuquén Oeste, ofreciendo educación secundaria de calidad con orientación social, dando respuesta a una comunidad con pocas opciones educativas.',
+    year: '1991',
+    title: 'El Gimnasio',
+    desc: 'Se inaugura el gimnasio, primer gran espacio propio para el desarrollo de actividades físicas y deportivas con la comunidad.',
+    icon: Dumbbell,
+  },
+  {
+    year: '1992',
+    title: 'Personería Jurídica',
+    desc: 'La Fundación obtiene el otorgamiento de la Personería Jurídica, consolidándose formalmente como institución.',
+    icon: Scale,
+  },
+  {
+    year: '1994',
+    title: 'El Tinglado Parabólico',
+    desc: 'Se construye el emblemático tinglado parabólico, ampliando la capacidad para actividades deportivas y comunitarias.',
+    icon: Building2,
+  },
+  {
+    year: '2005',
+    title: 'Colegio para Adultos',
+    desc: 'Abre el Colegio para Adultos, brindando una nueva oportunidad educativa a quienes no pudieron completar sus estudios.',
     icon: BookOpen,
   },
   {
-    year: '2011',
-    title: 'Tecnicatura en Deporte Social',
-    desc: 'Se inaugura la Tecnicatura en Deporte Social, formando profesionales comprometidos con el deporte como práctica comunitaria y educativa.',
-    icon: GraduationCap,
+    year: '2010',
+    title: 'Escuela Primaria y Jardín de Infantes',
+    desc: 'Se abren la Escuela Primaria y el Jardín de Infantes, extendiendo la propuesta educativa a las primeras infancias.',
+    icon: School,
   },
   {
     year: '2017',
-    title: 'Centro de Preparación y Reinserción Educativa (CPREM)',
-    desc: 'Se pone en marcha el CPREM, un espacio de segunda oportunidad para adultos que no pudieron completar sus estudios, brindando educación nocturna y flexible.',
+    title: 'Instituto de Estudios Interdisciplinarios (ISEI)',
+    desc: 'Se crea el ISEI, Instituto Superior de Estudios Interdisciplinarios, sumando educación de nivel terciario a la institución.',
+    icon: GraduationCap,
+  },
+  {
+    year: '2022',
+    title: 'Colegio Secundario',
+    desc: 'Abre el Colegio Secundario, completando la trayectoria educativa de la Fundación desde el jardín hasta el nivel superior.',
+    icon: Trophy,
+  },
+  {
+    year: '2024',
+    title: 'Tecnicatura en Deporte Social',
+    desc: 'Comienza la Tecnicatura en Deporte Social, formando profesionales que entienden el deporte como herramienta de transformación comunitaria.',
     icon: Users,
   },
   {
-    year: '2021',
-    title: 'Proyecto de Hidroponía',
-    desc: 'Se lanza el proyecto de agricultura hidropónica, generando oportunidades laborales, formación técnica y alimentos para la comunidad de forma sustentable.',
-    icon: Leaf,
-  },
-  {
     year: '2026',
-    title: 'Portal RRHH',
-    desc: 'Digitalización de la gestión de Recursos Humanos con el lanzamiento de esta plataforma interna, modernizando los procesos para más de 160 colaboradores.',
-    icon: Sparkles,
+    title: 'Portal de RRHH',
+    desc: 'Se abre el Portal de Recursos Humanos, digitalizando la gestión interna y modernizando los procesos para todo el personal de la Fundación.',
+    icon: Monitor,
   },
 ]
 
@@ -244,7 +269,7 @@ export default function FundacionPage() {
             </div>
             <div className="w-px h-10 bg-white/20" />
             <div className="text-center">
-              <p className="text-2xl font-bold text-white">+30</p>
+              <p className="text-2xl font-bold text-white">+40</p>
               <p className="text-blue-200 text-xs">Años de historia</p>
             </div>
             <div className="w-px h-10 bg-white/20" />
