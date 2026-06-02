@@ -151,6 +151,7 @@ export interface Evento {
   tipo: EventoTipo
   descripcion?: string
   empleadoId?: string
+  imagen?: string
 }
 
 export interface Ticket {

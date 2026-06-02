@@ -1,13 +1,14 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
+import { supabase } from '@/lib/supabase'
 import { parseLocalDate, EVENTO_TIPO_LABEL, EVENTO_TIPO_COLOR, EVENTO_TIPO_DOT, formatFecha } from '@/lib/utils'
 import type { EventoTipo, Evento } from '@/types'
 import {
   Calendar, PartyPopper, Plus, ChevronLeft, ChevronRight,
-  Edit2, Trash2, X, Save,
+  Edit2, Trash2, X, Save, Image as ImageIcon, Loader2,
 } from 'lucide-react'
 
 const TIPOS_EVENTO: EventoTipo[] = ['feriado', 'jornada', 'acto', 'capacitacion', 'reunion', 'receso', 'proyecto', 'institucional', 'reunion_padres', 'examen', 'inscripciones', 'salida', 'religioso', 'otro']
@@ -35,6 +36,26 @@ export default function EventosPage() {
   const [form, setForm] = useState<Omit<Evento, 'id'>>(emptyForm())
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const [uploadingImg, setUploadingImg] = useState(false)
+  const imgRef = useRef<HTMLInputElement>(null)
+
+  async function handleImageUpload(file: File) {
+    if (!supabase) return
+    setUploadingImg(true)
+    try {
+      const ext = file.name.split('.').pop() || 'jpg'
+      const path = `eventos/${Date.now()}.${ext}`
+      const { error } = await supabase.storage.from('fno-media').upload(path, file, { upsert: false, contentType: file.type })
+      if (!error) {
+        const { data } = supabase.storage.from('fno-media').getPublicUrl(path)
+        setForm(f => ({ ...f, imagen: data.publicUrl }))
+      } else {
+        alert('No se pudo subir la imagen: ' + error.message)
+      }
+    } finally {
+      setUploadingImg(false)
+    }
+  }
 
   // ── Cumpleaños del mes actual ─────────────────────────────────────────────
   const cumpleaniosMes = useMemo(() => empleados.filter(e => {
@@ -77,7 +98,7 @@ export default function EventosPage() {
     setModal({ mode: 'add', fechaDefault })
   }
   function openEdit(ev: Evento) {
-    setForm({ titulo: ev.titulo, fecha: ev.fecha, tipo: ev.tipo, descripcion: ev.descripcion ?? '' })
+    setForm({ titulo: ev.titulo, fecha: ev.fecha, tipo: ev.tipo, descripcion: ev.descripcion ?? '', imagen: ev.imagen })
     setModal({ mode: 'edit', evento: ev })
   }
 
@@ -274,6 +295,7 @@ export default function EventosPage() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{ev.titulo}</p>
                         {ev.descripcion && <p className="text-xs text-slate-400 mt-0.5">{ev.descripcion}</p>}
+                        {ev.imagen && <img src={ev.imagen} alt="" className="mt-2 rounded-lg border border-slate-200 dark:border-slate-700 max-h-44 w-auto" />}
                       </div>
                       {isAdmin && (
                         <div className="flex gap-1 shrink-0">
@@ -509,6 +531,26 @@ export default function EventosPage() {
                   value={form.descripcion}
                   onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))}
                 />
+              </div>
+              {/* Imagen / GIF (opcional) */}
+              <div>
+                <label className="form-label">Imagen o GIF <span className="text-slate-400 font-normal">(opcional)</span></label>
+                {form.imagen ? (
+                  <div className="relative inline-block">
+                    <img src={form.imagen} alt="" className="max-h-40 rounded-xl border border-slate-200 dark:border-slate-700" />
+                    <button type="button" onClick={() => setForm(f => ({ ...f, imagen: undefined }))}
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center shadow" title="Quitar imagen">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => imgRef.current?.click()} disabled={uploadingImg}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 text-sm text-slate-500 dark:text-slate-400 hover:border-brand-400 hover:text-brand-600 transition-colors disabled:opacity-60">
+                    {uploadingImg ? <><Loader2 className="w-4 h-4 animate-spin" /> Subiendo...</> : <><ImageIcon className="w-4 h-4" /> Subir imagen o GIF</>}
+                  </button>
+                )}
+                <input ref={imgRef} type="file" accept="image/*,image/gif" className="hidden"
+                  onChange={e => e.target.files?.[0] && handleImageUpload(e.target.files[0])} />
               </div>
               <div className="flex gap-2 justify-end">
                 <button onClick={() => setModal(null)} className="btn-secondary">Cancelar</button>

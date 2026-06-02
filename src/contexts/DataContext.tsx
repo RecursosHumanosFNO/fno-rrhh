@@ -230,12 +230,14 @@ function mapSupabaseToEvento(row: Record<string, unknown>): Evento {
     tipo: row.tipo as Evento['tipo'],
     descripcion: (row.descripcion as string) || undefined,
     empleadoId: (row.empleado_id as string) || undefined,
+    imagen: (row.imagen as string) || undefined,
   }
 }
 function mapEventoToSupabase(e: Evento) {
   return {
     id: e.id, titulo: e.titulo, fecha: e.fecha, tipo: e.tipo,
     descripcion: e.descripcion ?? '', empleado_id: e.empleadoId ?? null,
+    imagen: e.imagen ?? null,
   }
 }
 
