@@ -164,7 +164,7 @@ export default function PerfilPage() {
   const passFormValido = passForm.nueva.length >= 6 && passForm.nueva === passForm.confirm
 
   return (
-    <div className="page-container max-w-4xl">
+    <div className="page-container">
       <div>
         <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Mi Perfil</h1>
         <p className="text-slate-500 dark:text-slate-400 text-sm mt-0.5">Tu información personal y laboral</p>
