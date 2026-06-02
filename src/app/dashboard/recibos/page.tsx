@@ -598,7 +598,7 @@ export default function RecibosPage() {
                   </div>
 
                   {/* Tabla de revisión */}
-                  <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
+                  <div className="rounded-xl overflow-x-auto border border-slate-200 dark:border-slate-800">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="bg-slate-50 dark:bg-slate-800/60">

@@ -164,7 +164,7 @@ export default function FundacionPage() {
       <div className="card p-6">
         <div className="mb-6">
           <h2 className="section-title text-lg">Nuestra Historia</h2>
-          <p className="section-subtitle">Tres décadas de trabajo, crecimiento y transformación comunitaria</p>
+          <p className="section-subtitle">Cuatro décadas de trabajo, crecimiento y transformación comunitaria</p>
         </div>
         <div className="relative">
           {/* Vertical line */}
