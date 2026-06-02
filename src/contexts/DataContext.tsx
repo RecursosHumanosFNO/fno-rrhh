@@ -486,13 +486,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     })
   }, [])
 
+  // Solo actualiza el estado local. El borrado real (Auth + tablas) lo hace
+  // /api/admin/delete-user de forma server-side y verificada.
   const deleteEmpleado = useCallback((id: string) => {
     setEmpleados(prev => prev.filter(e => e.id !== id))
     setUsers(prev => prev.filter(u => u.empleadoId !== id))
-    if (supabase) {
-      supabase.from('fno_empleados').delete().eq('id', id).then()
-      supabase.from('fno_users').delete().eq('empleado_id', id).then()
-    }
   }, [])
 
   // ── Solicitudes ────────────────────────────────────────────────────────────

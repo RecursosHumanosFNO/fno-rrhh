@@ -351,7 +351,7 @@ export default function PerfilPage() {
                 <span className="text-xs text-slate-500 dark:text-slate-400">Jornada</span>
                 {editMode
                   ? <select className="form-select text-sm max-w-[55%]" value={form.jornada} onChange={e => setForm(f => ({ ...f, jornada: e.target.value }))}>
-                      <option>Full Time</option><option>Part Time</option><option>Por Horas</option>
+                      <option>Full Time</option><option>Part Time</option><option>6 horas diarias</option>
                     </select>
                   : <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.jornada}</span>}
               </div>

@@ -15,7 +15,7 @@ import {
   ArrowLeft, Edit2, Mail, Phone, MapPin, Calendar, Building2,
   FileText, ClipboardList, Clock, Download, User, Save, X,
   Shield, CheckCircle2, AlertTriangle, Lock, Eye, EyeOff,
-  Camera, AlertCircle, Loader2,
+  Camera, AlertCircle, Loader2, Trash2,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -33,6 +33,9 @@ export default function EmpleadoDetailPage() {
   const [resetStatus, setResetStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
   const [roleStatus, setRoleStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
   const [confirmRole, setConfirmRole] = useState<'admin' | 'employee' | null>(null)
+  const [showDelete, setShowDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteErr, setDeleteErr] = useState('')
   const fotoRef = useRef<HTMLInputElement>(null)
 
   const isAdmin = user?.role === 'admin'
@@ -205,6 +208,30 @@ export default function EmpleadoDetailPage() {
     }
   }
 
+  async function handleDelete() {
+    if (!user?.empleadoId) return
+    setDeleting(true)
+    setDeleteErr('')
+    try {
+      const res = await fetch('/api/admin/delete-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ empleadoId: id, requesterId: user.empleadoId }),
+      })
+      const data = await res.json()
+      if (data.ok) {
+        deleteEmpleado(id)
+        router.replace('/dashboard/empleados')
+      } else {
+        setDeleting(false)
+        setDeleteErr(data.error ?? 'No se pudo eliminar.')
+      }
+    } catch {
+      setDeleting(false)
+      setDeleteErr('Error de conexión. Intentá de nuevo.')
+    }
+  }
+
   return (
     <div className="page-container">
       {/* Back */}
@@ -268,6 +295,12 @@ export default function EmpleadoDetailPage() {
                 {isAdmin && !editMode && (
                   <button onClick={() => setEditMode(true)} className="btn-secondary bg-white/15 border-white/25 text-white hover:bg-white/25">
                     <Edit2 className="w-4 h-4" /> Editar
+                  </button>
+                )}
+                {isAdmin && !editMode && id !== user?.empleadoId && (
+                  <button onClick={() => { setShowDelete(true); setDeleteErr('') }} title="Eliminar empleado"
+                    className="btn-secondary bg-red-500/20 border-red-300/40 text-white hover:bg-red-500/40">
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 )}
                 {isAdmin && editMode && (
@@ -547,7 +580,7 @@ export default function EmpleadoDetailPage() {
             <EditField label="Antigüedad" value={antiguedad} editMode={false} editor={null} />
             <EditField label="Jornada" value={form.jornada} editMode={isAdmin && editMode}
               editor={<select className="form-select text-sm" value={form.jornada} onChange={e => setForm(f => ({ ...f, jornada: e.target.value as typeof form.jornada }))}>
-                <option>Full Time</option><option>Part Time</option><option>Por Horas</option>
+                <option>Full Time</option><option>Part Time</option><option>6 horas diarias</option>
               </select>} />
             <EditField label="Supervisor" value={form.supervisor || '—'} editMode={isAdmin && editMode}
               editor={<input className="form-input text-sm" value={form.supervisor} onChange={e => setForm(f => ({ ...f, supervisor: e.target.value }))} />} />
@@ -671,6 +704,38 @@ export default function EmpleadoDetailPage() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Modal confirmación eliminar empleado ────────────────────────── */}
+      {showDelete && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => { if (!deleting) setShowDelete(false) }}>
+          <div className="card w-full max-w-sm animate-scale-in" onClick={e => e.stopPropagation()}>
+            <div className="p-6 text-center">
+              <div className="w-14 h-14 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="w-7 h-7 text-red-500" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">¿Eliminar a {emp.nombre} {emp.apellido}?</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                Se eliminará su cuenta de acceso y su perfil de forma permanente. No podrá volver a iniciar sesión. Esta acción no se puede deshacer.
+              </p>
+              {deleteErr && (
+                <div className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-lg px-3 py-2 text-sm mb-3">{deleteErr}</div>
+              )}
+              <div className="flex gap-3">
+                <button onClick={() => setShowDelete(false)} disabled={deleting} className="btn-secondary flex-1 justify-center disabled:opacity-50">
+                  Cancelar
+                </button>
+                <button onClick={handleDelete} disabled={deleting}
+                  className="flex-1 justify-center px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors disabled:opacity-50 inline-flex items-center gap-2">
+                  {deleting
+                    ? <><Loader2 className="w-4 h-4 animate-spin" /> Eliminando...</>
+                    : <>Sí, eliminar</>}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

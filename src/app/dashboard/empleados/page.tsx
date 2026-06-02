@@ -549,10 +549,8 @@ function EmpleadosContent() {
                 <div>
                   <label className="form-label">Tipo de contrato</label>
                   <select className="form-select" value={form.tipoContrato} onChange={e => setForm(f => ({ ...f, tipoContrato: e.target.value as typeof form.tipoContrato }))}>
-                    <option>Planta Permanente</option>
                     <option>Contrato</option>
-                    <option>Planta Provisional</option>
-                    <option>Pasantía</option>
+                    <option>Período de prueba</option>
                   </select>
                 </div>
                 <div>
@@ -560,7 +558,7 @@ function EmpleadosContent() {
                   <select className="form-select" value={form.jornada} onChange={e => setForm(f => ({ ...f, jornada: e.target.value as typeof form.jornada }))}>
                     <option>Full Time</option>
                     <option>Part Time</option>
-                    <option>Por Horas</option>
+                    <option>6 horas diarias</option>
                   </select>
                 </div>
               </div>

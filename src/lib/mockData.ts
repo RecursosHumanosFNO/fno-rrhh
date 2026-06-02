@@ -157,7 +157,7 @@ export const empleados: Empleado[] = [
     sector: 'Dirección General',
     cargo: 'Jefe de Recursos Humanos',
     fechaIngreso: '2026-01-01',
-    tipoContrato: 'Planta Permanente',
+    tipoContrato: 'Contrato',
     jornada: 'Full Time',
     supervisor: '',
     estado: 'activo',

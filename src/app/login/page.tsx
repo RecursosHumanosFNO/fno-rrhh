@@ -90,9 +90,9 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Right panel — formulario */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-slate-50 dark:bg-slate-950">
-        <div className="w-full max-w-md">
+      {/* Right panel — formulario (sobre la aurora institucional del body) */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
+        <div className="w-full max-w-md bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/60 dark:border-slate-700/60 p-8">
           {/* Logo mobile */}
           <div className="lg:hidden flex items-center gap-3 mb-8">
             <div className="w-12 h-12 rounded-full overflow-hidden bg-brand-700 flex items-center justify-center">

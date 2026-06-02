@@ -88,8 +88,8 @@ export interface Empleado {
   sector: string
   cargo: string
   fechaIngreso: string
-  tipoContrato: 'Planta Permanente' | 'Contrato' | 'Planta Provisional' | 'Pasantía'
-  jornada: 'Full Time' | 'Part Time' | 'Por Horas'
+  tipoContrato: 'Contrato' | 'Período de prueba'
+  jornada: 'Full Time' | 'Part Time' | '6 horas diarias'
   supervisor: string
   estado: EmpleadoEstado
   diasVacaciones: number

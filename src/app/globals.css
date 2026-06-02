@@ -16,14 +16,25 @@
   }
 
   body {
-    background-color: #49d8b7;
-    background-image: linear-gradient(145deg, #49d8b7 0%, #3078ac 100%);
+    /* Aurora institucional: glows de verde agua + azules sobre base clara */
+    background-color: #dceaf6;
+    background-image:
+      radial-gradient(at 10% 14%, rgba(73, 216, 183, 0.55) 0px, transparent 46%),
+      radial-gradient(at 90% 8%, rgba(48, 120, 172, 0.50) 0px, transparent 50%),
+      radial-gradient(at 72% 92%, rgba(35, 89, 126, 0.42) 0px, transparent 50%),
+      radial-gradient(at 20% 85%, rgba(82, 147, 189, 0.42) 0px, transparent 50%);
+    background-attachment: fixed;
     @apply text-slate-900 font-sans antialiased;
   }
 
   html.dark body {
-    background-color: #080d14;
-    background-image: none;
+    /* Aurora institucional oscura */
+    background-color: #0a1119;
+    background-image:
+      radial-gradient(at 12% 16%, rgba(73, 216, 183, 0.14) 0px, transparent 45%),
+      radial-gradient(at 88% 10%, rgba(48, 120, 172, 0.16) 0px, transparent 48%),
+      radial-gradient(at 72% 88%, rgba(35, 89, 126, 0.18) 0px, transparent 48%);
+    background-attachment: fixed;
     @apply text-slate-100;
   }
 
