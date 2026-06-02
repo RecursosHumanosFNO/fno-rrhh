@@ -504,7 +504,7 @@ function EmployeeDashboard({ saludo, fechaStr, empleadoId }: { saludo: string, f
           { label: 'Nueva solicitud',   href: '/dashboard/solicitudes',  icon: Plus,           bg: 'bg-brand-700 hover:bg-brand-600 text-white',                         desc: 'Permisos, licencias...' },
           { label: 'Mis recibos',        href: '/dashboard/recibos',       icon: FileText,       bg: 'bg-emerald-600 hover:bg-emerald-500 text-white',                      desc: 'Ver y descargar PDF' },
           { label: 'Soporte RRHH',       href: '/dashboard/portal-rrhh',   icon: HeadphonesIcon, bg: 'bg-slate-700 hover:bg-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 text-white', desc: 'Consultas y tickets' },
-          { label: 'La Fundación',       href: 'https://fundacionnqnoeste.com/', icon: ExternalLink, bg: 'bg-sky-600 hover:bg-sky-500 text-white', desc: 'Sitio institucional', external: true },
+          { label: 'La Fundación',       href: 'https://fundacionnqnoeste.com/', icon: ExternalLink, bg: 'bg-violet-600 hover:bg-violet-500 text-white', desc: 'Sitio institucional', external: true },
         ].map(({ label, href, icon: Icon, bg, desc, external }) => (
           external
             ? (
