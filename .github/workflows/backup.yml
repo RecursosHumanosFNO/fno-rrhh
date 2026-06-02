@@ -24,9 +24,6 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Instalar dependencias del script
-        run: npm install --no-save @supabase/supabase-js
-
       - name: Ejecutar backup
         env:
           SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
