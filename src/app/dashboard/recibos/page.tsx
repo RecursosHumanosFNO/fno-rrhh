@@ -84,6 +84,7 @@ export default function RecibosPage() {
     mes: new Date().getMonth() + 1,
     anio: 2026,
     monto: '',
+    concepto: 'Recibo mensual',
   })
 
   // ── Estado carga masiva ────────────────────────────────────────────────
@@ -91,6 +92,7 @@ export default function RecibosPage() {
   const [bulkStep, setBulkStep] = useState<BulkStep>('select')
   const [bulkMes, setBulkMes] = useState(new Date().getMonth() + 1)
   const [bulkAnio, setBulkAnio] = useState(2026)
+  const [bulkConcepto, setBulkConcepto] = useState('Recibo mensual')
   const [bulkRows, setBulkRows] = useState<BulkRow[]>([])
   const [bulkConfirmed, setBulkConfirmed] = useState(false)
   const [bulkProgress, setBulkProgress] = useState(0)
@@ -148,11 +150,12 @@ export default function RecibosPage() {
       fechaSubida: new Date().toISOString().slice(0, 10),
       monto: parseFloat(uploadForm.monto),
       archivoUrl: storagePath,
+      concepto: uploadForm.concepto,
     })
 
     // Confirmación para el admin
     addNotification({
-      texto: `Recibo cargado: ${emp ? `${emp.nombre} ${emp.apellido}` : 'empleado'} — ${MESES[uploadForm.mes - 1]} ${uploadForm.anio}`,
+      texto: `${uploadForm.concepto} cargado: ${emp ? `${emp.nombre} ${emp.apellido}` : 'empleado'} — ${MESES[uploadForm.mes - 1]} ${uploadForm.anio}`,
       tipo: 'recibo', soloAdmin: true,
     })
 
@@ -160,7 +163,7 @@ export default function RecibosPage() {
     if (storagePath) setUploadError('')
     setTimeout(() => {
       setUploadStatus('idle'); setShowUpload(false); setSelectedFile(null); setUploadError('')
-      setUploadForm({ empleadoId: '', mes: new Date().getMonth() + 1, anio: 2026, monto: '' })
+      setUploadForm({ empleadoId: '', mes: new Date().getMonth() + 1, anio: 2026, monto: '', concepto: 'Recibo mensual' })
       if (fileInputRef.current) fileInputRef.current.value = ''
     }, 1800)
   }
@@ -234,6 +237,7 @@ export default function RecibosPage() {
           fechaSubida: new Date().toISOString().slice(0, 10),
           monto: parseFloat(row.monto) || 0,
           archivoUrl: storagePath,
+          concepto: bulkConcepto,
         })
 
         setBulkRows(prev => prev.map(r => r.file.name === row.file.name ? { ...r, uploadStatus: 'done' } : r))
@@ -408,6 +412,15 @@ export default function RecibosPage() {
                         </div>
                         <div>
                           <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{formatMes(r.mes, r.anio)}</p>
+                          {r.concepto && (
+                            <span className={`inline-block text-[10px] font-medium px-1.5 py-0.5 rounded mt-0.5 ${
+                              r.concepto === 'Sueldo Anual Complementario'
+                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+                                : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                            }`}>
+                              {r.concepto === 'Sueldo Anual Complementario' ? '🎁 Aguinaldo (SAC)' : '📅 Recibo mensual'}
+                            </span>
+                          )}
                           <div className="flex items-center gap-1 mt-0.5">
                             {tieneArchivo
                               ? <><Cloud className="w-3 h-3 text-emerald-500" /><span className="text-xs text-emerald-600 dark:text-emerald-400">PDF en la nube</span></>
@@ -545,6 +558,13 @@ export default function RecibosPage() {
                 </div>
               </div>
               <div>
+                <label className="form-label">Concepto *</label>
+                <select className="form-select" value={uploadForm.concepto} onChange={e => setUploadForm(f => ({ ...f, concepto: e.target.value }))} disabled={uploadStatus === 'uploading'}>
+                  <option>Recibo mensual</option>
+                  <option>Sueldo Anual Complementario</option>
+                </select>
+              </div>
+              <div>
                 <label className="form-label">Monto neto (ARS) *</label>
                 <input className="form-input" type="number" placeholder="Ej: 450000" value={uploadForm.monto} onChange={e => setUploadForm(f => ({ ...f, monto: e.target.value }))} disabled={uploadStatus === 'uploading'} />
               </div>
@@ -621,6 +641,13 @@ export default function RecibosPage() {
                         {[2026, 2025, 2024].map(y => <option key={y} value={y}>{y}</option>)}
                       </select>
                     </div>
+                  </div>
+                  <div>
+                    <label className="form-label">Concepto * <span className="text-slate-400 font-normal">(aplica a todos)</span></label>
+                    <select className="form-select" value={bulkConcepto} onChange={e => setBulkConcepto(e.target.value)}>
+                      <option>Recibo mensual</option>
+                      <option>Sueldo Anual Complementario</option>
+                    </select>
                   </div>
 
                   {/* Drop zone */}

@@ -154,6 +154,7 @@ function mapSupabaseToRecibo(row: Record<string, unknown>): Recibo {
     archivo: (row.archivo as string) ?? '', fechaSubida: row.fecha_subida as string,
     monto: row.monto as number,
     archivoUrl: (row.archivo_url as string) ?? undefined,
+    concepto: (row.concepto as string) || undefined,
   }
 }
 function mapReciboToSupabase(r: Recibo) {
@@ -161,6 +162,7 @@ function mapReciboToSupabase(r: Recibo) {
     id: r.id, empleado_id: r.empleadoId, mes: r.mes, anio: r.anio,
     archivo: r.archivo, fecha_subida: r.fechaSubida, monto: r.monto,
     archivo_url: r.archivoUrl ?? null,
+    concepto: r.concepto ?? 'Recibo mensual',
   }
 }
 

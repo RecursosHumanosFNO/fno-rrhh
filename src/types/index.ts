@@ -110,6 +110,7 @@ export interface Recibo {
   archivoUrl?: string  // URL pública en Supabase Storage
   fechaSubida: string
   monto: number
+  concepto?: string    // 'Recibo mensual' | 'Sueldo Anual Complementario' | ...
 }
 
 export interface Solicitud {
