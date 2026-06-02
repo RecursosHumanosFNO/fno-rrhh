@@ -1,0 +1,46 @@
+name: Daily Database Backup
+
+# Hace un backup completo de la base de datos Supabase todos los días.
+# Los archivos quedan disponibles para descargar desde la pestaña Actions
+# de GitHub durante 90 días.
+
+on:
+  schedule:
+    # 03:00 UTC = 00:00 Argentina (UTC-3)
+    - cron: '0 3 * * *'
+  workflow_dispatch: {}   # Permite ejecutarlo manualmente en cualquier momento
+
+jobs:
+  backup:
+    name: Exportar base de datos
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar dependencias del script
+        run: npm install --no-save @supabase/supabase-js
+
+      - name: Ejecutar backup
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/backup-db.js
+
+      - name: Obtener fecha actual
+        id: fecha
+        run: echo "hoy=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+      - name: Guardar backup como artifact descargable
+        uses: actions/upload-artifact@v4
+        with:
+          name: backup-fno-${{ steps.fecha.outputs.hoy }}
+          path: backup/
+          retention-days: 90    # Se conservan 90 días (~3 meses de historial)
+          if-no-files-found: error
