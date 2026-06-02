@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback, useMemo } from 'react'
+import React, { useState, useRef, useCallback, useMemo } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { formatFecha, formatMes, formatMonto } from '@/lib/utils'
@@ -21,6 +21,7 @@ type BulkRow = {
   empleadoId: string      // '' = sin asignar
   monto: string
   status: 'matched' | 'unmatched' | 'manual'
+  selected: boolean       // si se incluye en el envío
   uploadStatus: 'pending' | 'uploading' | 'done' | 'error'
   errorMsg?: string
 }
@@ -184,9 +185,10 @@ export default function RecibosPage() {
           detectedDni: dni,
           empleadoId: match?.id ?? '',
           monto,
-          status: match ? 'matched' : 'unmatched',
+          status: match ? 'matched' : 'unmatched' as BulkRow['status'],
+          selected: !!match, // los que matchean vienen tildados por defecto
           uploadStatus: 'pending',
-        }
+        } as BulkRow
       })
     setBulkRows(rows)
     setBulkStep('preview')
@@ -206,7 +208,7 @@ export default function RecibosPage() {
   // ── Carga masiva — subir todos ─────────────────────────────────────────
   async function handleBulkUpload() {
     if (!bulkConfirmed) return
-    const rowsToUpload = bulkRows.filter(r => r.empleadoId)
+    const rowsToUpload = bulkRows.filter(r => r.empleadoId && r.selected)
     setBulkStep('uploading')
     setBulkProgress(0)
     const sb = supabase // cliente autenticado (sesión del admin)
@@ -297,6 +299,26 @@ export default function RecibosPage() {
 
   const sinAsignar = bulkRows.filter(r => !r.empleadoId).length
   const conAsignar = bulkRows.filter(r => r.empleadoId).length
+  const aEnviar = bulkRows.filter(r => r.empleadoId && r.selected).length
+
+  // Agrupar filas por sector del empleado asignado (para el preview)
+  const gruposPorSector = (() => {
+    const map = new Map<string, number[]>()
+    bulkRows.forEach((r, i) => {
+      const emp = empleados.find(e => e.id === r.empleadoId)
+      const sector = emp?.sector || '⚠ Sin asignar'
+      if (!map.has(sector)) map.set(sector, [])
+      map.get(sector)!.push(i)
+    })
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]))
+  })()
+
+  function toggleRow(i: number) {
+    setBulkRows(prev => prev.map((r, j) => j === i ? { ...r, selected: !r.selected } : r))
+  }
+  function setSectorSelected(indices: number[], value: boolean) {
+    setBulkRows(prev => prev.map((r, j) => indices.includes(j) && r.empleadoId ? { ...r, selected: value } : r))
+  }
 
   // ──────────────────────────────────────────────────────────────────────
   return (
@@ -683,23 +705,50 @@ export default function RecibosPage() {
                     </div>
                   </div>
 
-                  {/* Tabla de revisión */}
+                  {/* Tabla de revisión — agrupada por sector, con selección */}
                   <div className="rounded-xl overflow-x-auto border border-slate-200 dark:border-slate-800">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="bg-slate-50 dark:bg-slate-800/60">
-                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Archivo PDF</th>
+                          <th className="px-3 py-3 w-10"></th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Archivo PDF (DNI)</th>
                           <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">DNI detectado</th>
                           <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Empleado asignado</th>
                           <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Monto (ARS)</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                        {bulkRows.map((row, i) => {
+                        {gruposPorSector.map(([sector, indices]) => {
+                          const asignablesIdx = indices.filter(i => bulkRows[i].empleadoId)
+                          const todosSel = asignablesIdx.length > 0 && asignablesIdx.every(i => bulkRows[i].selected)
+                          return (
+                            <React.Fragment key={sector}>
+                              {/* Encabezado de sector */}
+                              <tr className="bg-slate-100/80 dark:bg-slate-800">
+                                <td className="px-3 py-2">
+                                  {asignablesIdx.length > 0 && (
+                                    <input type="checkbox" checked={todosSel}
+                                      onChange={e => setSectorSelected(indices, e.target.checked)}
+                                      className="w-4 h-4 accent-teal-600 cursor-pointer" title="Seleccionar todo el sector" />
+                                  )}
+                                </td>
+                                <td colSpan={4} className="px-4 py-2">
+                                  <span className="text-xs font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300">{sector}</span>
+                                  <span className="text-xs text-slate-400 ml-2">({indices.length})</span>
+                                </td>
+                              </tr>
+                        {indices.map(i => {
+                          const row = bulkRows[i]
                           const emp = empleados.find(e => e.id === row.empleadoId)
                           const sinEmp = !row.empleadoId
                           return (
-                            <tr key={i} className={`${sinEmp ? 'bg-red-50/60 dark:bg-red-900/10' : ''}`}>
+                            <tr key={i} className={`${sinEmp ? 'bg-red-50/60 dark:bg-red-900/10' : row.selected ? '' : 'opacity-50'}`}>
+                              {/* Check de selección */}
+                              <td className="px-3 py-3">
+                                <input type="checkbox" checked={row.selected} disabled={sinEmp}
+                                  onChange={() => toggleRow(i)}
+                                  className="w-4 h-4 accent-teal-600 cursor-pointer disabled:opacity-40" />
+                              </td>
                               {/* Archivo */}
                               <td className="px-4 py-3">
                                 <div className="flex items-center gap-2">
@@ -761,6 +810,9 @@ export default function RecibosPage() {
                             </tr>
                           )
                         })}
+                            </React.Fragment>
+                          )
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -803,7 +855,7 @@ export default function RecibosPage() {
                     <div className="bg-brand-700 dark:bg-teal-500 h-2.5 rounded-full transition-all duration-500" style={{ width: `${bulkProgress}%` }} />
                   </div>
                   <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {bulkRows.filter(r => r.empleadoId).map((row, i) => {
+                    {bulkRows.filter(r => r.empleadoId && r.selected).map((row, i) => {
                       const emp = empleados.find(e => e.id === row.empleadoId)
                       return (
                         <div key={i} className="flex items-center gap-3 text-sm">
@@ -871,11 +923,11 @@ export default function RecibosPage() {
                   </button>
                   <button
                     onClick={handleBulkUpload}
-                    disabled={!bulkConfirmed || conAsignar === 0}
+                    disabled={!bulkConfirmed || aEnviar === 0}
                     className="btn-primary disabled:opacity-50"
                   >
                     <CheckCheck className="w-4 h-4" />
-                    Confirmar y subir {conAsignar} recibo{conAsignar !== 1 ? 's' : ''}
+                    Confirmar y subir {aEnviar} recibo{aEnviar !== 1 ? 's' : ''}
                     <ChevronRight className="w-4 h-4" />
                   </button>
                 </>
