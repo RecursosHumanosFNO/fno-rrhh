@@ -638,7 +638,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const addRecibo = useCallback((r: Omit<Recibo, 'id'>) => {
     const nuevo = { ...r, id: uid() }
     setRecibos(prev => [nuevo, ...prev])
-    addNotification({ texto: `Nuevo recibo de sueldo disponible — verificá tu sección de recibos`, tipo: 'recibo', empleadoId: r.empleadoId })
+    addNotification({ texto: `Nuevo recibo de sueldo disponible — verificá tu sección de recibos`, tipo: 'recibo', empleadoId: r.empleadoId, soloEmpleado: true })
     if (supabase) supabase.from('fno_recibos').insert(mapReciboToSupabase(nuevo)).then(({ error }) => {
       if (error) console.error('[supabase] insert fno_recibos:', error)
     })

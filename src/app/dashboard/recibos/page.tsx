@@ -4,7 +4,7 @@ import { useState, useRef, useCallback, useMemo } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { formatFecha, formatMes, formatMonto } from '@/lib/utils'
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '@/lib/supabase'
 import {
   FileText, Download, Upload, Search, X, CheckCircle2,
   Loader2, AlertCircle, Eye, Cloud, HardDrive, Lock,
@@ -13,13 +13,6 @@ import {
 
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
-
-function getSupabaseAnon() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  if (!url || !key) return null
-  return createClient(url, key)
-}
 
 // ── Tipos para carga masiva ────────────────────────────────────────────────
 type BulkRow = {
@@ -54,7 +47,7 @@ function extractMontoFromFilename(name: string, dniFound: string): string {
 
 export default function RecibosPage() {
   const { user } = useAuth()
-  const { empleados, recibos, addRecibo } = useData()
+  const { empleados, recibos, addRecibo, addNotification } = useData()
   const isAdmin = user?.role === 'admin'
 
   // ── Estado filtros/tabla ───────────────────────────────────────────────
@@ -118,7 +111,7 @@ export default function RecibosPage() {
     let storagePath: string | undefined
 
     if (selectedFile) {
-      const sb = getSupabaseAnon()
+      const sb = supabase // cliente autenticado (sesión del admin) — necesario para el bucket privado
       if (sb) {
         const path = `${uploadForm.empleadoId}/${uploadForm.anio}/${uploadForm.mes.toString().padStart(2, '0')}_${Date.now()}.pdf`
         const { error: upErr } = await sb.storage.from('fno-recibos').upload(path, selectedFile, { contentType: 'application/pdf', upsert: false })
@@ -138,6 +131,12 @@ export default function RecibosPage() {
       fechaSubida: new Date().toISOString().slice(0, 10),
       monto: parseFloat(uploadForm.monto),
       archivoUrl: storagePath,
+    })
+
+    // Confirmación para el admin
+    addNotification({
+      texto: `Recibo cargado: ${emp ? `${emp.nombre} ${emp.apellido}` : 'empleado'} — ${MESES[uploadForm.mes - 1]} ${uploadForm.anio}`,
+      tipo: 'recibo', soloAdmin: true,
     })
 
     setUploadStatus('success')
@@ -190,7 +189,7 @@ export default function RecibosPage() {
     const rowsToUpload = bulkRows.filter(r => r.empleadoId)
     setBulkStep('uploading')
     setBulkProgress(0)
-    const sb = getSupabaseAnon()
+    const sb = supabase // cliente autenticado (sesión del admin)
     let ok = 0, fail = 0
 
     for (let i = 0; i < rowsToUpload.length; i++) {
@@ -232,6 +231,14 @@ export default function RecibosPage() {
 
     setBulkDone({ ok, fail })
     setBulkStep('done')
+
+    // Confirmación resumen para el admin
+    if (ok > 0) {
+      addNotification({
+        texto: `Carga masiva: ${ok} recibo${ok !== 1 ? 's' : ''} cargado${ok !== 1 ? 's' : ''} — ${MESES[bulkMes - 1]} ${bulkAnio}${fail > 0 ? ` (${fail} con error)` : ''}`,
+        tipo: 'recibo', soloAdmin: true,
+      })
+    }
   }
 
   function resetBulk() {

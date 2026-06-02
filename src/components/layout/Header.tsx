@@ -41,7 +41,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
   // Admin: ve todo. Empleado: solo sus propias notificaciones + globales sin soloAdmin
   const visibleNotifications = [...notifications]
     .filter(n => {
-      if (isAdmin) return true
+      if (isAdmin) return !n.soloEmpleado            // admin ve todo menos lo exclusivo del empleado
       if (n.soloAdmin || n.tipo === 'registro') return false
       return !n.empleadoId || n.empleadoId === empleado?.id
     })
