@@ -428,7 +428,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const id = uid()
     const newEmp = { ...e, id }
     setEmpleados(prev => [...prev, newEmp])
-    addNotification({ texto: `Nuevo empleado registrado: ${e.nombre} ${e.apellido}`, tipo: 'sistema' })
+    addNotification({ texto: `Nuevo empleado registrado: ${e.nombre} ${e.apellido}`, tipo: 'sistema', soloAdmin: true })
     if (supabase) supabase.from('fno_empleados').insert(mapEmpleadoToSupabase(newEmp)).then(({ error }) => {
       if (error) console.error('[supabase] insert fno_empleados:', error)
     })
