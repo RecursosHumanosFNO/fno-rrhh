@@ -136,7 +136,10 @@ export interface Novedad {
   imagen?: string
 }
 
-export type EventoTipo = 'feriado' | 'jornada' | 'acto' | 'capacitacion' | 'reunion' | 'receso' | 'proyecto' | 'otro'
+export type EventoTipo =
+  | 'feriado' | 'jornada' | 'acto' | 'capacitacion' | 'reunion'
+  | 'receso' | 'proyecto' | 'institucional' | 'reunion_padres'
+  | 'examen' | 'inscripciones' | 'salida' | 'religioso' | 'otro'
 
 export interface Evento {
   id: string
