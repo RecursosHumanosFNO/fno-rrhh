@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
+import { supabase } from '@/lib/supabase'
 import {
   NOVEDAD_CATEGORIA_COLOR, NOVEDAD_CATEGORIA_LABEL, NOVEDAD_CATEGORIAS, formatFecha,
 } from '@/lib/utils'
@@ -10,6 +11,7 @@ import type { NovedadCategoria } from '@/types'
 import {
   Megaphone, Plus, Pin, Calendar, PartyPopper, AlertTriangle,
   Bell, MessageSquare, X, ChevronRight, Trash2, Edit2, Save, Mail,
+  Image as ImageIcon, Loader2,
 } from 'lucide-react'
 
 // Ícono por categoría (las que no estén usan Calendar por defecto)
@@ -36,7 +38,28 @@ export default function ComunicacionesPage() {
 
   const [newForm, setNewForm] = useState({
     titulo: '', contenido: '', categoria: 'novedad' as NovedadCategoria, importante: false, notifyEmail: false,
+    imagen: '',
   })
+  const [uploadingImg, setUploadingImg] = useState(false)
+  const imgRef = useRef<HTMLInputElement>(null)
+
+  async function handleImageUpload(file: File) {
+    if (!supabase) return
+    setUploadingImg(true)
+    try {
+      const ext = file.name.split('.').pop() || 'jpg'
+      const path = `novedades/${Date.now()}.${ext}`
+      const { error } = await supabase.storage.from('fno-media').upload(path, file, { upsert: false, contentType: file.type })
+      if (!error) {
+        const { data } = supabase.storage.from('fno-media').getPublicUrl(path)
+        setNewForm(f => ({ ...f, imagen: data.publicUrl }))
+      } else {
+        alert('No se pudo subir la imagen: ' + error.message)
+      }
+    } finally {
+      setUploadingImg(false)
+    }
+  }
 
   const filtered = novedades
     .filter(n => !catFilter || n.categoria === catFilter)
@@ -50,6 +73,7 @@ export default function ComunicacionesPage() {
         contenido: newForm.contenido,
         categoria: newForm.categoria,
         importante: newForm.importante,
+        imagen: newForm.imagen || undefined,
       })
       setEditId(null)
     } else {
@@ -60,15 +84,16 @@ export default function ComunicacionesPage() {
         fechaPublicacion: new Date().toISOString().slice(0, 10),
         autor: 'RRHH',
         importante: newForm.importante,
+        imagen: newForm.imagen || undefined,
       }, newForm.notifyEmail)
     }
     setShowNueva(false)
-    setNewForm({ titulo: '', contenido: '', categoria: 'novedad', importante: false, notifyEmail: false })
+    setNewForm({ titulo: '', contenido: '', categoria: 'novedad', importante: false, notifyEmail: false, imagen: '' })
   }
 
-  function handleEdit(n: { id: string; titulo: string; contenido: string; categoria: NovedadCategoria; importante: boolean }) {
+  function handleEdit(n: { id: string; titulo: string; contenido: string; categoria: NovedadCategoria; importante: boolean; imagen?: string }) {
     setEditId(n.id)
-    setNewForm({ titulo: n.titulo, contenido: n.contenido, categoria: n.categoria, importante: n.importante, notifyEmail: false })
+    setNewForm({ titulo: n.titulo, contenido: n.contenido, categoria: n.categoria, importante: n.importante, notifyEmail: false, imagen: n.imagen ?? '' })
     setShowNueva(true)
   }
 
@@ -158,6 +183,11 @@ export default function ComunicacionesPage() {
                     ? <p className="text-sm text-slate-600 dark:text-slate-300 mt-1 leading-relaxed animate-fade-in">{n.contenido}</p>
                     : <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{n.contenido}</p>
                   }
+                  {n.imagen && (
+                    isSelected
+                      ? <img src={n.imagen} alt="" className="mt-3 rounded-xl border border-slate-200 dark:border-slate-700 max-h-80 w-auto animate-fade-in" /> /* eslint-disable-line @next/next/no-img-element */
+                      : <span className="inline-flex items-center gap-1 text-xs text-brand-600 dark:text-brand-400 mt-1.5"><ImageIcon className="w-3.5 h-3.5" /> Incluye imagen</span>
+                  )}
                   <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
                     Publicado el {formatFecha(n.fechaPublicacion)} · Por {n.autor}
                   </p>
@@ -225,6 +255,43 @@ export default function ComunicacionesPage() {
                   onChange={e => setNewForm(f => ({ ...f, contenido: e.target.value }))}
                 />
               </div>
+              {/* Imagen / GIF (opcional) */}
+              <div>
+                <label className="form-label">Imagen o GIF <span className="text-slate-400 font-normal">(opcional)</span></label>
+                {newForm.imagen ? (
+                  <div className="relative inline-block">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={newForm.imagen} alt="" className="max-h-40 rounded-xl border border-slate-200 dark:border-slate-700" />
+                    <button
+                      type="button"
+                      onClick={() => setNewForm(f => ({ ...f, imagen: '' }))}
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center shadow"
+                      title="Quitar imagen"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => imgRef.current?.click()}
+                    disabled={uploadingImg}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 text-sm text-slate-500 dark:text-slate-400 hover:border-brand-400 hover:text-brand-600 transition-colors disabled:opacity-60"
+                  >
+                    {uploadingImg
+                      ? <><Loader2 className="w-4 h-4 animate-spin" /> Subiendo...</>
+                      : <><ImageIcon className="w-4 h-4" /> Subir imagen o GIF</>}
+                  </button>
+                )}
+                <input
+                  ref={imgRef}
+                  type="file"
+                  accept="image/*,image/gif"
+                  className="hidden"
+                  onChange={e => e.target.files?.[0] && handleImageUpload(e.target.files[0])}
+                />
+              </div>
+
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
@@ -252,7 +319,7 @@ export default function ComunicacionesPage() {
                 </label>
               )}
               <div className="flex gap-2 justify-end">
-                <button onClick={() => { setShowNueva(false); setEditId(null) }} className="btn-secondary">Cancelar</button>
+                <button onClick={() => { setShowNueva(false); setEditId(null); setNewForm({ titulo: '', contenido: '', categoria: 'novedad', importante: false, notifyEmail: false, imagen: '' }) }} className="btn-secondary">Cancelar</button>
                 <button
                   onClick={handlePublicar}
                   disabled={!newForm.titulo.trim() || !newForm.contenido.trim()}

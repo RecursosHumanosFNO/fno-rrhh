@@ -215,6 +215,7 @@ export async function POST(req: NextRequest) {
           <div style="background:#f1f5f9;border-radius:8px;padding:16px;margin:20px 0;">
             <p style="margin:0 0 8px 0;font-weight:700;color:#1e293b;font-size:16px;">${data.titulo}</p>
             <p style="margin:0;color:#475569;">${data.contenido}</p>
+            ${data.imagen ? `<img src="${data.imagen}" alt="" style="margin-top:12px;max-width:100%;border-radius:8px;display:block;" />` : ''}
             <p style="margin:8px 0 0 0;color:#94a3b8;font-size:12px;">Publicado por ${data.autor}</p>
           </div>
           ${btn('Ver en el portal', `${PORTAL_URL}/dashboard/comunicaciones`)}

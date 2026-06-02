@@ -582,7 +582,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       if (error) console.error('[supabase] insert fno_novedades:', error)
     })
     if (notifyEmail) {
-      sendEmail('novedad_publicada', { titulo: n.titulo, contenido: n.contenido, autor: n.autor })
+      sendEmail('novedad_publicada', { titulo: n.titulo, contenido: n.contenido, autor: n.autor, imagen: n.imagen ?? '' })
     }
   }, [addNotification])
 
