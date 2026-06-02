@@ -28,12 +28,12 @@
   }
 
   html.dark body {
-    /* Aurora institucional oscura */
-    background-color: #0a1119;
+    /* Aurora institucional oscura — azul noche, no negro */
+    background-color: #1b2c3d;
     background-image:
-      radial-gradient(at 12% 16%, rgba(73, 216, 183, 0.14) 0px, transparent 45%),
-      radial-gradient(at 88% 10%, rgba(48, 120, 172, 0.16) 0px, transparent 48%),
-      radial-gradient(at 72% 88%, rgba(35, 89, 126, 0.18) 0px, transparent 48%);
+      radial-gradient(at 78% 75%, rgba(48, 120, 172, 0.45) 0px, transparent 55%),
+      radial-gradient(at 50% 45%, rgba(73, 216, 183, 0.28) 0px, transparent 50%),
+      linear-gradient(135deg, #244055 0%, #1d3a4e 32%, #1a3f48 58%, #163243 100%);
     background-attachment: fixed;
     @apply text-slate-100;
   }
