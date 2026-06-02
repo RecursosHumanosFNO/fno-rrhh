@@ -3,13 +3,15 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import { useTheme } from '@/components/ThemeProvider'
 import { supabase } from '@/lib/supabase'
-import { Eye, EyeOff, Lock, Mail, AlertCircle, ExternalLink } from 'lucide-react'
+import { Eye, EyeOff, Lock, Mail, AlertCircle, ExternalLink, Sun, Moon } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 
 export default function LoginPage() {
   const { login } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const router = useRouter()
 
   const [email, setEmail] = useState('')
@@ -34,6 +36,15 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex">
+      {/* Toggle modo claro/oscuro */}
+      <button
+        onClick={toggleTheme}
+        title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
+        className="fixed top-4 right-4 z-50 w-10 h-10 flex items-center justify-center rounded-full bg-white/80 dark:bg-slate-800/80 backdrop-blur border border-white/60 dark:border-slate-700/60 text-slate-700 dark:text-slate-200 shadow-lg hover:scale-105 transition-transform"
+      >
+        {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+      </button>
+
       {/* Left panel — imagen de fondo */}
       <div className="hidden lg:flex lg:w-1/2 relative flex-col justify-between p-12 overflow-hidden">
         {/* Foto de fondo */}

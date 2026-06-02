@@ -17,12 +17,12 @@
 
   body {
     /* Aurora institucional: glows de verde agua + azules sobre base clara */
-    background-color: #dceaf6;
+    background-color: #dff1ec;
+    /* Progresión clara: blanco → verde agua → azul, con glows para profundidad */
     background-image:
-      radial-gradient(at 10% 14%, rgba(73, 216, 183, 0.55) 0px, transparent 46%),
-      radial-gradient(at 90% 8%, rgba(48, 120, 172, 0.50) 0px, transparent 50%),
-      radial-gradient(at 72% 92%, rgba(35, 89, 126, 0.42) 0px, transparent 50%),
-      radial-gradient(at 20% 85%, rgba(82, 147, 189, 0.42) 0px, transparent 50%);
+      radial-gradient(at 78% 75%, rgba(48, 120, 172, 0.55) 0px, transparent 55%),
+      radial-gradient(at 50% 45%, rgba(73, 216, 183, 0.45) 0px, transparent 50%),
+      linear-gradient(135deg, #ffffff 0%, #cdf2e8 28%, #6fd3c0 55%, #3d92c4 100%);
     background-attachment: fixed;
     @apply text-slate-900 font-sans antialiased;
   }
