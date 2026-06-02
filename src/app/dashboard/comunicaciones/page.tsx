@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import {
-  NOVEDAD_CATEGORIA_COLOR, NOVEDAD_CATEGORIA_LABEL, formatFecha,
+  NOVEDAD_CATEGORIA_COLOR, NOVEDAD_CATEGORIA_LABEL, NOVEDAD_CATEGORIAS, formatFecha,
 } from '@/lib/utils'
 import type { NovedadCategoria } from '@/types'
 import {
@@ -12,12 +12,16 @@ import {
   Bell, MessageSquare, X, ChevronRight, Trash2, Edit2, Save, Mail,
 } from 'lucide-react'
 
-const CATEGORIA_ICONS: Record<NovedadCategoria, React.ElementType> = {
+// Ícono por categoría (las que no estén usan Calendar por defecto)
+const CATEGORIA_ICONS: Partial<Record<NovedadCategoria, React.ElementType>> = {
   comunicado: MessageSquare,
   novedad: Bell,
   alerta: AlertTriangle,
   evento: Calendar,
   cumpleanos: PartyPopper,
+}
+function catIcon(cat: NovedadCategoria): React.ElementType {
+  return CATEGORIA_ICONS[cat] ?? Calendar
 }
 
 export default function ComunicacionesPage() {
@@ -95,8 +99,8 @@ export default function ComunicacionesPage() {
         >
           Todas
         </button>
-        {(['comunicado', 'novedad', 'alerta', 'evento', 'cumpleanos'] as NovedadCategoria[]).map(cat => {
-          const Icon = CATEGORIA_ICONS[cat]
+        {NOVEDAD_CATEGORIAS.map(cat => {
+          const Icon = catIcon(cat)
           return (
             <button
               key={cat}
@@ -120,7 +124,7 @@ export default function ComunicacionesPage() {
             <p className="text-slate-500">No hay novedades en esta categoría.</p>
           </div>
         ) : filtered.map(n => {
-          const Icon = CATEGORIA_ICONS[n.categoria]
+          const Icon = catIcon(n.categoria)
           const isSelected = selectedNovedad === n.id
           return (
             <div
@@ -206,7 +210,7 @@ export default function ComunicacionesPage() {
               <div>
                 <label className="form-label">Categoría *</label>
                 <select className="form-select" value={newForm.categoria} onChange={e => setNewForm(f => ({ ...f, categoria: e.target.value as NovedadCategoria }))}>
-                  {(['comunicado', 'novedad', 'alerta', 'evento', 'cumpleanos'] as NovedadCategoria[]).map(c => (
+                  {NOVEDAD_CATEGORIAS.map(c => (
                     <option key={c} value={c}>{NOVEDAD_CATEGORIA_LABEL[c]}</option>
                   ))}
                 </select>

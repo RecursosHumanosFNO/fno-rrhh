@@ -128,22 +128,6 @@ export const EMPLEADO_ESTADO_COLOR: Record<EmpleadoEstado, string> = {
   vacaciones: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
 }
 
-export const NOVEDAD_CATEGORIA_LABEL: Record<NovedadCategoria, string> = {
-  comunicado: 'Comunicado',
-  novedad: 'Novedad',
-  alerta: 'Alerta',
-  evento: 'Evento',
-  cumpleanos: 'Cumpleaños',
-}
-
-export const NOVEDAD_CATEGORIA_COLOR: Record<NovedadCategoria, string> = {
-  comunicado: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-  novedad: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
-  alerta: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
-  evento: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
-  cumpleanos: 'bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300',
-}
-
 export const TICKET_ESTADO_LABEL: Record<TicketEstado, string> = {
   abierto: 'Abierto',
   en_proceso: 'En Proceso',
@@ -216,6 +200,33 @@ export const EVENTO_TIPO_DOT: Record<EventoTipo, string> = {
   religioso:   'bg-violet-500',
   otro:        'bg-slate-400',
 }
+
+// ── Categorías de Novedades: las propias + todas las de eventos ───────────────
+export const NOVEDAD_CATEGORIA_LABEL: Record<NovedadCategoria, string> = {
+  comunicado: '📣 Comunicado',
+  novedad:    '📰 Novedad',
+  alerta:     '⚠️ Alerta',
+  evento:     '📅 Evento',
+  cumpleanos: '🎂 Cumpleaños',
+  ...EVENTO_TIPO_LABEL,
+}
+
+export const NOVEDAD_CATEGORIA_COLOR: Record<NovedadCategoria, string> = {
+  comunicado: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+  novedad:    'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
+  alerta:     'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+  evento:     'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+  cumpleanos: 'bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300',
+  ...EVENTO_TIPO_COLOR,
+}
+
+// Lista ordenada para selects/filtros de novedades
+export const NOVEDAD_CATEGORIAS: NovedadCategoria[] = [
+  'comunicado', 'novedad', 'alerta', 'evento', 'cumpleanos',
+  'feriado', 'jornada', 'acto', 'capacitacion', 'reunion',
+  'receso', 'proyecto', 'institucional', 'reunion_padres',
+  'examen', 'inscripciones', 'salida', 'religioso', 'otro',
+]
 
 export function getInitials(nombre: string, apellido: string): string {
   return `${nombre.charAt(0)}${apellido.charAt(0)}`.toUpperCase()

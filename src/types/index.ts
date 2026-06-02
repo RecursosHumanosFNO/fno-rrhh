@@ -35,7 +35,10 @@ export type SolicitudTipo =
   | 'pedido_administrativo'
   | 'otro'
 
-export type NovedadCategoria = 'comunicado' | 'novedad' | 'alerta' | 'evento' | 'cumpleanos'
+// Las novedades comparten las categorías de eventos + sus propias (comunicado, alerta, etc.)
+export type NovedadCategoria =
+  | 'comunicado' | 'novedad' | 'alerta' | 'evento' | 'cumpleanos'
+  | EventoTipo
 
 export type TicketEstado = 'abierto' | 'en_proceso' | 'resuelto' | 'cerrado'
 
