@@ -85,7 +85,7 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
         className="relative rounded-2xl p-6 overflow-hidden"
         style={{ backgroundImage: 'url(/banner-fundacion.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }}
       >
-        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/45 to-black/20 rounded-2xl" />
+        <div className="absolute inset-0 bg-gradient-to-r from-brand-900/85 via-brand-700/55 to-brand-500/25 rounded-2xl" />
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <p className="text-blue-200 text-sm font-medium capitalize">{fechaStr}</p>
@@ -417,8 +417,8 @@ function EmployeeDashboard({ saludo, fechaStr, empleadoId }: { saludo: string, f
         className="relative rounded-2xl p-6 text-white overflow-hidden"
         style={{ backgroundImage: 'url(/banner-fundacion.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }}
       >
-        {/* Capa oscura para legibilidad del texto */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/40 to-black/20 rounded-2xl" />
+        {/* Capa azul institucional para legibilidad del texto (se funde con la aurora) */}
+        <div className="absolute inset-0 bg-gradient-to-r from-brand-900/85 via-brand-700/55 to-brand-500/25 rounded-2xl" />
         {/* Contenido */}
         <div className="relative z-10">
           <p className="text-blue-200 text-sm font-medium capitalize">{fechaStr}</p>
