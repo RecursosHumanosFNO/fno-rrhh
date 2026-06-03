@@ -138,6 +138,8 @@ export interface Novedad {
   autor: string
   importante: boolean
   imagen?: string
+  adjuntoUrl?: string
+  adjuntoNombre?: string
 }
 
 export type EventoTipo =
@@ -153,6 +155,8 @@ export interface Evento {
   descripcion?: string
   empleadoId?: string
   imagen?: string
+  adjuntoUrl?: string
+  adjuntoNombre?: string
 }
 
 export interface Ticket {

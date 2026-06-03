@@ -11,7 +11,7 @@ import type { NovedadCategoria } from '@/types'
 import {
   Megaphone, Plus, Pin, Calendar, PartyPopper, AlertTriangle,
   Bell, MessageSquare, X, ChevronRight, Trash2, Edit2, Save, Mail,
-  Image as ImageIcon, Loader2,
+  Image as ImageIcon, Loader2, Paperclip, Download,
 } from 'lucide-react'
 
 // Ícono por categoría (las que no estén usan Calendar por defecto)
@@ -38,10 +38,12 @@ export default function ComunicacionesPage() {
 
   const [newForm, setNewForm] = useState({
     titulo: '', contenido: '', categoria: 'novedad' as NovedadCategoria, importante: false, notifyEmail: false,
-    imagen: '',
+    imagen: '', adjuntoUrl: '', adjuntoNombre: '',
   })
   const [uploadingImg, setUploadingImg] = useState(false)
+  const [uploadingFile, setUploadingFile] = useState(false)
   const imgRef = useRef<HTMLInputElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   async function handleImageUpload(file: File) {
     if (!supabase) return
@@ -61,6 +63,25 @@ export default function ComunicacionesPage() {
     }
   }
 
+  async function handleFileUpload(file: File) {
+    if (!supabase) return
+    if (file.size > 15 * 1024 * 1024) { alert('El archivo no puede superar los 15 MB.'); return }
+    setUploadingFile(true)
+    try {
+      const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+      const path = `novedades/adjuntos/${Date.now()}_${safe}`
+      const { error } = await supabase.storage.from('fno-media').upload(path, file, { upsert: false, contentType: file.type })
+      if (!error) {
+        const { data } = supabase.storage.from('fno-media').getPublicUrl(path)
+        setNewForm(f => ({ ...f, adjuntoUrl: data.publicUrl, adjuntoNombre: file.name }))
+      } else {
+        alert('No se pudo subir el archivo: ' + error.message)
+      }
+    } finally {
+      setUploadingFile(false)
+    }
+  }
+
   const filtered = novedades
     .filter(n => !catFilter || n.categoria === catFilter)
     .sort((a, b) => b.fechaPublicacion.localeCompare(a.fechaPublicacion))
@@ -74,6 +95,8 @@ export default function ComunicacionesPage() {
         categoria: newForm.categoria,
         importante: newForm.importante,
         imagen: newForm.imagen || undefined,
+        adjuntoUrl: newForm.adjuntoUrl || undefined,
+        adjuntoNombre: newForm.adjuntoNombre || undefined,
       })
       setEditId(null)
     } else {
@@ -85,15 +108,17 @@ export default function ComunicacionesPage() {
         autor: 'RRHH',
         importante: newForm.importante,
         imagen: newForm.imagen || undefined,
+        adjuntoUrl: newForm.adjuntoUrl || undefined,
+        adjuntoNombre: newForm.adjuntoNombre || undefined,
       }, newForm.notifyEmail)
     }
     setShowNueva(false)
-    setNewForm({ titulo: '', contenido: '', categoria: 'novedad', importante: false, notifyEmail: false, imagen: '' })
+    setNewForm({ titulo: '', contenido: '', categoria: 'novedad', importante: false, notifyEmail: false, imagen: '', adjuntoUrl: '', adjuntoNombre: '' })
   }
 
-  function handleEdit(n: { id: string; titulo: string; contenido: string; categoria: NovedadCategoria; importante: boolean; imagen?: string }) {
+  function handleEdit(n: { id: string; titulo: string; contenido: string; categoria: NovedadCategoria; importante: boolean; imagen?: string; adjuntoUrl?: string; adjuntoNombre?: string }) {
     setEditId(n.id)
-    setNewForm({ titulo: n.titulo, contenido: n.contenido, categoria: n.categoria, importante: n.importante, notifyEmail: false, imagen: n.imagen ?? '' })
+    setNewForm({ titulo: n.titulo, contenido: n.contenido, categoria: n.categoria, importante: n.importante, notifyEmail: false, imagen: n.imagen ?? '', adjuntoUrl: n.adjuntoUrl ?? '', adjuntoNombre: n.adjuntoNombre ?? '' })
     setShowNueva(true)
   }
 
@@ -187,6 +212,13 @@ export default function ComunicacionesPage() {
                     isSelected
                       ? <img src={n.imagen} alt="" className="mt-3 rounded-xl border border-slate-200 dark:border-slate-700 max-h-80 w-auto animate-fade-in" /> /* eslint-disable-line @next/next/no-img-element */
                       : <span className="inline-flex items-center gap-1 text-xs text-brand-600 dark:text-brand-400 mt-1.5"><ImageIcon className="w-3.5 h-3.5" /> Incluye imagen</span>
+                  )}
+                  {n.adjuntoUrl && (
+                    <a href={n.adjuntoUrl} target="_blank" rel="noopener noreferrer" download={n.adjuntoNombre}
+                      onClick={e => e.stopPropagation()}
+                      className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-brand-700 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/20 hover:bg-brand-100 dark:hover:bg-brand-900/40 rounded-lg px-2.5 py-1.5 transition-colors w-fit">
+                      <Download className="w-3.5 h-3.5" /> {n.adjuntoNombre || 'Descargar adjunto'}
+                    </a>
                   )}
                   <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
                     Publicado el {formatFecha(n.fechaPublicacion)} · Por {n.autor}
@@ -292,6 +324,27 @@ export default function ComunicacionesPage() {
                 />
               </div>
 
+              {/* Archivo adjunto (PDF, Word, etc.) opcional */}
+              <div>
+                <label className="form-label">Archivo adjunto <span className="text-slate-400 font-normal">(PDF, Word, Excel... opcional)</span></label>
+                {newForm.adjuntoUrl ? (
+                  <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2">
+                    <Paperclip className="w-4 h-4 text-brand-600 dark:text-brand-400 shrink-0" />
+                    <span className="text-sm text-slate-700 dark:text-slate-300 truncate flex-1">{newForm.adjuntoNombre}</span>
+                    <button type="button" onClick={() => setNewForm(f => ({ ...f, adjuntoUrl: '', adjuntoNombre: '' }))} className="text-slate-400 hover:text-red-500" title="Quitar adjunto">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => fileRef.current?.click()} disabled={uploadingFile}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 text-sm text-slate-500 dark:text-slate-400 hover:border-brand-400 hover:text-brand-600 transition-colors disabled:opacity-60">
+                    {uploadingFile ? <><Loader2 className="w-4 h-4 animate-spin" /> Subiendo...</> : <><Paperclip className="w-4 h-4" /> Adjuntar archivo</>}
+                  </button>
+                )}
+                <input ref={fileRef} type="file" className="hidden"
+                  onChange={e => e.target.files?.[0] && handleFileUpload(e.target.files[0])} />
+              </div>
+
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
@@ -319,7 +372,7 @@ export default function ComunicacionesPage() {
                 </label>
               )}
               <div className="flex gap-2 justify-end">
-                <button onClick={() => { setShowNueva(false); setEditId(null); setNewForm({ titulo: '', contenido: '', categoria: 'novedad', importante: false, notifyEmail: false, imagen: '' }) }} className="btn-secondary">Cancelar</button>
+                <button onClick={() => { setShowNueva(false); setEditId(null); setNewForm({ titulo: '', contenido: '', categoria: 'novedad', importante: false, notifyEmail: false, imagen: '', adjuntoUrl: '', adjuntoNombre: '' }) }} className="btn-secondary">Cancelar</button>
                 <button
                   onClick={handlePublicar}
                   disabled={!newForm.titulo.trim() || !newForm.contenido.trim()}

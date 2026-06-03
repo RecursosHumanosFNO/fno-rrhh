@@ -9,6 +9,7 @@ import type { EventoTipo, Evento } from '@/types'
 import {
   Calendar, PartyPopper, Plus, ChevronLeft, ChevronRight,
   Edit2, Trash2, X, Save, Image as ImageIcon, Loader2,
+  Paperclip, Download,
 } from 'lucide-react'
 
 const TIPOS_EVENTO: EventoTipo[] = ['feriado', 'jornada', 'acto', 'capacitacion', 'reunion', 'receso', 'proyecto', 'institucional', 'reunion_padres', 'examen', 'inscripciones', 'salida', 'religioso', 'otro']
@@ -37,7 +38,9 @@ export default function EventosPage() {
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [uploadingImg, setUploadingImg] = useState(false)
+  const [uploadingFile, setUploadingFile] = useState(false)
   const imgRef = useRef<HTMLInputElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   async function handleImageUpload(file: File) {
     if (!supabase) return
@@ -54,6 +57,25 @@ export default function EventosPage() {
       }
     } finally {
       setUploadingImg(false)
+    }
+  }
+
+  async function handleFileUpload(file: File) {
+    if (!supabase) return
+    if (file.size > 15 * 1024 * 1024) { alert('El archivo no puede superar los 15 MB.'); return }
+    setUploadingFile(true)
+    try {
+      const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+      const path = `eventos/adjuntos/${Date.now()}_${safe}`
+      const { error } = await supabase.storage.from('fno-media').upload(path, file, { upsert: false, contentType: file.type })
+      if (!error) {
+        const { data } = supabase.storage.from('fno-media').getPublicUrl(path)
+        setForm(f => ({ ...f, adjuntoUrl: data.publicUrl, adjuntoNombre: file.name }))
+      } else {
+        alert('No se pudo subir el archivo: ' + error.message)
+      }
+    } finally {
+      setUploadingFile(false)
     }
   }
 
@@ -98,7 +120,7 @@ export default function EventosPage() {
     setModal({ mode: 'add', fechaDefault })
   }
   function openEdit(ev: Evento) {
-    setForm({ titulo: ev.titulo, fecha: ev.fecha, tipo: ev.tipo, descripcion: ev.descripcion ?? '', imagen: ev.imagen })
+    setForm({ titulo: ev.titulo, fecha: ev.fecha, tipo: ev.tipo, descripcion: ev.descripcion ?? '', imagen: ev.imagen, adjuntoUrl: ev.adjuntoUrl, adjuntoNombre: ev.adjuntoNombre })
     setModal({ mode: 'edit', evento: ev })
   }
 
@@ -296,6 +318,12 @@ export default function EventosPage() {
                         <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{ev.titulo}</p>
                         {ev.descripcion && <p className="text-xs text-slate-400 mt-0.5">{ev.descripcion}</p>}
                         {ev.imagen && <img src={ev.imagen} alt="" className="mt-2 rounded-lg border border-slate-200 dark:border-slate-700 max-h-44 w-auto" />}
+                        {ev.adjuntoUrl && (
+                          <a href={ev.adjuntoUrl} target="_blank" rel="noopener noreferrer" download={ev.adjuntoNombre}
+                            className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-brand-700 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/20 hover:bg-brand-100 dark:hover:bg-brand-900/40 rounded-lg px-2.5 py-1.5 transition-colors w-fit">
+                            <Download className="w-3.5 h-3.5" /> {ev.adjuntoNombre || 'Descargar adjunto'}
+                          </a>
+                        )}
                       </div>
                       {isAdmin && (
                         <div className="flex gap-1 shrink-0">
@@ -551,6 +579,26 @@ export default function EventosPage() {
                 )}
                 <input ref={imgRef} type="file" accept="image/*,image/gif" className="hidden"
                   onChange={e => e.target.files?.[0] && handleImageUpload(e.target.files[0])} />
+              </div>
+              {/* Archivo adjunto (PDF, Word, etc.) opcional */}
+              <div>
+                <label className="form-label">Archivo adjunto <span className="text-slate-400 font-normal">(PDF, Word, Excel... opcional)</span></label>
+                {form.adjuntoUrl ? (
+                  <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2">
+                    <Paperclip className="w-4 h-4 text-brand-600 dark:text-brand-400 shrink-0" />
+                    <span className="text-sm text-slate-700 dark:text-slate-300 truncate flex-1">{form.adjuntoNombre}</span>
+                    <button type="button" onClick={() => setForm(f => ({ ...f, adjuntoUrl: undefined, adjuntoNombre: undefined }))} className="text-slate-400 hover:text-red-500" title="Quitar adjunto">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => fileRef.current?.click()} disabled={uploadingFile}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 text-sm text-slate-500 dark:text-slate-400 hover:border-brand-400 hover:text-brand-600 transition-colors disabled:opacity-60">
+                    {uploadingFile ? <><Loader2 className="w-4 h-4 animate-spin" /> Subiendo...</> : <><Paperclip className="w-4 h-4" /> Adjuntar archivo</>}
+                  </button>
+                )}
+                <input ref={fileRef} type="file" className="hidden"
+                  onChange={e => e.target.files?.[0] && handleFileUpload(e.target.files[0])} />
               </div>
               <div className="flex gap-2 justify-end">
                 <button onClick={() => setModal(null)} className="btn-secondary">Cancelar</button>

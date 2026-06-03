@@ -176,6 +176,8 @@ function mapSupabaseToNovedad(row: Record<string, unknown>): Novedad {
     autor: (row.autor as string) ?? '',
     importante: (row.importante as boolean) ?? false,
     imagen: (row.imagen as string) || undefined,
+    adjuntoUrl: (row.adjunto_url as string) || undefined,
+    adjuntoNombre: (row.adjunto_nombre as string) || undefined,
   }
 }
 function mapNovedadToSupabase(n: Novedad) {
@@ -183,6 +185,7 @@ function mapNovedadToSupabase(n: Novedad) {
     id: n.id, titulo: n.titulo, contenido: n.contenido,
     categoria: n.categoria, fecha_publicacion: n.fechaPublicacion,
     autor: n.autor, importante: n.importante, imagen: n.imagen ?? '',
+    adjunto_url: n.adjuntoUrl ?? null, adjunto_nombre: n.adjuntoNombre ?? null,
   }
 }
 
@@ -234,6 +237,8 @@ function mapSupabaseToEvento(row: Record<string, unknown>): Evento {
     descripcion: (row.descripcion as string) || undefined,
     empleadoId: (row.empleado_id as string) || undefined,
     imagen: (row.imagen as string) || undefined,
+    adjuntoUrl: (row.adjunto_url as string) || undefined,
+    adjuntoNombre: (row.adjunto_nombre as string) || undefined,
   }
 }
 function mapEventoToSupabase(e: Evento) {
@@ -241,6 +246,7 @@ function mapEventoToSupabase(e: Evento) {
     id: e.id, titulo: e.titulo, fecha: e.fecha, tipo: e.tipo,
     descripcion: e.descripcion ?? '', empleado_id: e.empleadoId ?? null,
     imagen: e.imagen ?? null,
+    adjunto_url: e.adjuntoUrl ?? null, adjunto_nombre: e.adjuntoNombre ?? null,
   }
 }
 
