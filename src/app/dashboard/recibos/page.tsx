@@ -80,10 +80,11 @@ export default function RecibosPage() {
   const [uploadError, setUploadError] = useState('')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const ANIO_ACTUAL = new Date().getFullYear()
   const [uploadForm, setUploadForm] = useState({
     empleadoId: '',
     mes: new Date().getMonth() + 1,
-    anio: 2026,
+    anio: ANIO_ACTUAL,
     monto: '',
     concepto: 'Recibo mensual',
   })
@@ -92,7 +93,7 @@ export default function RecibosPage() {
   const [showBulk, setShowBulk] = useState(false)
   const [bulkStep, setBulkStep] = useState<BulkStep>('select')
   const [bulkMes, setBulkMes] = useState(new Date().getMonth() + 1)
-  const [bulkAnio, setBulkAnio] = useState(2026)
+  const [bulkAnio, setBulkAnio] = useState(new Date().getFullYear())
   const [bulkConcepto, setBulkConcepto] = useState('Recibo mensual')
   const [bulkRows, setBulkRows] = useState<BulkRow[]>([])
   const [bulkConfirmed, setBulkConfirmed] = useState(false)
@@ -164,7 +165,7 @@ export default function RecibosPage() {
     if (storagePath) setUploadError('')
     setTimeout(() => {
       setUploadStatus('idle'); setShowUpload(false); setSelectedFile(null); setUploadError('')
-      setUploadForm({ empleadoId: '', mes: new Date().getMonth() + 1, anio: 2026, monto: '', concepto: 'Recibo mensual' })
+      setUploadForm({ empleadoId: '', mes: new Date().getMonth() + 1, anio: ANIO_ACTUAL, monto: '', concepto: 'Recibo mensual' })
       if (fileInputRef.current) fileInputRef.current.value = ''
     }, 1800)
   }
@@ -521,8 +522,8 @@ export default function RecibosPage() {
             <p className="text-sm text-slate-500 mt-1">Recibos totales</p>
           </div>
           <div className="card p-4 text-center">
-            <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{misRecibos.filter(r => r.anio === 2026).length}</p>
-            <p className="text-sm text-slate-500 mt-1">En 2026</p>
+            <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{misRecibos.filter(r => r.anio === ANIO_ACTUAL).length}</p>
+            <p className="text-sm text-slate-500 mt-1">En {ANIO_ACTUAL}</p>
           </div>
           <div className="card p-4 text-center">
             <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
@@ -575,7 +576,7 @@ export default function RecibosPage() {
                 <div>
                   <label className="form-label">Año *</label>
                   <select className="form-select" value={uploadForm.anio} onChange={e => setUploadForm(f => ({ ...f, anio: parseInt(e.target.value) }))} disabled={uploadStatus === 'uploading'}>
-                    {[2026, 2025, 2024].map(y => <option key={y} value={y}>{y}</option>)}
+                    {[ANIO_ACTUAL, ANIO_ACTUAL - 1, ANIO_ACTUAL - 2].map(y => <option key={y} value={y}>{y}</option>)}
                   </select>
                 </div>
               </div>
@@ -660,7 +661,7 @@ export default function RecibosPage() {
                     <div>
                       <label className="form-label">Año *</label>
                       <select className="form-select" value={bulkAnio} onChange={e => setBulkAnio(parseInt(e.target.value))}>
-                        {[2026, 2025, 2024].map(y => <option key={y} value={y}>{y}</option>)}
+                        {[ANIO_ACTUAL, ANIO_ACTUAL - 1, ANIO_ACTUAL - 2].map(y => <option key={y} value={y}>{y}</option>)}
                       </select>
                     </div>
                   </div>

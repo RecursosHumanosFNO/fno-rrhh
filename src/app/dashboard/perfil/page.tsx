@@ -97,11 +97,26 @@ export default function PerfilPage() {
     setEditMode(false)
   }
 
+  // Comprime/redimensiona la imagen antes de guardarla (evita guardar
+  // fotos enormes en base64). Avatar: 400px, Cover: 1200px.
   function handlePhotoUpload(file: File, field: 'foto' | 'fotoCover') {
+    const maxSide = field === 'fotoCover' ? 1200 : 400
     const reader = new FileReader()
     reader.onload = e => {
-      const base64 = e.target?.result as string
-      updateEmpleado({ [field]: base64 })
+      const img = new Image()
+      img.onload = () => {
+        const scale = Math.min(1, maxSide / Math.max(img.width, img.height))
+        const w = Math.round(img.width * scale)
+        const h = Math.round(img.height * scale)
+        const canvas = document.createElement('canvas')
+        canvas.width = w; canvas.height = h
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return
+        ctx.drawImage(img, 0, 0, w, h)
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
+        updateEmpleado({ [field]: dataUrl })
+      }
+      img.src = e.target?.result as string
     }
     reader.readAsDataURL(file)
   }

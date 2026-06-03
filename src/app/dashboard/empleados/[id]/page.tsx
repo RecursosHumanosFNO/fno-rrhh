@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
@@ -40,6 +40,11 @@ export default function EmpleadoDetailPage() {
 
   const isAdmin = user?.role === 'admin'
   const emp = empleados.find(e => e.id === id)
+  const accesoDenegado = !!user && !isAdmin && user?.empleadoId !== id
+
+  useEffect(() => {
+    if (accesoDenegado) router.replace('/dashboard')
+  }, [accesoDenegado, router])
 
   if (!emp) {
     return (
@@ -50,10 +55,7 @@ export default function EmpleadoDetailPage() {
     )
   }
 
-  if (!isAdmin && user?.empleadoId !== id) {
-    router.replace('/dashboard')
-    return null
-  }
+  if (accesoDenegado) return null
 
   const misRecibos = recibos.filter(r => r.empleadoId === id).sort((a, b) => b.anio - a.anio || b.mes - a.mes)
   const misSolicitudes = solicitudes.filter(s => s.empleadoId === id)
@@ -138,11 +140,23 @@ export default function EmpleadoDetailPage() {
     setEditMode(false)
   }
 
+  // Comprime/redimensiona a 400px max antes de guardar (evita fotos enormes)
   function handlePhotoUpload(file: File) {
     const reader = new FileReader()
     reader.onload = e => {
-      const base64 = e.target?.result as string
-      updateEmpleado(emp!.id, { foto: base64 })
+      const img = new Image()
+      img.onload = () => {
+        const scale = Math.min(1, 400 / Math.max(img.width, img.height))
+        const w = Math.round(img.width * scale)
+        const h = Math.round(img.height * scale)
+        const canvas = document.createElement('canvas')
+        canvas.width = w; canvas.height = h
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return
+        ctx.drawImage(img, 0, 0, w, h)
+        updateEmpleado(emp!.id, { foto: canvas.toDataURL('image/jpeg', 0.85) })
+      }
+      img.src = e.target?.result as string
     }
     reader.readAsDataURL(file)
   }

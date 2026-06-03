@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useData } from '@/contexts/DataContext'
 import { useAuth } from '@/contexts/AuthContext'
@@ -27,10 +27,11 @@ export default function RegistrosPendientesPage() {
     setRefreshing(false)
   }
 
-  if (user?.role !== 'admin') {
-    router.push('/dashboard')
-    return null
-  }
+  useEffect(() => {
+    if (user && user.role !== 'admin') router.replace('/dashboard')
+  }, [user, router])
+
+  if (user?.role !== 'admin') return null
 
   const handleConfirm = () => {
     if (!confirmAction) return

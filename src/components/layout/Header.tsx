@@ -6,7 +6,6 @@ import { useData } from '@/contexts/DataContext'
 import { useTheme } from '@/components/ThemeProvider'
 import { Bell, Sun, Moon, Menu, Search, ChevronDown, X, CheckCheck, Users, Megaphone, CalendarDays, Cake } from 'lucide-react'
 import Link from 'next/link'
-import { eventos } from '@/lib/mockData'
 
 interface HeaderProps {
   onMenuToggle: () => void
@@ -25,7 +24,7 @@ function fmtDiaMes(f: string) {
 
 export default function Header({ onMenuToggle }: HeaderProps) {
   const { empleado, user, logout } = useAuth()
-  const { notifications, markNotificationRead, markAllRead, empleados, novedades } = useData()
+  const { notifications, markNotificationRead, markAllRead, empleados, novedades, eventos } = useData()
   const { theme, toggleTheme } = useTheme()
 
   const [showDropdown, setShowDropdown] = useState(false)
