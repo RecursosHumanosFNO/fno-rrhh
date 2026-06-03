@@ -11,6 +11,7 @@ import {
   LayoutDashboard, Users, FileText, ClipboardList, Megaphone,
   BarChart3, User, HeadphonesIcon, ChevronLeft, ChevronRight,
   LogOut, ExternalLink, Info, UserCheck, CalendarDays, AlertTriangle,
+  BookOpen,
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -52,6 +53,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     { href: '/dashboard/portal-rrhh', label: 'Portal RRHH', icon: HeadphonesIcon },
     { href: '/dashboard/fundacion', label: 'La Fundación', icon: Info },
     { href: '/dashboard/perfil', label: 'Mi Perfil', icon: User, warn: perfilIncompleto },
+    { href: '/dashboard/instructivo', label: 'Instructivo', icon: BookOpen },
   ]
 
   const employeeLinks: NavLink[] = [
@@ -63,6 +65,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     { href: '/dashboard/portal-rrhh', label: 'Portal RRHH', icon: HeadphonesIcon },
     { href: '/dashboard/fundacion', label: 'La Fundación', icon: Info },
     { href: '/dashboard/perfil', label: 'Mi Perfil', icon: User, warn: perfilIncompleto },
+    { href: '/dashboard/instructivo', label: 'Instructivo', icon: BookOpen },
   ]
 
   const links = isAdmin ? adminLinks : employeeLinks
