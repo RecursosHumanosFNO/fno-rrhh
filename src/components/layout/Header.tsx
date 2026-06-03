@@ -141,6 +141,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
     <header className="h-16 bg-[#c0e5e1]/90 backdrop-blur-sm dark:bg-slate-900 border-b border-[#9dd4ce]/50 dark:border-slate-800 flex items-center px-4 gap-3 sticky top-0 z-20 shadow-sm">
       <button
         onClick={onMenuToggle}
+        aria-label="Abrir menú de navegación"
         className="lg:hidden w-9 h-9 flex items-center justify-center rounded-lg hover:bg-white/30 dark:hover:bg-slate-800 text-teal-800 dark:text-slate-400"
       >
         <Menu className="w-5 h-5" />
@@ -204,6 +205,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
         {/* Dark mode toggle */}
         <button
           onClick={toggleTheme}
+          aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
           className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-white/30 dark:hover:bg-teal-900/30 text-teal-800 dark:text-teal-400 transition-colors"
           title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
         >
@@ -214,6 +216,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
         <div className="relative" ref={notifsRef}>
           <button
             onClick={() => { setShowNotifs(!showNotifs); setShowDropdown(false) }}
+            aria-label={`Notificaciones${unread.length > 0 ? ` (${unread.length} sin leer)` : ''}`}
             className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-white/30 dark:hover:bg-teal-900/30 text-teal-800 dark:text-teal-400 relative transition-colors"
           >
             <Bell className="w-4 h-4" />

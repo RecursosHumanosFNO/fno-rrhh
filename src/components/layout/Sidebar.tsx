@@ -186,6 +186,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {/* Collapse toggle */}
       <button
         onClick={onToggle}
+        aria-label={collapsed ? 'Expandir menú' : 'Colapsar menú'}
+        title={collapsed ? 'Expandir menú' : 'Colapsar menú'}
         className="absolute -right-3 top-20 w-6 h-6 bg-brand-700 dark:bg-brand-900 border border-white/20 rounded-full flex items-center justify-center text-white hover:bg-brand-600 transition-colors shadow-lg"
       >
         {collapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}

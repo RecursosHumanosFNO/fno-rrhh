@@ -372,13 +372,13 @@ export default function RecibosPage() {
             {query && <button onClick={() => setQuery('')}><X className="w-3.5 h-3.5 text-slate-400" /></button>}
           </div>
         )}
-        <select className="form-select w-auto text-sm" value={mesFilter} onChange={e => setMesFilter(e.target.value)}>
+        <select aria-label="Filtrar por mes" className="form-select w-auto text-sm" value={mesFilter} onChange={e => setMesFilter(e.target.value)}>
           <option value="">Todos los meses</option>
           {MESES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
         </select>
-        <select className="form-select w-auto text-sm" value={anioFilter} onChange={e => setAnioFilter(e.target.value)}>
+        <select aria-label="Filtrar por año" className="form-select w-auto text-sm" value={anioFilter} onChange={e => setAnioFilter(e.target.value)}>
           <option value="">Todos los años</option>
-          {['2026', '2025', '2024'].map(y => <option key={y} value={y}>{y}</option>)}
+          {[ANIO_ACTUAL, ANIO_ACTUAL - 1, ANIO_ACTUAL - 2].map(y => <option key={y} value={y}>{y}</option>)}
         </select>
         {(query || mesFilter || anioFilter !== '2026') && (
           <button onClick={() => { setQuery(''); setMesFilter(''); setAnioFilter('2026') }} className="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1">
