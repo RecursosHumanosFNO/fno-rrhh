@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import type {
   Empleado, Solicitud, Recibo, Novedad, Ticket, User, Evento,
   AppNotification, PendingRegistration, TicketEstado, UserRole, EmpleadoEstado,
-  SolicitudEstado, SolicitudTipo, NovedadCategoria, TicketTipo,
+  SolicitudEstado, SolicitudTipo, NovedadCategoria, TicketTipo, ReciboFirma,
 } from '@/types'
 import * as initial from '@/lib/mockData'
 import { uid, SOLICITUD_TIPO_LABEL } from '@/lib/utils'
@@ -40,6 +40,9 @@ interface DataContextType {
   // Recibos
   addRecibo: (r: Omit<Recibo, 'id'>) => void
   deleteRecibo: (id: string) => void
+  // Firmas de recibos
+  firmas: ReciboFirma[]
+  firmarRecibo: (reciboId: string, empleadoId: string) => Promise<boolean>
   // Tickets
   addTicket: (t: Omit<Ticket, 'id' | 'fechaCreacion' | 'fechaActualizacion' | 'estado'>) => void
   respondTicket: (id: string, respuesta: string, estado: TicketEstado) => void
@@ -261,6 +264,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [empleados, setEmpleados] = useState<Empleado[]>([])
   const [solicitudes, setSolicitudes] = useState<Solicitud[]>([])
   const [recibos, setRecibos] = useState<Recibo[]>([])
+  const [firmas, setFirmas] = useState<ReciboFirma[]>([])
   const [novedades, setNovedades] = useState<Novedad[]>([])
   const [eventos, setEventos] = useState<Evento[]>(initial.eventos) // feriados/actos siempre disponibles
   const [tickets, setTickets] = useState<Ticket[]>([])
@@ -273,7 +277,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const syncFromSupabase = useCallback(async () => {
     if (!supabase) return
     try {
-      const [usersRes, pendingRes, empRes, solRes, recRes, novRes, tickRes, notifRes, evtRes] = await Promise.all([
+      const [usersRes, pendingRes, empRes, solRes, recRes, novRes, tickRes, notifRes, evtRes, firmasRes] = await Promise.all([
         supabase.from('fno_users').select('id, email, role, empleado_id'),
         supabase.from('fno_pending').select('*'),
         supabase.from('fno_empleados').select('*'),
@@ -283,6 +287,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         supabase.from('fno_tickets').select('*'),
         supabase.from('fno_notifs').select('*').order('fecha', { ascending: false }),
         supabase.from('fno_eventos').select('*'),
+        supabase.from('fno_recibo_firmas').select('*'),
       ])
 
       // Supabase es siempre la fuente de verdad — actualizar aunque el array esté vacío
@@ -325,6 +330,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           .map((r: Record<string, unknown>) => mapSupabaseToEvento(r))
         setEventos([...initial.eventos, ...custom].sort((a, b) => a.fecha.localeCompare(b.fecha)))
       }
+
+      if (firmasRes.data)
+        setFirmas(firmasRes.data.map((r: Record<string, string>) => ({
+          id: r.id, reciboId: r.recibo_id, empleadoId: r.empleado_id,
+          firmadoEn: r.firmado_en, userAgent: r.user_agent ?? undefined,
+        })))
 
     } catch (e) {
       console.error('[sync] Supabase sync error:', e)
@@ -639,6 +650,30 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     })
   }, [])
 
+  const firmarRecibo = useCallback(async (reciboId: string, empleadoId: string): Promise<boolean> => {
+    if (!supabase) return false
+    const firma: ReciboFirma = {
+      id: uid(),
+      reciboId,
+      empleadoId,
+      firmadoEn: new Date().toISOString(),
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+    }
+    const { error } = await supabase.from('fno_recibo_firmas').insert({
+      id: firma.id,
+      recibo_id: firma.reciboId,
+      empleado_id: firma.empleadoId,
+      firmado_en: firma.firmadoEn,
+      user_agent: firma.userAgent ?? null,
+    })
+    if (error) {
+      console.error('[firmarRecibo] error:', error.message)
+      return false
+    }
+    setFirmas(prev => [...prev, firma])
+    return true
+  }, [])
+
   // ── Tickets ────────────────────────────────────────────────────────────────
   const addTicket = useCallback((t: Omit<Ticket, 'id' | 'fechaCreacion' | 'fechaActualizacion' | 'estado'>) => {
     const hoy = new Date().toISOString().slice(0, 10)
@@ -785,7 +820,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       addSolicitud, approveSolicitud, rejectSolicitud, cancelSolicitud,
       addNovedad, updateNovedad, deleteNovedad,
       addEvento, updateEvento, deleteEvento,
-      addRecibo, deleteRecibo,
+      addRecibo, deleteRecibo, firmas, firmarRecibo,
       addTicket, respondTicket,
       setUserRole, getUserByEmail, getPendingByEmail,
       addPendingRegistration, approvePendingRegistration, rejectPendingRegistration, refreshPending,

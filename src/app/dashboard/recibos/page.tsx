@@ -9,6 +9,7 @@ import {
   FileText, Download, Upload, Search, X, CheckCircle2,
   Loader2, AlertCircle, Eye, Cloud, HardDrive, Lock,
   Layers, ChevronRight, AlertTriangle, CheckCheck, User, Trash2,
+  PenLine, ShieldCheck,
 } from 'lucide-react'
 
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -48,7 +49,7 @@ function extractMontoFromFilename(name: string, dniFound: string): string {
 
 export default function RecibosPage() {
   const { user } = useAuth()
-  const { empleados, recibos, addRecibo, deleteRecibo, addNotification } = useData()
+  const { empleados, recibos, addRecibo, deleteRecibo, addNotification, firmas, firmarRecibo } = useData()
   const isAdmin = user?.role === 'admin'
 
   // ── Estado filtros/tabla ───────────────────────────────────────────────
@@ -58,6 +59,20 @@ export default function RecibosPage() {
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; archivoUrl?: string; label: string } | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [firmaModal, setFirmaModal] = useState<{ id: string; label: string } | null>(null)
+  const [firmaAcepto, setFirmaAcepto] = useState(false)
+  const [firmando, setFirmando] = useState(false)
+
+  async function handleFirmar() {
+    if (!firmaModal || !firmaAcepto || !user?.empleadoId) return
+    setFirmando(true)
+    const ok = await firmarRecibo(firmaModal.id, user.empleadoId)
+    setFirmando(false)
+    if (ok) {
+      setFirmaModal(null)
+      setFirmaAcepto(false)
+    }
+  }
 
   async function handleDeleteRecibo() {
     if (!confirmDelete) return
@@ -413,6 +428,8 @@ export default function RecibosPage() {
                 const emp = empleados.find(e => e.id === r.empleadoId)
                 const tieneArchivo = !!r.archivoUrl
                 const isDownloading = downloadingId === r.id
+                const firma = firmas.find(f => f.reciboId === r.id)
+                const esMio = r.empleadoId === user?.empleadoId
                 return (
                   <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                     {isAdmin && (
@@ -471,14 +488,40 @@ export default function RecibosPage() {
                           {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : tieneArchivo ? <Eye className="w-4 h-4" /> : <Download className="w-4 h-4" />}
                           <span className="hidden sm:inline">{isDownloading ? 'Cargando...' : tieneArchivo ? 'Ver PDF' : 'Sin archivo'}</span>
                         </button>
+                        {/* Firma: empleado puede firmar, admin ve el estado */}
+                        {!isAdmin && esMio && (
+                          firma ? (
+                            <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded-lg" title={`Firmado el ${new Date(firma.firmadoEn).toLocaleString('es-AR')}`}>
+                              <ShieldCheck className="w-3.5 h-3.5" /> Firmado
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => { setFirmaModal({ id: r.id, label: formatMes(r.mes, r.anio) }); setFirmaAcepto(false) }}
+                              className="inline-flex items-center gap-1.5 text-sm py-1.5 px-3 rounded-lg border border-brand-300 dark:border-brand-700 text-brand-700 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-colors"
+                            >
+                              <PenLine className="w-4 h-4" /> Firmar
+                            </button>
+                          )
+                        )}
                         {isAdmin && (
-                          <button
-                            onClick={() => setConfirmDelete({ id: r.id, archivoUrl: r.archivoUrl, label: `${emp ? `${emp.nombre} ${emp.apellido}` : 'empleado'} — ${formatMes(r.mes, r.anio)}` })}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                            title="Eliminar recibo"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <>
+                            {firma ? (
+                              <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded-lg" title={`Firmado el ${new Date(firma.firmadoEn).toLocaleString('es-AR')}`}>
+                                <ShieldCheck className="w-3.5 h-3.5" /> Firmado
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-xs text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg">
+                                Sin firmar
+                              </span>
+                            )}
+                            <button
+                              onClick={() => setConfirmDelete({ id: r.id, archivoUrl: r.archivoUrl, label: `${emp ? `${emp.nombre} ${emp.apellido}` : 'empleado'} — ${formatMes(r.mes, r.anio)}` })}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                              title="Eliminar recibo"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
                         )}
                       </div>
                     </td>
@@ -487,6 +530,58 @@ export default function RecibosPage() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Modal firma de recibo */}
+      {firmaModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { if (!firmando) { setFirmaModal(null); setFirmaAcepto(false) } }}>
+          <div className="card w-full max-w-md animate-scale-in" onClick={e => e.stopPropagation()}>
+            <div className="p-6">
+              <div className="w-14 h-14 bg-brand-100 dark:bg-brand-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                <PenLine className="w-7 h-7 text-brand-700 dark:text-brand-400" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 text-center mb-1">
+                Firmar recibo de {firmaModal.label}
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 text-center mb-6">
+                Al firmar, confirmás haber recibido y leído tu recibo de sueldo correspondiente a <strong>{firmaModal.label}</strong>.
+              </p>
+
+              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 text-xs text-slate-600 dark:text-slate-400 mb-5 space-y-1 border border-slate-200 dark:border-slate-700">
+                <p className="font-semibold text-slate-700 dark:text-slate-300 mb-2">Esta firma electrónica implica que:</p>
+                <p>✅ Recibiste el recibo de sueldo indicado</p>
+                <p>✅ Pudiste acceder a su contenido</p>
+                <p>✅ Se registrará tu nombre, fecha y hora exacta</p>
+                <p className="text-slate-400 mt-2">De acuerdo con la Ley 25.506 de Firma Digital de Argentina.</p>
+              </div>
+
+              <label className="flex items-start gap-3 cursor-pointer bg-brand-50 dark:bg-brand-900/20 rounded-xl px-4 py-3 border border-brand-200 dark:border-brand-800 mb-5">
+                <input
+                  type="checkbox"
+                  checked={firmaAcepto}
+                  onChange={e => setFirmaAcepto(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 accent-brand-700 cursor-pointer"
+                  disabled={firmando}
+                />
+                <span className="text-sm text-slate-700 dark:text-slate-300">
+                  <strong>Confirmo</strong> haber recibido y podido acceder al recibo de sueldo de <strong>{firmaModal.label}</strong>.
+                </span>
+              </label>
+
+              <div className="flex gap-3">
+                <button onClick={() => { setFirmaModal(null); setFirmaAcepto(false) }} disabled={firmando} className="btn-secondary flex-1 justify-center disabled:opacity-50">
+                  Cancelar
+                </button>
+                <button onClick={handleFirmar} disabled={!firmaAcepto || firmando} className="btn-primary flex-1 justify-center disabled:opacity-50">
+                  {firmando
+                    ? <><Loader2 className="w-4 h-4 animate-spin" /> Firmando...</>
+                    : <><ShieldCheck className="w-4 h-4" /> Firmar recibo</>
+                  }
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

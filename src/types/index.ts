@@ -56,6 +56,14 @@ export interface User {
   empleadoId: string
 }
 
+export interface ReciboFirma {
+  id: string
+  reciboId: string
+  empleadoId: string
+  firmadoEn: string  // ISO timestamp
+  userAgent?: string
+}
+
 export interface PendingRegistration {
   id: string
   nombre: string
