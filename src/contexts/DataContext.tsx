@@ -57,17 +57,11 @@ interface DataContextType {
   markNotificationRead: (id: string) => void
   markAllRead: () => void
   addNotification: (n: Omit<AppNotification, 'id' | 'fecha' | 'leida'>) => void
+  // Estado de sync
+  synced: boolean
 }
 
 const DataContext = createContext<DataContextType | null>(null)
-
-function load<T>(key: string, fallback: T): T {
-  if (typeof window === 'undefined') return fallback
-  try {
-    const s = localStorage.getItem(key)
-    return s ? JSON.parse(s) : fallback
-  } catch { return fallback }
-}
 
 function sendEmail(type: string, data: Record<string, string>) {
   fetch('/api/notify', {
@@ -265,28 +259,17 @@ function upsertHead<T extends { id: string }>(prev: T[], item: T): T[] {
 }
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
-  const [empleados, setEmpleados] = useState<Empleado[]>(() => load('fno_empleados', initial.empleados))
-  const [solicitudes, setSolicitudes] = useState<Solicitud[]>(() => load('fno_solicitudes', initial.solicitudes))
-  const [recibos, setRecibos] = useState<Recibo[]>(() => load('fno_recibos', initial.recibos))
-  const [novedades, setNovedades] = useState<Novedad[]>(() => load('fno_novedades', initial.novedades))
-  const [eventos, setEventos] = useState<Evento[]>(() => load('fno_eventos', initial.eventos))
-  const [tickets, setTickets] = useState<Ticket[]>(() => load('fno_tickets', initial.tickets))
-  const [users, setUsers] = useState<User[]>(() => load('fno_users', initial.users))
-  const [pendingRegistrations, setPending] = useState<PendingRegistration[]>(() => load('fno_pending', []))
-  const [notifications, setNotifications] = useState<AppNotification[]>(() => load('fno_notifs', [
-    { id: 'sys1', texto: 'Bienvenido al Portal de RRHH de Fundación Neuquén Oeste', leida: false, fecha: '2026-05-26', tipo: 'sistema' },
-  ]))
-
-  // ── Persistencia localStorage ──────────────────────────────────────────────
-  useEffect(() => { localStorage.setItem('fno_empleados', JSON.stringify(empleados)) }, [empleados])
-  useEffect(() => { localStorage.setItem('fno_solicitudes', JSON.stringify(solicitudes)) }, [solicitudes])
-  useEffect(() => { localStorage.setItem('fno_recibos', JSON.stringify(recibos)) }, [recibos])
-  useEffect(() => { localStorage.setItem('fno_novedades', JSON.stringify(novedades)) }, [novedades])
-  useEffect(() => { localStorage.setItem('fno_eventos', JSON.stringify(eventos)) }, [eventos])
-  useEffect(() => { localStorage.setItem('fno_tickets', JSON.stringify(tickets)) }, [tickets])
-  useEffect(() => { localStorage.setItem('fno_users', JSON.stringify(users)) }, [users])
-  useEffect(() => { localStorage.setItem('fno_pending', JSON.stringify(pendingRegistrations)) }, [pendingRegistrations])
-  useEffect(() => { localStorage.setItem('fno_notifs', JSON.stringify(notifications)) }, [notifications])
+  // Supabase es la fuente de verdad — arrancamos con arrays vacíos y esperamos el sync
+  const [empleados, setEmpleados] = useState<Empleado[]>([])
+  const [solicitudes, setSolicitudes] = useState<Solicitud[]>([])
+  const [recibos, setRecibos] = useState<Recibo[]>([])
+  const [novedades, setNovedades] = useState<Novedad[]>([])
+  const [eventos, setEventos] = useState<Evento[]>(initial.eventos) // feriados/actos siempre disponibles
+  const [tickets, setTickets] = useState<Ticket[]>([])
+  const [users, setUsers] = useState<User[]>([])
+  const [pendingRegistrations, setPending] = useState<PendingRegistration[]>([])
+  const [notifications, setNotifications] = useState<AppNotification[]>([])
+  const [synced, setSynced] = useState(false) // true cuando el primer sync de Supabase terminó
 
   // ── Sync completo desde Supabase — todas las tablas ────────────────────────
   const syncFromSupabase = useCallback(async () => {
@@ -304,10 +287,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         supabase.from('fno_eventos').select('*'),
       ])
 
-      if (usersRes.data && usersRes.data.length > 0)
+      // Supabase es siempre la fuente de verdad — actualizar aunque el array esté vacío
+      if (usersRes.data)
         setUsers(usersRes.data.map((u: Record<string, string>) => ({
           id: u.id, email: u.email,
-          // password NO se carga del servidor — validación via /api/auth/login
           role: u.role as UserRole, empleadoId: u.empleado_id,
         })))
 
@@ -318,7 +301,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           cargo: p.cargo, telefono: p.telefono ?? '', fechaSolicitud: p.fecha_solicitud,
         })))
 
-      if (empRes.data && empRes.data.length > 0)
+      if (empRes.data)
         setEmpleados(empRes.data.map((r: Record<string, unknown>) => mapSupabaseToEmpleado(r)))
 
       if (solRes.data)
@@ -334,7 +317,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       if (tickRes.data)
         setTickets(tickRes.data.map((r: Record<string, unknown>) => mapSupabaseToTicket(r)))
 
-      if (notifRes.data && notifRes.data.length > 0)
+      if (notifRes.data)
         setNotifications(notifRes.data.map((r: Record<string, unknown>) => mapSupabaseToNotif(r)))
 
       // Eventos: combinar los fijos del código (feriados/actos/jornadas) con los custom de la base
@@ -347,6 +330,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
     } catch (e) {
       console.error('[sync] Supabase sync error:', e)
+    } finally {
+      setSynced(true)
     }
   }, [])
 
@@ -449,24 +434,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
   }, [syncFromSupabase])
 
-  // ── Sync entre pestañas del mismo navegador via storage event ──────────────
-  useEffect(() => {
-    function onStorage(e: StorageEvent) {
-      try {
-        if (e.key === 'fno_empleados' && e.newValue) setEmpleados(JSON.parse(e.newValue))
-        if (e.key === 'fno_users' && e.newValue) setUsers(JSON.parse(e.newValue))
-        if (e.key === 'fno_pending' && e.newValue) setPending(JSON.parse(e.newValue))
-        if (e.key === 'fno_solicitudes' && e.newValue) setSolicitudes(JSON.parse(e.newValue))
-        if (e.key === 'fno_recibos' && e.newValue) setRecibos(JSON.parse(e.newValue))
-        if (e.key === 'fno_novedades' && e.newValue) setNovedades(JSON.parse(e.newValue))
-        if (e.key === 'fno_eventos' && e.newValue) setEventos(JSON.parse(e.newValue))
-        if (e.key === 'fno_tickets' && e.newValue) setTickets(JSON.parse(e.newValue))
-        if (e.key === 'fno_notifs' && e.newValue) setNotifications(JSON.parse(e.newValue))
-      } catch { /* ignore parse errors */ }
-    }
-    window.addEventListener('storage', onStorage)
-    return () => window.removeEventListener('storage', onStorage)
-  }, [])
+  // Sync entre pestañas lo maneja Supabase Realtime — no necesitamos storage events
 
   // ── Notificaciones ─────────────────────────────────────────────────────────
   const addNotification = useCallback((n: Omit<AppNotification, 'id' | 'fecha' | 'leida'>) => {
@@ -833,7 +801,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       addTicket, respondTicket,
       addUser, updateUserPassword, setUserRole, getUserByEmail, getPendingByEmail,
       addPendingRegistration, approvePendingRegistration, rejectPendingRegistration, refreshPending,
-      markNotificationRead, markAllRead, addNotification,
+      markNotificationRead, markAllRead, addNotification, synced,
     }}>
       {children}
     </DataContext.Provider>
