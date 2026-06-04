@@ -7,9 +7,9 @@ const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL ?? 'https://portalfundacio
 
 function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY // service role para bypasear RLS
   if (!url || !key) return null
-  return createClient(url, key)
+  return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } })
 }
 
 function uid() {
@@ -108,11 +108,27 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'El link expiró. Solicitá uno nuevo.' }, { status: 400 })
   }
 
-  // Actualizar contraseña
-  await supabase
+  // Buscar el auth_id del usuario para actualizar en Supabase Auth
+  const { data: userData } = await supabase
     .from('fno_users')
-    .update({ password })
+    .select('auth_id')
     .eq('email', reset.email)
+    .limit(1)
+
+  const authId = userData?.[0]?.auth_id
+  if (!authId) {
+    return NextResponse.json({ ok: false, error: 'Usuario no encontrado' }, { status: 404 })
+  }
+
+  // Actualizar contraseña en Supabase Auth (donde realmente se valida el login)
+  const { error: authErr } = await supabase.auth.admin.updateUserById(authId, { password })
+  if (authErr) {
+    console.error('[reset-password] auth error:', authErr.message)
+    return NextResponse.json({ ok: false, error: 'No se pudo actualizar la contraseña' }, { status: 500 })
+  }
+
+  // Limpiar password en fno_users (ya no se usa para login)
+  await supabase.from('fno_users').update({ password: '' }).eq('email', reset.email)
 
   // Marcar token como usado
   await supabase
