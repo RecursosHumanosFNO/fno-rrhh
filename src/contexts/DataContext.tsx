@@ -737,11 +737,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setPending(prev => [...prev, newReg])
     addNotification({ texto: `Nueva solicitud de acceso: ${reg.nombre} ${reg.apellido}`, tipo: 'registro', soloAdmin: true })
     if (supabase) {
-      // password NO se persiste en Supabase — solo vive en localStorage del cliente
-      // hasta que el admin apruebe en la misma sesión
+      // password se guarda temporalmente hasta que el admin apruebe y se cree en Auth.
+      // Se borra de fno_pending al aprobar (el hash queda solo en Supabase Auth).
       supabase.from('fno_pending').insert({
         id: newReg.id, nombre: reg.nombre, apellido: reg.apellido, dni: reg.dni,
-        email: reg.email, sector: reg.sector,
+        email: reg.email, password: reg.password, sector: reg.sector,
         cargo: reg.cargo, telefono: reg.telefono || '', fecha_solicitud: newReg.fechaSolicitud,
       }).then(({ error }) => { if (error) console.error('[supabase] insert fno_pending:', error) })
     }
