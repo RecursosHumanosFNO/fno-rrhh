@@ -3,12 +3,14 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import { useData } from '@/contexts/DataContext'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 import { cn } from '@/lib/utils'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth()
+  const { synced } = useData()
   const router = useRouter()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -17,10 +19,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!isLoading && !isAuthenticated) router.replace('/login')
   }, [isAuthenticated, isLoading, router])
 
-  if (isLoading || !isAuthenticated) {
+  // Spinner mientras se autentica o se sincroniza con Supabase
+  if (isLoading || !isAuthenticated || !synced) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-brand-700">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-brand-700 gap-4">
         <div className="w-10 h-10 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+        {!isLoading && isAuthenticated && !synced && (
+          <p className="text-white/70 text-sm">Cargando datos...</p>
+        )}
       </div>
     )
   }

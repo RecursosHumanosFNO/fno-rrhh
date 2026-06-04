@@ -44,8 +44,6 @@ interface DataContextType {
   addTicket: (t: Omit<Ticket, 'id' | 'fechaCreacion' | 'fechaActualizacion' | 'estado'>) => void
   respondTicket: (id: string, respuesta: string, estado: TicketEstado) => void
   // Usuarios / Registro
-  addUser: (u: User) => void
-  updateUserPassword: (userId: string, newPassword: string) => void
   setUserRole: (empleadoId: string, role: UserRole) => void
   addPendingRegistration: (reg: Omit<PendingRegistration, 'id' | 'fechaSolicitud'>) => void
   approvePendingRegistration: (id: string) => Promise<void>
@@ -679,16 +677,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, [addNotification])
 
   // ── Usuarios ───────────────────────────────────────────────────────────────
-  const addUser = useCallback((u: User) => {
-    setUsers(prev => [...prev, u])
-    if (supabase) supabase.from('fno_users').insert({ id: u.id, email: u.email, password: u.password, role: u.role, empleado_id: u.empleadoId }).then()
-  }, [])
-
-  const updateUserPassword = useCallback((userId: string, newPassword: string) => {
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, password: newPassword } : u))
-    if (supabase) supabase.from('fno_users').update({ password: newPassword }).eq('id', userId).then()
-  }, [])
-
   const setUserRole = useCallback((empleadoId: string, role: UserRole) => {
     setUsers(prev => prev.map(u => u.empleadoId === empleadoId ? { ...u, role } : u))
   }, [])
@@ -799,7 +787,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       addEvento, updateEvento, deleteEvento,
       addRecibo, deleteRecibo,
       addTicket, respondTicket,
-      addUser, updateUserPassword, setUserRole, getUserByEmail, getPendingByEmail,
+      setUserRole, getUserByEmail, getPendingByEmail,
       addPendingRegistration, approvePendingRegistration, rejectPendingRegistration, refreshPending,
       markNotificationRead, markAllRead, addNotification, synced,
     }}>

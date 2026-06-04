@@ -52,8 +52,6 @@ export type TicketTipo =
 export interface User {
   id: string
   email: string
-  /** Nunca se carga desde el servidor. Solo se usa localmente al aprobar un registro. */
-  password?: string
   role: UserRole
   empleadoId: string
 }
