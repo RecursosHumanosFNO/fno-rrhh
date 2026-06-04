@@ -148,15 +148,20 @@ export default function EmpleadoDetailPage() {
     reader.onload = e => {
       const img = new Image()
       img.onload = () => {
-        const scale = Math.min(1, 400 / Math.max(img.width, img.height))
+        // 800px máximo para que se vea nítido en pantallas retina (2x)
+        const scale = Math.min(1, 800 / Math.max(img.width, img.height))
         const w = Math.round(img.width * scale)
         const h = Math.round(img.height * scale)
         const canvas = document.createElement('canvas')
         canvas.width = w; canvas.height = h
         const ctx = canvas.getContext('2d')
         if (!ctx) return
+        // Activar suavizado para mejor calidad al escalar
+        ctx.imageSmoothingEnabled = true
+        ctx.imageSmoothingQuality = 'high'
         ctx.drawImage(img, 0, 0, w, h)
-        updateEmpleado(emp!.id, { foto: canvas.toDataURL('image/jpeg', 0.85) })
+        // Calidad 0.95 — notablemente mejor sin aumentar demasiado el peso
+        updateEmpleado(emp!.id, { foto: canvas.toDataURL('image/jpeg', 0.95) })
       }
       img.src = e.target?.result as string
     }
