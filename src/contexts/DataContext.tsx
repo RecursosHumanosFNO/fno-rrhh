@@ -300,7 +300,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         supabase.from('fno_recibos').select('*'),
         supabase.from('fno_novedades').select('*'),
         supabase.from('fno_tickets').select('*'),
-        supabase.from('fno_notifs').select('*'),
+        supabase.from('fno_notifs').select('*').order('fecha', { ascending: false }),
         supabase.from('fno_eventos').select('*'),
       ])
 
