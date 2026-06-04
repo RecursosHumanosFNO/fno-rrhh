@@ -140,41 +140,10 @@ export const CARGOS_POR_SECTOR: Record<string, string[]> = {
   ],
 }
 
-export const empleados: Empleado[] = [
-  {
-    id: '1',
-    nombre: 'Administrador',
-    apellido: 'RRHH',
-    dni: '00.000.000',
-    fechaNacimiento: '1990-01-01',
-    email: 'rrhhfundacionnqnoeste@gmail.com',
-    telefono: '',
-    direccion: '',
-    foto: '',
-    fotoCover: '',
-    cuil: '',
-    contactoEmergencia: { nombre: '', telefono: '', relacion: '' },
-    sector: 'Dirección General',
-    cargo: 'Jefe de Recursos Humanos',
-    fechaIngreso: '2026-01-01',
-    tipoContrato: 'Contrato',
-    jornada: 'Full Time',
-    supervisor: '',
-    estado: 'activo',
-    diasVacaciones: 21,
-    diasVacacionesUsados: 0,
-  },
-]
+// Fallbacks vacíos — los datos reales vienen de Supabase
+export const empleados: Empleado[] = []
 
-export const users: User[] = [
-  {
-    id: 'u1',
-    email: 'rrhhfundacionnqnoeste@gmail.com',
-    password: 'adminrrhh2026',
-    role: 'admin',
-    empleadoId: '1',
-  },
-]
+export const users: User[] = []
 
 export const recibos: Recibo[] = []
 
