@@ -17,9 +17,14 @@ export async function POST(req: NextRequest) {
   try {
     const { email, password, userId, empleadoId, role, requesterId } = await req.json()
 
-    if (!email || !password || !userId || !empleadoId || !role || !requesterId) {
+    if (!email || !userId || !empleadoId || !role || !requesterId) {
       return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 })
     }
+
+    // Si no llega password (fue removido del sync de Supabase por seguridad),
+    // generamos una contraseña temporal fuerte. El usuario deberá usar
+    // "Olvidé mi contraseña" para acceder la primera vez.
+    const effectivePassword = password || crypto.randomUUID().replace(/-/g, '') + 'Aa1!'
 
     const sb = getSupabase()
     if (!sb) return NextResponse.json({ error: 'Servidor no configurado' }, { status: 503 })
@@ -38,7 +43,7 @@ export async function POST(req: NextRequest) {
     // 1. Crear usuario en Supabase Auth (contraseña encriptada automáticamente)
     const { data: authData, error: authErr } = await sb.auth.admin.createUser({
       email: email.toLowerCase().trim(),
-      password,
+      password: effectivePassword,
       email_confirm: true, // No requiere confirmación por email — el admin ya aprobó
     })
 
