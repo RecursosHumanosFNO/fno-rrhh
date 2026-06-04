@@ -46,6 +46,23 @@ export default function EmpleadoDetailPage() {
     if (accesoDenegado) router.replace('/dashboard')
   }, [accesoDenegado, router])
 
+  // Editable form state — debe estar ANTES de cualquier early return (Rules of Hooks)
+  const [form, setForm] = useState({
+    nombre: emp?.nombre ?? '', apellido: emp?.apellido ?? '', dni: emp?.dni ?? '',
+    cuil: emp?.cuil ?? '', email: emp?.email ?? '',
+    fechaNacimiento: emp?.fechaNacimiento ?? '', telefono: emp?.telefono ?? '',
+    direccion: emp?.direccion ?? '', sector: emp?.sector ?? '', cargo: emp?.cargo ?? '',
+    jornada: emp?.jornada ?? 'Full Time',
+    supervisor: emp?.supervisor ?? '', estado: emp?.estado ?? 'activo',
+    fechaIngreso: emp?.fechaIngreso ?? '',
+    contactoNombre: emp?.contactoEmergencia?.nombre ?? '',
+    contactoTelefono: emp?.contactoEmergencia?.telefono ?? '',
+    contactoRelacion: emp?.contactoEmergencia?.relacion ?? '',
+    cbu: emp?.cbu ?? '', banco: emp?.banco ?? '',
+  })
+  const [savingEmail, setSavingEmail] = useState(false)
+  const [saveError, setSaveError] = useState('')
+
   if (!emp) {
     return (
       <div className="page-container text-center py-20">
@@ -76,21 +93,6 @@ export default function EmpleadoDetailPage() {
     ...(!emp.contactoEmergencia?.relacion ? ['Contacto emergencia — relación'] : []),
     ...(!emp.foto ? ['Foto de perfil'] : []),
   ]
-
-  // Editable form state (for admin editing)
-  const [form, setForm] = useState({
-    nombre: emp.nombre, apellido: emp.apellido, dni: emp.dni, cuil: emp.cuil ?? '',
-    email: emp.email,
-    fechaNacimiento: emp.fechaNacimiento, telefono: emp.telefono, direccion: emp.direccion,
-    sector: emp.sector, cargo: emp.cargo, jornada: emp.jornada,
-    supervisor: emp.supervisor, estado: emp.estado, fechaIngreso: emp.fechaIngreso,
-    contactoNombre: emp.contactoEmergencia.nombre,
-    contactoTelefono: emp.contactoEmergencia.telefono,
-    contactoRelacion: emp.contactoEmergencia.relacion,
-    cbu: emp.cbu ?? '', banco: emp.banco ?? '',
-  })
-  const [savingEmail, setSavingEmail] = useState(false)
-  const [saveError, setSaveError] = useState('')
 
   async function handleSave() {
     setSaveError('')
