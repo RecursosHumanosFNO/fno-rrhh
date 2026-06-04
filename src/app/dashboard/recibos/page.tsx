@@ -177,7 +177,7 @@ export default function RecibosPage() {
       .map(file => {
         const dni = extractDniFromFilename(file.name)
         const monto = extractMontoFromFilename(file.name, dni)
-        const empActivos = empleados.filter(e => e.estado === 'activo' && e.id !== '1')
+        const empActivos = empleados.filter(e => e.estado === 'activo')
         const match = dni
           ? empActivos.find(e => normDni(e.dni ?? '') === normDni(dni))
           : undefined
@@ -561,7 +561,7 @@ export default function RecibosPage() {
                 <label className="form-label">Empleado *</label>
                 <select className="form-select" value={uploadForm.empleadoId} onChange={e => setUploadForm(f => ({ ...f, empleadoId: e.target.value }))} disabled={uploadStatus === 'uploading'}>
                   <option value="">Seleccionar empleado</option>
-                  {empleados.filter(e => e.estado === 'activo' && e.id !== '1').sort((a, b) => a.apellido.localeCompare(b.apellido)).map(e => (
+                  {empleados.filter(e => e.estado === 'activo').sort((a, b) => a.apellido.localeCompare(b.apellido)).map(e => (
                     <option key={e.id} value={e.id}>{e.apellido}, {e.nombre}</option>
                   ))}
                 </select>
@@ -775,7 +775,7 @@ export default function RecibosPage() {
                                     onChange={e => setBulkRows(prev => prev.map((r, j) => j === i ? { ...r, empleadoId: e.target.value, status: 'manual' } : r))}
                                   >
                                     <option value="">⚠ Seleccionar empleado...</option>
-                                    {empleados.filter(e => e.estado === 'activo' && e.id !== '1').sort((a, b) => a.apellido.localeCompare(b.apellido)).map(e => (
+                                    {empleados.filter(e => e.estado === 'activo').sort((a, b) => a.apellido.localeCompare(b.apellido)).map(e => (
                                       <option key={e.id} value={e.id}>{e.apellido}, {e.nombre} — {normDni(e.dni ?? '')}</option>
                                     ))}
                                   </select>
