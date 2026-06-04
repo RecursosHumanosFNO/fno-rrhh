@@ -24,11 +24,11 @@ export async function POST(req: NextRequest) {
     const sb = getSupabase()
     if (!sb) return NextResponse.json({ error: 'Servidor no configurado' }, { status: 503 })
 
-    // Verificar que quien hace el request es admin en la DB
+    // Verificar que quien hace el request es admin en la DB (lookup por auth_id)
     const { data: requester } = await sb
       .from('fno_users')
       .select('role')
-      .eq('empleado_id', requesterId)
+      .eq('auth_id', requesterId)
       .maybeSingle()
 
     if (requester?.role !== 'admin') {

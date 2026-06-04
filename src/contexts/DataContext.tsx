@@ -48,7 +48,7 @@ interface DataContextType {
   updateUserPassword: (userId: string, newPassword: string) => void
   setUserRole: (empleadoId: string, role: UserRole) => void
   addPendingRegistration: (reg: Omit<PendingRegistration, 'id' | 'fechaSolicitud'>) => void
-  approvePendingRegistration: (id: string) => void
+  approvePendingRegistration: (id: string) => Promise<void>
   rejectPendingRegistration: (id: string) => void
   getUserByEmail: (email: string) => User | undefined
   getPendingByEmail: (email: string) => PendingRegistration | undefined
@@ -737,16 +737,18 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setPending(prev => [...prev, newReg])
     addNotification({ texto: `Nueva solicitud de acceso: ${reg.nombre} ${reg.apellido}`, tipo: 'registro', soloAdmin: true })
     if (supabase) {
+      // password NO se persiste en Supabase — solo vive en localStorage del cliente
+      // hasta que el admin apruebe en la misma sesión
       supabase.from('fno_pending').insert({
         id: newReg.id, nombre: reg.nombre, apellido: reg.apellido, dni: reg.dni,
-        email: reg.email, password: reg.password, sector: reg.sector,
+        email: reg.email, sector: reg.sector,
         cargo: reg.cargo, telefono: reg.telefono || '', fecha_solicitud: newReg.fechaSolicitud,
       }).then(({ error }) => { if (error) console.error('[supabase] insert fno_pending:', error) })
     }
     sendEmail('new_registration', { nombre: reg.nombre, apellido: reg.apellido, dni: reg.dni, email: reg.email, sector: reg.sector, cargo: reg.cargo, telefono: reg.telefono || '' })
   }, [addNotification])
 
-  const approvePendingRegistration = useCallback((id: string) => {
+  const approvePendingRegistration = useCallback(async (id: string) => {
     const reg = pendingRegistrations.find(p => p.id === id)
     if (!reg) return
     const empleadoId = uid()
@@ -772,11 +774,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       })
       supabase.from('fno_pending').delete().eq('id', id).then()
       // Crear usuario en Supabase Auth + fno_users via ruta server-side (contraseña encriptada)
-      // Obtener el empleadoId del admin logueado para verificación server-side
-      const session = typeof window !== 'undefined'
-        ? (() => { try { return JSON.parse(localStorage.getItem('fno_session') ?? '{}') } catch { return {} } })()
-        : {}
-      const requesterId = session?.user?.empleadoId ?? ''
+      // Obtener el auth_id del admin desde la sesión activa de Supabase
+      const { data: { session } } = await supabase.auth.getSession()
+      const requesterId = session?.user?.id ?? ''
       fetch('/api/admin/create-auth-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
