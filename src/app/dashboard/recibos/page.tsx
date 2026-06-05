@@ -58,6 +58,7 @@ export default function RecibosPage() {
   const [mesFilter, setMesFilter] = useState('')
   const [anioFilter, setAnioFilter] = useState('2026')
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
+  const [pdfViewer, setPdfViewer] = useState<{ url: string; label: string } | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; archivoUrl?: string; label: string } | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [firmaModal, setFirmaModal] = useState<{ id: string; label: string } | null>(null)
@@ -341,7 +342,9 @@ export default function RecibosPage() {
       })
       const data = await res.json()
       if (!res.ok || !data.url) { alert('No se pudo obtener el link del recibo.'); return }
-      window.open(data.url, '_blank', 'noopener,noreferrer')
+      const emp = empleados.find(e => e.id === r.empleadoId)
+      const label = emp ? `${emp.nombre} ${emp.apellido} — ${r.archivo}` : r.archivo
+      setPdfViewer({ url: data.url, label })
     } catch {
       alert('Error de conexión.')
     } finally {
@@ -671,6 +674,41 @@ export default function RecibosPage() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* ── Visor de PDF integrado ────────────────────────────────────────── */}
+      {pdfViewer && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex flex-col" onClick={() => setPdfViewer(null)}>
+          <div className="flex items-center justify-between px-4 py-3 bg-slate-900 shrink-0" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-2 min-w-0">
+              <FileText className="w-4 h-4 text-slate-400 shrink-0" />
+              <p className="text-sm font-medium text-white truncate">{pdfViewer.label}</p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 ml-3">
+              <a
+                href={pdfViewer.url}
+                download
+                className="text-xs text-slate-300 hover:text-white flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 transition-colors"
+                onClick={e => e.stopPropagation()}
+              >
+                <Download className="w-3.5 h-3.5" /> Descargar
+              </a>
+              <button
+                onClick={() => setPdfViewer(null)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+          <div className="flex-1 overflow-hidden" onClick={e => e.stopPropagation()}>
+            <iframe
+              src={pdfViewer.url}
+              className="w-full h-full border-0"
+              title="Visor de recibo"
+            />
+          </div>
         </div>
       )}
 
