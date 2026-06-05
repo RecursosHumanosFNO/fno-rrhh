@@ -5,11 +5,12 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { formatFecha, formatMes, formatMonto } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
+import * as XLSX from 'xlsx'
 import {
   FileText, Download, Upload, Search, X, CheckCircle2,
   Loader2, AlertCircle, Eye, Cloud, HardDrive, Lock,
   Layers, ChevronRight, AlertTriangle, CheckCheck, User, Trash2,
-  PenLine, ShieldCheck,
+  PenLine, ShieldCheck, ClipboardList,
 } from 'lucide-react'
 
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -62,6 +63,41 @@ export default function RecibosPage() {
   const [firmaModal, setFirmaModal] = useState<{ id: string; label: string } | null>(null)
   const [firmaAcepto, setFirmaAcepto] = useState(false)
   const [firmando, setFirmando] = useState(false)
+  const [showAuditoria, setShowAuditoria] = useState(false)
+  const [auditQuery, setAuditQuery] = useState('')
+
+  function exportarAuditoria() {
+    const rows = firmas
+      .map(f => {
+        const emp = empleados.find(e => e.id === f.empleadoId)
+        const rec = recibos.find(r => r.id === f.reciboId)
+        const fechaArg = new Date(f.firmadoEn).toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })
+        return {
+          'Apellido': emp?.apellido ?? '',
+          'Nombre': emp?.nombre ?? '',
+          'DNI': emp?.dni ?? '',
+          'Email': emp?.email ?? '',
+          'Sector': emp?.sector ?? '',
+          'Período': rec ? formatMes(rec.mes, rec.anio) : '',
+          'Mes': rec?.mes ?? '',
+          'Año': rec?.anio ?? '',
+          'Firmado el (Argentina)': fechaArg,
+          'Firma ID': f.id,
+        }
+      })
+      .sort((a, b) => a['Apellido'].localeCompare(b['Apellido'], 'es'))
+
+    const ws = XLSX.utils.json_to_sheet(rows)
+    ws['!cols'] = [
+      { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 30 },
+      { wch: 20 }, { wch: 16 }, { wch: 6 }, { wch: 6 },
+      { wch: 26 }, { wch: 36 },
+    ]
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Firmas de Recibos')
+    const hoy = new Date().toISOString().slice(0, 10)
+    XLSX.writeFile(wb, `auditoria_firmas_${hoy}.xlsx`)
+  }
 
   async function handleFirmar() {
     if (!firmaModal || !firmaAcepto || !user?.empleadoId) return
@@ -356,6 +392,15 @@ export default function RecibosPage() {
           {isAdmin && (
             <>
               <button
+                onClick={() => setShowAuditoria(v => !v)}
+                className={`btn-secondary ${showAuditoria ? 'ring-2 ring-brand-400' : ''}`}
+              >
+                <ClipboardList className="w-4 h-4" /> Auditoría
+                {firmas.length > 0 && (
+                  <span className="ml-1 bg-brand-700 text-white text-xs px-1.5 py-0.5 rounded-full">{firmas.length}</span>
+                )}
+              </button>
+              <button
                 onClick={() => { setShowBulk(true); setBulkStep('select') }}
                 className="btn-secondary"
               >
@@ -401,6 +446,102 @@ export default function RecibosPage() {
           </button>
         )}
       </div>
+
+      {/* ── Panel de auditoría de firmas (solo admin) ─────────────────────── */}
+      {isAdmin && showAuditoria && (() => {
+        const firmasFiltradas = firmas.filter(f => {
+          if (!auditQuery) return true
+          const emp = empleados.find(e => e.id === f.empleadoId)
+          const rec = recibos.find(r => r.id === f.reciboId)
+          const texto = `${emp?.nombre} ${emp?.apellido} ${emp?.dni} ${rec ? formatMes(rec.mes, rec.anio) : ''}`.toLowerCase()
+          return texto.includes(auditQuery.toLowerCase())
+        })
+        return (
+          <div className="card overflow-hidden border-2 border-brand-200 dark:border-brand-800">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-brand-50/50 dark:bg-brand-900/10">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-brand-700 dark:text-brand-400" />
+                <div>
+                  <p className="font-semibold text-slate-800 dark:text-slate-100">Registro de firmas electrónicas</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{firmas.length} firma{firmas.length !== 1 ? 's' : ''} registrada{firmas.length !== 1 ? 's' : ''} · Ley 25.506</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 bg-white dark:bg-slate-800 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-700">
+                  <Search className="w-4 h-4 text-slate-400 shrink-0" />
+                  <input
+                    type="text"
+                    placeholder="Buscar empleado, DNI, período..."
+                    className="bg-transparent text-sm text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none w-44"
+                    value={auditQuery}
+                    onChange={e => setAuditQuery(e.target.value)}
+                  />
+                  {auditQuery && <button onClick={() => setAuditQuery('')}><X className="w-3.5 h-3.5 text-slate-400" /></button>}
+                </div>
+                <button onClick={exportarAuditoria} className="btn-secondary text-sm" title="Exportar a Excel">
+                  <Download className="w-4 h-4" /> Exportar
+                </button>
+              </div>
+            </div>
+
+            {firmasFiltradas.length === 0 ? (
+              <div className="p-10 text-center">
+                <ShieldCheck className="w-10 h-10 text-slate-200 dark:text-slate-700 mx-auto mb-2" />
+                <p className="text-slate-400 text-sm">{firmas.length === 0 ? 'Aún no hay recibos firmados' : 'Sin resultados para la búsqueda'}</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-800/60">
+                      <th className="table-header text-left">Empleado</th>
+                      <th className="table-header text-left">DNI</th>
+                      <th className="table-header text-left">Período firmado</th>
+                      <th className="table-header text-left">Fecha y hora (Argentina)</th>
+                      <th className="table-header text-left hidden lg:table-cell">ID de firma</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {firmasFiltradas
+                      .slice()
+                      .sort((a, b) => b.firmadoEn.localeCompare(a.firmadoEn))
+                      .map(f => {
+                        const emp = empleados.find(e => e.id === f.empleadoId)
+                        const rec = recibos.find(r => r.id === f.reciboId)
+                        const fechaArg = new Date(f.firmadoEn).toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', dateStyle: 'short', timeStyle: 'medium' })
+                        return (
+                          <tr key={f.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                            <td className="table-cell">
+                              <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-full bg-brand-700 flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden">
+                                  {emp?.foto ? <img src={emp.foto} alt="" className="w-7 h-7 object-cover" /> : emp ? `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}` : '?'}
+                                </div>
+                                <span className="font-medium text-slate-700 dark:text-slate-200">{emp ? `${emp.apellido}, ${emp.nombre}` : f.empleadoId}</span>
+                              </div>
+                            </td>
+                            <td className="table-cell font-mono text-slate-600 dark:text-slate-400 text-xs">{emp?.dni ?? '—'}</td>
+                            <td className="table-cell">
+                              <span className="font-medium text-slate-700 dark:text-slate-200">{rec ? formatMes(rec.mes, rec.anio) : '—'}</span>
+                            </td>
+                            <td className="table-cell">
+                              <div className="flex items-center gap-1.5">
+                                <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                                <span className="text-slate-700 dark:text-slate-300">{fechaArg}</span>
+                              </div>
+                            </td>
+                            <td className="table-cell hidden lg:table-cell">
+                              <span className="font-mono text-xs text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">{f.id}</span>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Recibos list */}
       {filtered.length === 0 ? (
