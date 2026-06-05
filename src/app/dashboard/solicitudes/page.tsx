@@ -4,13 +4,22 @@ import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import {
-  SOLICITUD_TIPO_LABEL, SOLICITUD_ESTADO_COLOR, SOLICITUD_ESTADO_LABEL, formatFecha,
+  SOLICITUD_TIPO_LABEL, SOLICITUD_ESTADO_COLOR, SOLICITUD_ESTADO_LABEL,
+  TICKET_ESTADO_LABEL, TICKET_ESTADO_COLOR, TICKET_TIPO_LABEL, formatFecha,
 } from '@/lib/utils'
-import type { SolicitudTipo } from '@/types'
+import type { SolicitudTipo, TicketTipo, TicketEstado } from '@/types'
 import {
   ClipboardList, Plus, Search, X, CheckCircle2, XCircle, Clock,
   ChevronDown, ChevronUp, Send, Hourglass, Save, Edit2,
+  HeadphonesIcon, MessageSquare, Circle, FileCheck, HelpCircle,
+  RefreshCw, AlertCircle, MoreHorizontal,
 } from 'lucide-react'
+
+const TICKET_TIPOS: TicketTipo[] = ['certificado_laboral', 'consulta', 'actualizacion_datos', 'reclamo', 'otro']
+const TICKET_TIPO_ICONS: Record<TicketTipo, React.ElementType> = {
+  certificado_laboral: FileCheck, consulta: HelpCircle,
+  actualizacion_datos: RefreshCw, reclamo: AlertCircle, otro: MoreHorizontal,
+}
 
 const TIPOS: SolicitudTipo[] = [
   'ausencia', 'llegada_tarde', 'salida_anticipada',
@@ -34,8 +43,9 @@ const TIPO_GRUPOS = [
 
 export default function SolicitudesPage() {
   const { user } = useAuth()
-  const { empleados, solicitudes, addSolicitud, approveSolicitud, rejectSolicitud, editSolicitud, cancelSolicitud } = useData()
+  const { empleados, solicitudes, addSolicitud, approveSolicitud, rejectSolicitud, editSolicitud, cancelSolicitud, tickets, addTicket, respondTicket } = useData()
   const isAdmin = user?.role === 'admin'
+  const [activeTab, setActiveTab] = useState<'solicitudes' | 'pedidos'>('solicitudes')
 
   const [estadoFilter, setEstadoFilter] = useState('')
   const [tipoFilter, setTipoFilter] = useState('')
@@ -49,6 +59,37 @@ export default function SolicitudesPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editComment, setEditComment] = useState('')
   const [editEstado, setEditEstado] = useState<'aprobado' | 'rechazado'>('aprobado')
+
+  // Estado para pedidos a RRHH (tickets)
+  const [showNuevoTicket, setShowNuevoTicket] = useState(false)
+  const [expandedTicketId, setExpandedTicketId] = useState<string | null>(null)
+  const [ticketEstadoFilter, setTicketEstadoFilter] = useState('')
+  const [respuesta, setRespuesta] = useState<Record<string, string>>({})
+  const [estadoResp, setEstadoResp] = useState<Record<string, TicketEstado>>({})
+  const [ticketForm, setTicketForm] = useState({ tipo: 'consulta' as TicketTipo, asunto: '', descripcion: '' })
+  const [ticketError, setTicketError] = useState('')
+
+  const baseTickets = isAdmin ? tickets : tickets.filter(t => t.empleadoId === user?.empleadoId)
+  const filteredTickets = baseTickets
+    .filter(t => !ticketEstadoFilter || t.estado === ticketEstadoFilter)
+    .sort((a, b) => b.fechaCreacion.localeCompare(a.fechaCreacion))
+  const ticketsActivos = baseTickets.filter(t => t.estado === 'abierto' || t.estado === 'en_proceso').length
+
+  function handleNuevoTicket() {
+    setTicketError('')
+    if (!ticketForm.asunto.trim()) { setTicketError('Completá el asunto.'); return }
+    if (!ticketForm.descripcion.trim()) { setTicketError('Completá la descripción.'); return }
+    if (!user?.empleadoId) return
+    addTicket({ empleadoId: user.empleadoId, tipo: ticketForm.tipo, asunto: ticketForm.asunto, descripcion: ticketForm.descripcion })
+    setShowNuevoTicket(false)
+    setTicketForm({ tipo: 'consulta', asunto: '', descripcion: '' })
+  }
+
+  function handleResponderTicket(ticketId: string) {
+    respondTicket(ticketId, respuesta[ticketId] ?? '', estadoResp[ticketId] ?? 'en_proceso')
+    setRespuesta(prev => { const n = { ...prev }; delete n[ticketId]; return n })
+    setExpandedTicketId(null)
+  }
 
   // New solicitud form state
   const [newForm, setNewForm] = useState({
@@ -123,18 +164,72 @@ export default function SolicitudesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
-            {isAdmin ? 'Gestión de Solicitudes' : 'Mis Solicitudes'}
+            {isAdmin ? 'Gestión de Solicitudes y Pedidos' : 'Mis Solicitudes y Pedidos'}
           </h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-0.5">
-            {filtered.length} solicitudes · {pendientes} pendientes
+            {activeTab === 'solicitudes'
+              ? `${filtered.length} solicitudes · ${pendientes} pendientes`
+              : `${filteredTickets.length} pedidos · ${ticketsActivos} activos`}
           </p>
         </div>
-        {!isAdmin && (
+        {!isAdmin && activeTab === 'solicitudes' && (
           <button onClick={() => setShowNueva(true)} className="btn-primary">
             <Plus className="w-4 h-4" /> Nueva solicitud
           </button>
         )}
+        {!isAdmin && activeTab === 'pedidos' && (
+          <button onClick={() => setShowNuevoTicket(true)} className="btn-primary">
+            <Plus className="w-4 h-4" /> Nuevo pedido
+          </button>
+        )}
       </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 border-b border-slate-200 dark:border-slate-800">
+        <button
+          onClick={() => setActiveTab('solicitudes')}
+          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+            activeTab === 'solicitudes'
+              ? 'border-brand-700 text-brand-700 dark:border-brand-400 dark:text-brand-400'
+              : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+          }`}
+        >
+          <ClipboardList className="w-4 h-4" />
+          Solicitudes
+          {pendientes > 0 && <span className="bg-amber-500 text-white text-xs px-1.5 py-0.5 rounded-full">{pendientes}</span>}
+        </button>
+        <button
+          onClick={() => setActiveTab('pedidos')}
+          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+            activeTab === 'pedidos'
+              ? 'border-brand-700 text-brand-700 dark:border-brand-400 dark:text-brand-400'
+              : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+          }`}
+        >
+          <HeadphonesIcon className="w-4 h-4" />
+          Pedidos a RRHH
+          {ticketsActivos > 0 && <span className="bg-brand-600 text-white text-xs px-1.5 py-0.5 rounded-full">{ticketsActivos}</span>}
+        </button>
+      </div>
+
+      {activeTab === 'pedidos' && (
+        <PedidosRRHH
+          isAdmin={isAdmin} user={user}
+          filteredTickets={filteredTickets} baseTickets={baseTickets}
+          ticketsActivos={ticketsActivos} ticketEstadoFilter={ticketEstadoFilter}
+          setTicketEstadoFilter={setTicketEstadoFilter}
+          empleados={empleados} expandedTicketId={expandedTicketId}
+          setExpandedTicketId={setExpandedTicketId}
+          respuesta={respuesta} setRespuesta={setRespuesta}
+          estadoResp={estadoResp} setEstadoResp={setEstadoResp}
+          handleResponderTicket={handleResponderTicket}
+          showNuevoTicket={showNuevoTicket} setShowNuevoTicket={setShowNuevoTicket}
+          ticketForm={ticketForm} setTicketForm={setTicketForm}
+          ticketError={ticketError} handleNuevoTicket={handleNuevoTicket}
+        />
+      )}
+
+      {activeTab === 'solicitudes' && (<>
 
       {/* Stats row */}
       <div className="grid grid-cols-3 gap-3">
@@ -495,7 +590,208 @@ export default function SolicitudesPage() {
           </div>
         </div>
       )}
+      </>)}
     </div>
+  )
+}
+
+// ── Componente Pedidos a RRHH (tickets) ───────────────────────────────────────
+function PedidosRRHH({ isAdmin, user, filteredTickets, baseTickets, ticketsActivos, ticketEstadoFilter, setTicketEstadoFilter, empleados, expandedTicketId, setExpandedTicketId, respuesta, setRespuesta, estadoResp, setEstadoResp, handleResponderTicket, showNuevoTicket, setShowNuevoTicket, ticketForm, setTicketForm, ticketError, handleNuevoTicket }: {
+  isAdmin: boolean, user: { empleadoId?: string } | null,
+  filteredTickets: import('@/types').Ticket[], baseTickets: import('@/types').Ticket[],
+  ticketsActivos: number, ticketEstadoFilter: string,
+  setTicketEstadoFilter: (v: string) => void,
+  empleados: import('@/types').Empleado[],
+  expandedTicketId: string | null, setExpandedTicketId: (v: string | null) => void,
+  respuesta: Record<string, string>, setRespuesta: (fn: (p: Record<string, string>) => Record<string, string>) => void,
+  estadoResp: Record<string, TicketEstado>, setEstadoResp: (fn: (p: Record<string, TicketEstado>) => Record<string, TicketEstado>) => void,
+  handleResponderTicket: (id: string) => void,
+  showNuevoTicket: boolean, setShowNuevoTicket: (v: boolean) => void,
+  ticketForm: { tipo: TicketTipo; asunto: string; descripcion: string },
+  setTicketForm: (fn: (f: { tipo: TicketTipo; asunto: string; descripcion: string }) => { tipo: TicketTipo; asunto: string; descripcion: string }) => void,
+  ticketError: string, handleNuevoTicket: () => void,
+}) {
+  return (
+    <>
+      {/* Info cards empleado */}
+      {!isAdmin && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {[
+            { label: 'Certificado laboral', desc: 'Para bancos, alquileres, etc.', icon: FileCheck, color: 'text-brand-700 bg-blue-50 dark:bg-blue-900/20', tipo: 'certificado_laboral' as TicketTipo },
+            { label: 'Consultas generales', desc: 'Dudas sobre liquidación, contratos, etc.', icon: HelpCircle, color: 'text-purple-600 bg-purple-50 dark:bg-purple-900/20', tipo: 'consulta' as TicketTipo },
+            { label: 'Actualización de datos', desc: 'Cambio de datos personales o bancarios', icon: RefreshCw, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20', tipo: 'actualizacion_datos' as TicketTipo },
+          ].map(({ label, desc, icon: Icon, color, tipo }) => (
+            <div key={label} className="card-hover p-4 flex items-start gap-3 cursor-pointer"
+              onClick={() => { setTicketForm(f => ({ ...f, tipo })); setShowNuevoTicket(true) }}>
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
+                <Icon className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="font-semibold text-slate-700 dark:text-slate-200 text-sm">{label}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Stats admin */}
+      {isAdmin && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { label: 'Abiertos', count: baseTickets.filter(t => t.estado === 'abierto').length, color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20', icon: Circle },
+            { label: 'En proceso', count: baseTickets.filter(t => t.estado === 'en_proceso').length, color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20', icon: Clock },
+            { label: 'Resueltos', count: baseTickets.filter(t => t.estado === 'resuelto').length, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20', icon: CheckCircle2 },
+            { label: 'Cerrados', count: baseTickets.filter(t => t.estado === 'cerrado').length, color: 'text-slate-500 bg-slate-100 dark:bg-slate-800', icon: X },
+          ].map(({ label, count, color, icon: Icon }) => (
+            <div key={label} className="card p-4 flex items-center gap-2.5">
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${color}`}><Icon className="w-4 h-4" /></div>
+              <div>
+                <p className="text-xl font-bold text-slate-800 dark:text-slate-100">{count}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Filtros */}
+      <div className="flex gap-2 flex-wrap">
+        {(['', 'abierto', 'en_proceso', 'resuelto', 'cerrado'] as const).map(estado => (
+          <button key={estado} onClick={() => setTicketEstadoFilter(estado)}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${ticketEstadoFilter === estado ? 'bg-brand-700 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
+            {!estado ? 'Todos' : TICKET_ESTADO_LABEL[estado]}
+          </button>
+        ))}
+      </div>
+
+      {/* Lista de tickets */}
+      {filteredTickets.length === 0 ? (
+        <div className="card p-12 text-center">
+          <HeadphonesIcon className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+          <p className="text-slate-500 font-medium">No hay pedidos registrados</p>
+          {!isAdmin && <button onClick={() => setShowNuevoTicket(true)} className="btn-primary mt-3"><Plus className="w-4 h-4" /> Crear primer pedido</button>}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredTickets.map(ticket => {
+            const emp = empleados.find(e => e.id === ticket.empleadoId)
+            const isOpen = expandedTicketId === ticket.id
+            const Icon = TICKET_TIPO_ICONS[ticket.tipo]
+            return (
+              <div key={ticket.id} className="card overflow-hidden">
+                <div className="p-4 flex items-center gap-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                  onClick={() => setExpandedTicketId(isOpen ? null : ticket.id)}>
+                  <div className="w-10 h-10 bg-brand-50 dark:bg-brand-900/20 rounded-xl flex items-center justify-center shrink-0">
+                    <Icon className="w-5 h-5 text-brand-700 dark:text-brand-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold text-slate-700 dark:text-slate-200">{ticket.asunto}</p>
+                      <span className={`badge ${TICKET_ESTADO_COLOR[ticket.estado]}`}>{TICKET_ESTADO_LABEL[ticket.estado]}</span>
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      {TICKET_TIPO_LABEL[ticket.tipo]}{isAdmin && emp ? ` · ${emp.nombre} ${emp.apellido}` : ''} · {formatFecha(ticket.fechaCreacion)}
+                    </p>
+                  </div>
+                  {isOpen ? <ChevronUp className="w-4 h-4 text-slate-400 shrink-0" /> : <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />}
+                </div>
+                {isOpen && (
+                  <div className="border-t border-slate-100 dark:border-slate-800 p-4 space-y-4 bg-slate-50/50 dark:bg-slate-800/30 animate-fade-in">
+                    {isAdmin && emp && (
+                      <div className="flex items-center gap-2.5 p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800">
+                        <div className="w-8 h-8 rounded-full bg-brand-700 flex items-center justify-center text-white text-xs font-bold overflow-hidden">
+                          {emp.foto ? <img src={emp.foto} alt="" className="w-8 h-8 object-cover" /> : `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}`}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{emp.nombre} {emp.apellido}</p>
+                          <p className="text-xs text-slate-400">{emp.cargo} · {emp.sector}</p>
+                        </div>
+                      </div>
+                    )}
+                    <div className="bg-white dark:bg-slate-900 rounded-xl p-3 border border-slate-100 dark:border-slate-800">
+                      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">Descripción del pedido</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">{ticket.descripcion}</p>
+                    </div>
+                    {ticket.respuesta && (
+                      <div className="bg-brand-50 dark:bg-brand-900/20 rounded-xl p-3 border border-brand-100 dark:border-brand-800">
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <MessageSquare className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
+                          <p className="text-xs font-semibold text-brand-700 dark:text-brand-400">Respuesta de RRHH</p>
+                        </div>
+                        <p className="text-sm text-slate-700 dark:text-slate-300">{ticket.respuesta}</p>
+                        <p className="text-xs text-slate-400 mt-1.5">{formatFecha(ticket.fechaActualizacion)}</p>
+                      </div>
+                    )}
+                    {isAdmin && (ticket.estado === 'abierto' || ticket.estado === 'en_proceso') && (
+                      <div className="space-y-2">
+                        <label className="form-label">Responder al empleado</label>
+                        <textarea className="form-input resize-none" rows={3} placeholder="Escribí tu respuesta..."
+                          value={respuesta[ticket.id] ?? ''}
+                          onChange={e => setRespuesta(prev => ({ ...prev, [ticket.id]: e.target.value }))} />
+                        <div className="flex gap-2">
+                          <select className="form-select w-auto text-sm"
+                            value={estadoResp[ticket.id] ?? 'en_proceso'}
+                            onChange={e => setEstadoResp(prev => ({ ...prev, [ticket.id]: e.target.value as TicketEstado }))}>
+                            <option value="en_proceso">Marcar En proceso</option>
+                            <option value="resuelto">Marcar Resuelto</option>
+                            <option value="cerrado">Cerrar ticket</option>
+                          </select>
+                          <button onClick={() => handleResponderTicket(ticket.id)}
+                            disabled={!respuesta[ticket.id]?.trim()} className="btn-primary disabled:opacity-50">
+                            <Send className="w-4 h-4" /> Responder
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Modal nuevo pedido */}
+      {showNuevoTicket && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowNuevoTicket(false)}>
+          <div className="card w-full max-w-lg max-h-[85vh] overflow-y-auto animate-scale-in" onClick={e => e.stopPropagation()}>
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <p className="section-title">Nuevo Pedido a RRHH</p>
+              <button onClick={() => setShowNuevoTicket(false)}><X className="w-5 h-5 text-slate-400" /></button>
+            </div>
+            <div className="p-5 space-y-4">
+              {ticketError && <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-lg px-4 py-2.5 text-sm">{ticketError}</div>}
+              <div>
+                <label className="form-label">Tipo de pedido *</label>
+                <select className="form-select" value={ticketForm.tipo} onChange={e => setTicketForm(f => ({ ...f, tipo: e.target.value as TicketTipo }))}>
+                  {TICKET_TIPOS.map(t => <option key={t} value={t}>{TICKET_TIPO_LABEL[t]}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="form-label">Asunto *</label>
+                <input className="form-input" placeholder="Ej: Necesito un certificado de trabajo"
+                  value={ticketForm.asunto} onChange={e => setTicketForm(f => ({ ...f, asunto: e.target.value }))} />
+              </div>
+              <div>
+                <label className="form-label">Descripción *</label>
+                <textarea className="form-input resize-none" rows={4}
+                  placeholder="Describí en detalle tu pedido o consulta..."
+                  value={ticketForm.descripcion} onChange={e => setTicketForm(f => ({ ...f, descripcion: e.target.value }))} />
+              </div>
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl p-3">
+                <p className="text-xs text-brand-700 dark:text-brand-400 font-medium mb-0.5">Tiempo de respuesta estimado</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400">RRHH responde en un plazo de 24-48 horas hábiles.</p>
+              </div>
+              <div className="flex gap-2 justify-end pt-2">
+                <button onClick={() => setShowNuevoTicket(false)} className="btn-secondary">Cancelar</button>
+                <button onClick={handleNuevoTicket} className="btn-primary"><Send className="w-4 h-4" /> Enviar pedido</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
