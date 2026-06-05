@@ -10,7 +10,7 @@ import {
   FileText, Download, Upload, Search, X, CheckCircle2,
   Loader2, AlertCircle, Eye, Cloud, HardDrive, Lock,
   Layers, ChevronRight, AlertTriangle, CheckCheck, User, Trash2,
-  PenLine, ShieldCheck, ClipboardList,
+  PenLine, ShieldCheck, ClipboardList, Printer,
 } from 'lucide-react'
 
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -59,6 +59,7 @@ export default function RecibosPage() {
   const [anioFilter, setAnioFilter] = useState('2026')
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
   const [pdfViewer, setPdfViewer] = useState<{ url: string; label: string } | null>(null)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; archivoUrl?: string; label: string } | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [firmaModal, setFirmaModal] = useState<{ id: string; label: string } | null>(null)
@@ -342,11 +343,6 @@ export default function RecibosPage() {
       })
       const data = await res.json()
       if (!res.ok || !data.url) { alert('No se pudo obtener el link del recibo.'); return }
-      // En mobile el iframe no funciona en iOS — abrir directo en nueva pestaña
-      if (window.innerWidth < 768) {
-        window.open(data.url, '_blank', 'noopener,noreferrer')
-        return
-      }
       const emp = empleados.find(e => e.id === r.empleadoId)
       const label = emp ? `${emp.nombre} ${emp.apellido} — ${r.archivo}` : r.archivo
       setPdfViewer({ url: data.url, label })
@@ -685,54 +681,49 @@ export default function RecibosPage() {
       {/* ── Visor de PDF integrado ────────────────────────────────────────── */}
       {pdfViewer && (
         <div className="fixed inset-0 bg-black/70 z-50 flex flex-col" onClick={() => setPdfViewer(null)}>
-          <div className="flex items-center justify-between px-4 py-3 bg-slate-900 shrink-0" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-2 min-w-0">
+          {/* Barra superior */}
+          <div className="flex items-center justify-between px-3 py-2.5 bg-slate-900 shrink-0 gap-2" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-2 min-w-0 flex-1">
               <FileText className="w-4 h-4 text-slate-400 shrink-0" />
               <p className="text-sm font-medium text-white truncate">{pdfViewer.label}</p>
             </div>
-            <div className="flex items-center gap-2 shrink-0 ml-3">
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                onClick={() => iframeRef.current?.contentWindow?.print()}
+                title="Imprimir"
+                className="flex items-center gap-1.5 text-xs text-slate-300 hover:text-white px-2.5 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 transition-colors"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Imprimir</span>
+              </button>
               <a
                 href={pdfViewer.url}
                 download
-                className="text-xs text-slate-300 hover:text-white flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 transition-colors"
+                title="Descargar"
+                className="flex items-center gap-1.5 text-xs text-slate-300 hover:text-white px-2.5 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 transition-colors"
                 onClick={e => e.stopPropagation()}
               >
-                <Download className="w-3.5 h-3.5" /> Descargar
+                <Download className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Descargar</span>
               </a>
               <button
                 onClick={() => setPdfViewer(null)}
+                title="Cerrar"
                 className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
           </div>
+
+          {/* Visor — un solo iframe para todos los dispositivos (iOS 16+, Android, desktop) */}
           <div className="flex-1 overflow-hidden" onClick={e => e.stopPropagation()}>
-            {/* Desktop: visor inline */}
             <iframe
+              ref={iframeRef}
               src={pdfViewer.url}
-              className="hidden md:block w-full h-full border-0"
+              className="w-full h-full border-0"
               title="Visor de recibo"
             />
-            {/* Mobile: iOS/Android no renderizan PDFs en iframes — ofrecer apertura en pestaña */}
-            <div className="flex md:hidden flex-col items-center justify-center h-full gap-5 px-6 text-center bg-slate-900">
-              <FileText className="w-16 h-16 text-slate-500" />
-              <div>
-                <p className="text-white font-medium mb-1">Abrí el PDF en tu navegador</p>
-                <p className="text-slate-400 text-sm leading-relaxed">
-                  En dispositivos móviles el recibo se abre en una nueva pestaña para que puedas descargarlo o verlo correctamente.
-                </p>
-              </div>
-              <a
-                href={pdfViewer.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setPdfViewer(null)}
-                className="inline-flex items-center gap-2 bg-teal-600 hover:bg-teal-500 active:bg-teal-700 text-white px-6 py-3 rounded-xl font-medium transition-colors"
-              >
-                <Eye className="w-4 h-4" /> Abrir PDF
-              </a>
-            </div>
           </div>
         </div>
       )}
