@@ -260,19 +260,19 @@ export default function SolicitudesPage() {
       {activeTab === 'solicitudes' && (<>
 
       {/* Stats row */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         {[
           { label: 'Pendientes', count: base.filter(s => s.estado === 'pendiente').length, color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20', icon: Clock },
           { label: 'Aprobadas', count: base.filter(s => s.estado === 'aprobado').length, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20', icon: CheckCircle2 },
           { label: 'Rechazadas', count: base.filter(s => s.estado === 'rechazado').length, color: 'text-red-600 bg-red-50 dark:bg-red-900/20', icon: XCircle },
         ].map(({ label, count, color, icon: Icon }) => (
-          <div key={label} className="card p-4 flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${color} shrink-0`}>
-              <Icon className="w-5 h-5" />
+          <div key={label} className="card p-3 sm:p-4 flex flex-col sm:flex-row items-center sm:items-center gap-1 sm:gap-3 text-center sm:text-left">
+            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center ${color} shrink-0`}>
+              <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div>
-              <p className="text-xl font-bold text-slate-800 dark:text-slate-100">{count}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
+              <p className="text-lg sm:text-xl font-bold text-slate-800 dark:text-slate-100">{count}</p>
+              <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 leading-tight">{label}</p>
             </div>
           </div>
         ))}
