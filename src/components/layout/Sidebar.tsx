@@ -161,6 +161,19 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           </div>
         )}
 
+        {/* Flora mascota — solo visible cuando el sidebar está expandido */}
+        {!collapsed && (
+          <div className="flex justify-center py-1">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/flora.svg"
+              alt="Flora"
+              title="Soy Flora 🐱 la gatita de la Fundación"
+              className="w-10 opacity-50 hover:opacity-90 transition-opacity duration-300 cursor-default select-none"
+            />
+          </div>
+        )}
+
         {/* Website link */}
         <a
           href="https://fundacionnqnoeste.com/"

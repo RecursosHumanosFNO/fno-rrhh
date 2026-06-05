@@ -703,11 +703,31 @@ export default function RecibosPage() {
             </div>
           </div>
           <div className="flex-1 overflow-hidden" onClick={e => e.stopPropagation()}>
+            {/* Desktop: visor inline */}
             <iframe
               src={pdfViewer.url}
-              className="w-full h-full border-0"
+              className="hidden md:block w-full h-full border-0"
               title="Visor de recibo"
             />
+            {/* Mobile: iOS/Android no renderizan PDFs en iframes — ofrecer apertura en pestaña */}
+            <div className="flex md:hidden flex-col items-center justify-center h-full gap-5 px-6 text-center bg-slate-900">
+              <FileText className="w-16 h-16 text-slate-500" />
+              <div>
+                <p className="text-white font-medium mb-1">Abrí el PDF en tu navegador</p>
+                <p className="text-slate-400 text-sm leading-relaxed">
+                  En dispositivos móviles el recibo se abre en una nueva pestaña para que puedas descargarlo o verlo correctamente.
+                </p>
+              </div>
+              <a
+                href={pdfViewer.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setPdfViewer(null)}
+                className="inline-flex items-center gap-2 bg-teal-600 hover:bg-teal-500 active:bg-teal-700 text-white px-6 py-3 rounded-xl font-medium transition-colors"
+              >
+                <Eye className="w-4 h-4" /> Abrir PDF
+              </a>
+            </div>
           </div>
         </div>
       )}
