@@ -181,7 +181,7 @@ export default function EmpleadoDetailPage() {
         body: JSON.stringify({ path: r.archivoUrl, empleadoId: user?.empleadoId ?? '' }),
       })
       const data = await res.json()
-      if (data.url) setPdfViewer({ url: data.url, label: `Recibo — ${formatMes(r.mes, r.anio)}` })
+      if (data.url) setPdfViewer({ url: data.url, label: `Recibo — ${r.archivo}` })
       else alert('No se pudo obtener el link del recibo.')
     } catch {
       alert('Error de conexión.')
