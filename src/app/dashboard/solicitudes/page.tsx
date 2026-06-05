@@ -9,7 +9,7 @@ import {
 import type { SolicitudTipo } from '@/types'
 import {
   ClipboardList, Plus, Search, X, CheckCircle2, XCircle, Clock,
-  ChevronDown, ChevronUp, Send, Hourglass,
+  ChevronDown, ChevronUp, Send, Hourglass, Save, Edit2,
 } from 'lucide-react'
 
 const TIPOS: SolicitudTipo[] = [
@@ -34,7 +34,7 @@ const TIPO_GRUPOS = [
 
 export default function SolicitudesPage() {
   const { user } = useAuth()
-  const { empleados, solicitudes, addSolicitud, approveSolicitud, rejectSolicitud, cancelSolicitud } = useData()
+  const { empleados, solicitudes, addSolicitud, approveSolicitud, rejectSolicitud, editSolicitud, cancelSolicitud } = useData()
   const isAdmin = user?.role === 'admin'
 
   const [estadoFilter, setEstadoFilter] = useState('')
@@ -46,6 +46,9 @@ export default function SolicitudesPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showNueva, setShowNueva] = useState(false)
   const [comments, setComments] = useState<Record<string, string>>({})
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editComment, setEditComment] = useState('')
+  const [editEstado, setEditEstado] = useState<'aprobado' | 'rechazado'>('aprobado')
 
   // New solicitud form state
   const [newForm, setNewForm] = useState({
@@ -82,6 +85,18 @@ export default function SolicitudesPage() {
     rejectSolicitud(id, comments[id] ?? '')
     setComments(prev => { const n = { ...prev }; delete n[id]; return n })
     setExpandedId(null)
+  }
+
+  function handleEdit(id: string) {
+    editSolicitud(id, editEstado, editComment)
+    setEditingId(null)
+    setEditComment('')
+  }
+
+  function startEdit(sol: { id: string; estado: string; comentarioAdmin?: string }) {
+    setEditingId(sol.id)
+    setEditEstado(sol.estado as 'aprobado' | 'rechazado')
+    setEditComment(sol.comentarioAdmin ?? '')
   }
 
   function handleSubmitNueva() {
@@ -283,7 +298,7 @@ export default function SolicitudesPage() {
                       </div>
                     )}
 
-                    {/* Admin actions */}
+                    {/* Admin actions — pendiente */}
                     {isAdmin && sol.estado === 'pendiente' && (
                       <div className="space-y-2">
                         <textarea
@@ -294,20 +309,59 @@ export default function SolicitudesPage() {
                           onChange={e => setComments(prev => ({ ...prev, [sol.id]: e.target.value }))}
                         />
                         <div className="flex gap-2">
-                          <button
-                            onClick={() => handleApprove(sol.id)}
-                            className="btn-success flex-1 justify-center"
-                          >
+                          <button onClick={() => handleApprove(sol.id)} className="btn-success flex-1 justify-center">
                             <CheckCircle2 className="w-4 h-4" /> Aprobar
                           </button>
-                          <button
-                            onClick={() => handleReject(sol.id)}
-                            className="btn-danger flex-1 justify-center"
-                          >
+                          <button onClick={() => handleReject(sol.id)} className="btn-danger flex-1 justify-center">
                             <XCircle className="w-4 h-4" /> Rechazar
                           </button>
                         </div>
                       </div>
+                    )}
+
+                    {/* Admin actions — editar resolución ya tomada */}
+                    {isAdmin && (sol.estado === 'aprobado' || sol.estado === 'rechazado') && (
+                      editingId === sol.id ? (
+                        <div className="space-y-2 border border-slate-200 dark:border-slate-700 rounded-xl p-3 bg-slate-50 dark:bg-slate-800/50">
+                          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Editar resolución</p>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setEditEstado('aprobado')}
+                              className={`flex-1 py-1.5 px-3 rounded-lg text-sm font-medium border transition-colors ${editEstado === 'aprobado' ? 'bg-emerald-500 text-white border-emerald-500' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'}`}
+                            >
+                              ✅ Aprobada
+                            </button>
+                            <button
+                              onClick={() => setEditEstado('rechazado')}
+                              className={`flex-1 py-1.5 px-3 rounded-lg text-sm font-medium border transition-colors ${editEstado === 'rechazado' ? 'bg-red-500 text-white border-red-500' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'}`}
+                            >
+                              ❌ Rechazada
+                            </button>
+                          </div>
+                          <textarea
+                            className="form-input text-sm resize-none"
+                            rows={2}
+                            placeholder="Comentario para el empleado (opcional)"
+                            value={editComment}
+                            onChange={e => setEditComment(e.target.value)}
+                          />
+                          <div className="flex gap-2 justify-end">
+                            <button onClick={() => setEditingId(null)} className="btn-secondary text-sm">Cancelar</button>
+                            <button onClick={() => handleEdit(sol.id)} className="btn-primary text-sm">
+                              <Save className="w-4 h-4" /> Guardar cambios
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex justify-end">
+                          <button
+                            onClick={() => startEdit(sol)}
+                            className="text-sm text-slate-500 hover:text-brand-600 dark:hover:text-brand-400 flex items-center gap-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 px-3 py-1.5 rounded-lg transition-colors"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" /> Editar resolución
+                          </button>
+                        </div>
+                      )
                     )}
 
                     {/* Employee cancel */}

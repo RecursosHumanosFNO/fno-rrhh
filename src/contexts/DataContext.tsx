@@ -28,6 +28,7 @@ interface DataContextType {
   addSolicitud: (s: Omit<Solicitud, 'id' | 'fechaCreacion' | 'estado'>) => void
   approveSolicitud: (id: string, comment: string) => void
   rejectSolicitud: (id: string, comment: string) => void
+  editSolicitud: (id: string, estado: 'aprobado' | 'rechazado', comment: string) => void
   cancelSolicitud: (id: string) => void
   // Novedades
   addNovedad: (n: Omit<Novedad, 'id'>, notifyEmail?: boolean) => void
@@ -535,6 +536,26 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
   }, [solicitudes, addNotification])
 
+  const editSolicitud = useCallback((id: string, estado: 'aprobado' | 'rechazado', comment: string) => {
+    const fechaRes = new Date().toISOString().slice(0, 10)
+    setSolicitudes(prev => prev.map(s => s.id === id
+      ? { ...s, estado, fechaResolucion: fechaRes, comentarioAdmin: comment }
+      : s
+    ))
+    if (supabase) supabase.from('fno_solicitudes').update({ estado, fecha_resolucion: fechaRes, comentario_admin: comment }).eq('id', id).then()
+    const sol = solicitudes.find(s => s.id === id)
+    if (sol) {
+      const textoEmp = estado === 'aprobado' ? 'Tu solicitud fue actualizada: aprobada ✓' : 'Tu solicitud fue actualizada: rechazada'
+      addNotification({ texto: textoEmp, tipo: 'solicitud', empleadoId: sol.empleadoId })
+      setEmpleados(prev => {
+        const emp = prev.find(e => e.id === sol.empleadoId)
+        const nombreEmp = emp ? `${emp.nombre} ${emp.apellido}` : 'el empleado'
+        if (emp?.email) sendEmail('solicitud_resuelta', { email: emp.email, nombre: nombreEmp, tipo: SOLICITUD_TIPO_LABEL[sol.tipo as keyof typeof SOLICITUD_TIPO_LABEL] ?? sol.tipo, estado, comentario: comment })
+        return prev
+      })
+    }
+  }, [solicitudes, addNotification])
+
   const cancelSolicitud = useCallback((id: string) => {
     setSolicitudes(prev => prev.filter(s => s.id !== id))
     if (supabase) supabase.from('fno_solicitudes').delete().eq('id', id).then()
@@ -818,7 +839,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       empleados, solicitudes, recibos, novedades, eventos, tickets, users,
       pendingRegistrations, notifications,
       addEmpleado, updateEmpleado, deleteEmpleado,
-      addSolicitud, approveSolicitud, rejectSolicitud, cancelSolicitud,
+      addSolicitud, approveSolicitud, rejectSolicitud, editSolicitud, cancelSolicitud,
       addNovedad, updateNovedad, deleteNovedad,
       addEvento, updateEvento, deleteEvento,
       addRecibo, deleteRecibo, firmas, firmarRecibo,
