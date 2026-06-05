@@ -96,6 +96,7 @@ export interface Empleado {
   }
   sector: string
   cargo: string
+  cargosExtra: string[]   // puestos adicionales (ej: "Secretario/a de la Fundación")
   fechaIngreso: string
   tipoContrato: 'Contrato' | 'Período de prueba'
   jornada: 'Full Time' | 'Part Time' | '6 horas diarias'

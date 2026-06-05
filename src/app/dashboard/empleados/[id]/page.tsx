@@ -13,7 +13,7 @@ import {
 import type { EmpleadoEstado, Empleado } from '@/types'
 import {
   ArrowLeft, Edit2, Mail, Phone, MapPin, Calendar, Building2,
-  FileText, ClipboardList, Clock, Download, User, Save, X,
+  FileText, ClipboardList, Clock, Download, User, Save, X, Plus,
   Shield, CheckCircle2, AlertTriangle, Lock, Eye, EyeOff,
   Camera, AlertCircle, Loader2, Trash2,
 } from 'lucide-react'
@@ -52,6 +52,7 @@ export default function EmpleadoDetailPage() {
     cuil: emp?.cuil ?? '', email: emp?.email ?? '',
     fechaNacimiento: emp?.fechaNacimiento ?? '', telefono: emp?.telefono ?? '',
     direccion: emp?.direccion ?? '', sector: emp?.sector ?? '', cargo: emp?.cargo ?? '',
+    cargosExtra: emp?.cargosExtra ?? [] as string[],
     jornada: emp?.jornada ?? 'Full Time',
     supervisor: emp?.supervisor ?? '', estado: emp?.estado ?? 'activo',
     fechaIngreso: emp?.fechaIngreso ?? '',
@@ -129,7 +130,7 @@ export default function EmpleadoDetailPage() {
       nombre: form.nombre, apellido: form.apellido, dni: form.dni, cuil: form.cuil,
       email: nuevoEmail,
       fechaNacimiento: form.fechaNacimiento, telefono: form.telefono, direccion: form.direccion,
-      sector: form.sector, cargo: form.cargo,
+      sector: form.sector, cargo: form.cargo, cargosExtra: form.cargosExtra,
       jornada: form.jornada as Empleado['jornada'], supervisor: form.supervisor,
       estado: form.estado as EmpleadoEstado, fechaIngreso: form.fechaIngreso,
       contactoEmergencia: {
@@ -306,7 +307,9 @@ export default function EmpleadoDetailPage() {
                 </div>
                 <div>
                   <h1 className="text-xl font-bold text-white">{emp.nombre} {emp.apellido}</h1>
-                  <p className="text-white/80 text-sm">{emp.cargo} · {emp.sector}</p>
+                  <p className="text-white/80 text-sm">
+                    {emp.cargo}{emp.cargosExtra?.filter(Boolean).map(c => ` · ${c}`).join('')} · {emp.sector}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -591,11 +594,55 @@ export default function EmpleadoDetailPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
             <EditField label="Sector" value={form.sector} editMode={isAdmin && editMode}
               editor={<select className="form-select text-sm" value={form.sector} onChange={e => setForm(f => ({ ...f, sector: e.target.value, cargo: '' }))}>{SECTORES.map(s => <option key={s}>{s}</option>)}</select>} />
-            <EditField label="Cargo" value={form.cargo} editMode={isAdmin && editMode}
+            <EditField label="Cargo principal" value={form.cargo} editMode={isAdmin && editMode}
               editor={<select className="form-select text-sm" value={form.cargo} onChange={e => setForm(f => ({ ...f, cargo: e.target.value }))}>
                 <option value="">Seleccionar</option>
                 {(CARGOS_POR_SECTOR[form.sector] ?? []).map(c => <option key={c}>{c}</option>)}
               </select>} />
+
+            {/* Puestos adicionales */}
+            <div className="py-2.5 border-b border-slate-100 dark:border-slate-800">
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400 block mb-2">Puestos adicionales</span>
+              {isAdmin && editMode ? (
+                <div className="space-y-2">
+                  {form.cargosExtra.map((c, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <input
+                        className="form-input text-sm flex-1"
+                        value={c}
+                        onChange={e => setForm(f => ({ ...f, cargosExtra: f.cargosExtra.map((x, j) => j === i ? e.target.value : x) }))}
+                        placeholder="Ej: Secretario/a de la Fundación"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setForm(f => ({ ...f, cargosExtra: f.cargosExtra.filter((_, j) => j !== i) }))}
+                        className="text-red-400 hover:text-red-600 shrink-0"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, cargosExtra: [...f.cargosExtra, ''] }))}
+                    className="text-sm text-brand-600 dark:text-brand-400 hover:underline flex items-center gap-1 mt-1"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Agregar puesto
+                  </button>
+                </div>
+              ) : form.cargosExtra.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {form.cargosExtra.filter(Boolean).map((c, i) => (
+                    <span key={i} className="text-xs bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 px-2.5 py-1 rounded-full border border-brand-200 dark:border-brand-800 font-medium">
+                      {c}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <span className="text-sm text-slate-400 dark:text-slate-500">—</span>
+              )}
+            </div>
+
             <EditField label="Fecha de ingreso" value={formatFecha(emp.fechaIngreso)} editMode={isAdmin && editMode}
               editor={<input className="form-input text-sm" type="date" value={form.fechaIngreso} onChange={e => setForm(f => ({ ...f, fechaIngreso: e.target.value }))} />} />
             <EditField label="Antigüedad" value={antiguedad} editMode={false} editor={null} />
