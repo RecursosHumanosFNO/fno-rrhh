@@ -47,6 +47,7 @@ function StatCard({ icon: Icon, label, value, sub, color }: {
 }
 
 function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string }) {
+  const { empleado } = useAuth()
   const { empleados, solicitudes, novedades, eventos, pendingRegistrations, approvePendingRegistration, rejectPendingRegistration } = useData()
 
   const pendientes = solicitudes.filter(s => s.estado === 'pendiente')
@@ -91,7 +92,7 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
           <div>
             <p className="text-blue-200 text-sm font-medium capitalize">{fechaStr}</p>
             <h1 className="text-2xl font-bold text-white mt-1">
-              {saludo}, <span className="text-white">Administrador</span> 👋
+              {saludo}, <span className="text-white">{empleado?.nombre ?? 'Administrador'}</span> 👋
             </h1>
             <div className="flex gap-2 flex-wrap mt-4">
               <Link href="/dashboard/empleados" className="btn-primary">
