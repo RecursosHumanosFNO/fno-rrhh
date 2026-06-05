@@ -448,17 +448,6 @@ function EmployeeDashboard({ saludo, fechaStr, empleadoId }: { saludo: string, f
         </div>
       </div>
 
-      {/* ── Flora — mascota de la Fundación ───────────────────────────────── */}
-      <div className="card overflow-hidden">
-        <iframe
-          src="/flora.html"
-          className="w-full border-0"
-          style={{ height: '420px' }}
-          title="Flora — Mascota de la Fundación Neuquén Oeste"
-          sandbox="allow-scripts"
-        />
-      </div>
-
       {/* ── Próximos eventos — sección protagonista ────────────────────────── */}
       <div className="card overflow-hidden">
         <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
