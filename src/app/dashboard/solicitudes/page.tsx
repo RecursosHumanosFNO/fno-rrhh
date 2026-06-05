@@ -10,9 +10,9 @@ import {
 import type { SolicitudTipo, TicketTipo, TicketEstado } from '@/types'
 import {
   ClipboardList, Plus, Search, X, CheckCircle2, XCircle, Clock,
-  ChevronDown, ChevronUp, Send, Hourglass, Save, Edit2,
+  ChevronDown, ChevronUp, Send, Hourglass, Save, Edit2, Loader2,
   HeadphonesIcon, MessageSquare, Circle, FileCheck, HelpCircle,
-  RefreshCw, AlertCircle, MoreHorizontal,
+  RefreshCw, AlertCircle, MoreHorizontal, Bell,
 } from 'lucide-react'
 
 const TICKET_TIPOS: TicketTipo[] = ['certificado_laboral', 'consulta', 'actualizacion_datos', 'reclamo', 'otro']
@@ -43,7 +43,7 @@ const TIPO_GRUPOS = [
 
 export default function SolicitudesPage() {
   const { user } = useAuth()
-  const { empleados, solicitudes, addSolicitud, approveSolicitud, rejectSolicitud, editSolicitud, cancelSolicitud, tickets, addTicket, respondTicket } = useData()
+  const { empleados, solicitudes, addSolicitud, approveSolicitud, rejectSolicitud, editSolicitud, cancelSolicitud, tickets, addTicket, respondTicket, addNotification } = useData()
   const isAdmin = user?.role === 'admin'
   const [activeTab, setActiveTab] = useState<'solicitudes' | 'pedidos'>('solicitudes')
 
@@ -59,6 +59,10 @@ export default function SolicitudesPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editComment, setEditComment] = useState('')
   const [editEstado, setEditEstado] = useState<'aprobado' | 'rechazado'>('aprobado')
+  const [showMensaje, setShowMensaje] = useState(false)
+  const [mensajeForm, setMensajeForm] = useState({ empleadoId: '', asunto: '', mensaje: '' })
+  const [enviandoMensaje, setEnviandoMensaje] = useState(false)
+  const [mensajeOk, setMensajeOk] = useState(false)
 
   // Estado para pedidos a RRHH (tickets)
   const [showNuevoTicket, setShowNuevoTicket] = useState(false)
@@ -134,6 +138,25 @@ export default function SolicitudesPage() {
     setEditComment('')
   }
 
+  async function handleEnviarMensaje() {
+    if (!mensajeForm.empleadoId || !mensajeForm.asunto.trim() || !mensajeForm.mensaje.trim()) return
+    setEnviandoMensaje(true)
+    const emp = empleados.find(e => e.id === mensajeForm.empleadoId)
+    // Notificación en la app
+    addNotification({ texto: `📋 RRHH: ${mensajeForm.asunto}`, tipo: 'sistema', empleadoId: mensajeForm.empleadoId })
+    // Email al empleado
+    if (emp?.email) {
+      await fetch('/api/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'mensaje_rrhh', data: { email: emp.email, nombre: emp.nombre, asunto: mensajeForm.asunto, mensaje: mensajeForm.mensaje } }),
+      }).catch(() => {})
+    }
+    setEnviandoMensaje(false)
+    setMensajeOk(true)
+    setTimeout(() => { setMensajeOk(false); setShowMensaje(false); setMensajeForm({ empleadoId: '', asunto: '', mensaje: '' }) }, 2000)
+  }
+
   function startEdit(sol: { id: string; estado: string; comentarioAdmin?: string }) {
     setEditingId(sol.id)
     setEditEstado(sol.estado as 'aprobado' | 'rechazado')
@@ -172,6 +195,11 @@ export default function SolicitudesPage() {
               : `${filteredTickets.length} pedidos · ${ticketsActivos} activos`}
           </p>
         </div>
+        {isAdmin && activeTab === 'solicitudes' && (
+          <button onClick={() => setShowMensaje(true)} className="btn-secondary">
+            <Bell className="w-4 h-4" /> Enviar mensaje a empleado
+          </button>
+        )}
         {!isAdmin && activeTab === 'solicitudes' && (
           <button onClick={() => setShowNueva(true)} className="btn-primary">
             <Plus className="w-4 h-4" /> Nueva solicitud
@@ -475,6 +503,63 @@ export default function SolicitudesPage() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Modal — Enviar mensaje a empleado */}
+      {showMensaje && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { if (!enviandoMensaje) setShowMensaje(false) }}>
+          <div className="card w-full max-w-lg animate-scale-in" onClick={e => e.stopPropagation()}>
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <p className="section-title flex items-center gap-2"><Bell className="w-4 h-4" /> Enviar mensaje a empleado</p>
+              <button onClick={() => setShowMensaje(false)}><X className="w-5 h-5 text-slate-400" /></button>
+            </div>
+            <div className="p-5 space-y-4">
+              {mensajeOk ? (
+                <div className="py-8 text-center">
+                  <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
+                  <p className="font-semibold text-slate-800 dark:text-slate-100">¡Mensaje enviado!</p>
+                  <p className="text-sm text-slate-500 mt-1">El empleado recibió la notificación y el email.</p>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="form-label">Empleado *</label>
+                    <select className="form-select" value={mensajeForm.empleadoId} onChange={e => setMensajeForm(f => ({ ...f, empleadoId: e.target.value }))}>
+                      <option value="">Seleccionar empleado...</option>
+                      {empleados.filter(e => e.estado === 'activo').sort((a, b) => a.apellido.localeCompare(b.apellido)).map(e => (
+                        <option key={e.id} value={e.id}>{e.apellido}, {e.nombre} — {e.cargo}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="form-label">Asunto *</label>
+                    <input className="form-input" placeholder="Ej: Presentar certificado médico el lunes"
+                      value={mensajeForm.asunto} onChange={e => setMensajeForm(f => ({ ...f, asunto: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="form-label">Mensaje *</label>
+                    <textarea className="form-input resize-none" rows={4}
+                      placeholder="Describí el mensaje o instrucción para el empleado..."
+                      value={mensajeForm.mensaje} onChange={e => setMensajeForm(f => ({ ...f, mensaje: e.target.value }))} />
+                  </div>
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl p-3 text-xs text-brand-700 dark:text-brand-400">
+                    📧 El empleado recibirá una notificación en la app y un email con este mensaje.
+                  </div>
+                  <div className="flex gap-2 justify-end pt-1">
+                    <button onClick={() => setShowMensaje(false)} className="btn-secondary" disabled={enviandoMensaje}>Cancelar</button>
+                    <button
+                      onClick={handleEnviarMensaje}
+                      disabled={!mensajeForm.empleadoId || !mensajeForm.asunto.trim() || !mensajeForm.mensaje.trim() || enviandoMensaje}
+                      className="btn-primary disabled:opacity-50"
+                    >
+                      {enviandoMensaje ? <><Loader2 className="w-4 h-4 animate-spin" /> Enviando...</> : <><Send className="w-4 h-4" /> Enviar mensaje</>}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

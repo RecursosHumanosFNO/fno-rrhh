@@ -259,6 +259,25 @@ export async function POST(req: NextRequest) {
       })
     }
 
+    /* ── Mensaje directo de RRHH al empleado ──────────────────────────────── */
+    else if (type === 'mensaje_rrhh') {
+      await transporter.sendMail({
+        from, to: data.email,
+        subject: `📋 Mensaje de RRHH: ${data.asunto}`,
+        html: base(`
+          <h3 style="color:${BRAND};margin-top:0;">Mensaje del área de RRHH</h3>
+          <p>Hola <strong>${data.nombre}</strong>,</p>
+          <p style="color:#64748b;">El área de Recursos Humanos de la <strong>Fundación Neuquén Oeste</strong> te envía el siguiente mensaje:</p>
+          <div style="background:#f1f5f9;border-left:4px solid ${BRAND};border-radius:0 8px 8px 0;padding:16px;margin:20px 0;">
+            <p style="margin:0 0 6px 0;font-weight:700;color:#1e293b;">${data.asunto}</p>
+            <p style="margin:0;color:#475569;white-space:pre-wrap;">${data.mensaje}</p>
+          </div>
+          <p style="color:#94a3b8;font-size:13px;margin-top:24px;">Si tenés dudas, respondé este email o comunicate directamente con el área de RRHH.</p>
+          ${btn('Ir al Portal', PORTAL_URL)}
+        `),
+      })
+    }
+
     console.log('[notify] ✅ Email enviado correctamente, tipo:', type)
     return NextResponse.json({ ok: true })
   } catch (err) {
