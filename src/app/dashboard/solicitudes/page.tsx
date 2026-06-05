@@ -508,8 +508,8 @@ export default function SolicitudesPage() {
 
       {/* Modal — Enviar mensaje a empleado */}
       {showMensaje && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { if (!enviandoMensaje) setShowMensaje(false) }}>
-          <div className="card w-full max-w-lg animate-scale-in" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center sm:justify-center sm:p-4" onClick={() => { if (!enviandoMensaje) setShowMensaje(false) }}>
+          <div className="card w-full sm:max-w-lg animate-scale-in rounded-t-2xl rounded-b-none sm:rounded-2xl" onClick={e => e.stopPropagation()}>
             <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <p className="section-title flex items-center gap-2"><Bell className="w-4 h-4" /> Enviar mensaje a empleado</p>
               <button onClick={() => setShowMensaje(false)}><X className="w-5 h-5 text-slate-400" /></button>
@@ -565,8 +565,8 @@ export default function SolicitudesPage() {
 
       {/* Confirmar cancelación */}
       {confirmCancel && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setConfirmCancel(null)}>
-          <div className="card w-full max-w-sm animate-scale-in" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center sm:justify-center sm:p-4" onClick={() => setConfirmCancel(null)}>
+          <div className="card w-full sm:max-w-sm animate-scale-in rounded-t-2xl rounded-b-none sm:rounded-2xl" onClick={e => e.stopPropagation()}>
             <div className="p-6 text-center">
               <div className="w-14 h-14 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
                 <XCircle className="w-7 h-7 text-red-500" />
@@ -596,10 +596,10 @@ export default function SolicitudesPage() {
 
       {/* (timeline component definido abajo) */}
 
-      {/* Nueva solicitud modal */}
+      {/* Nueva solicitud modal — bottom sheet en mobile, centrado en desktop */}
       {showNueva && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowNueva(false)}>
-          <div className="card w-full max-w-lg max-h-[85vh] overflow-y-auto animate-scale-in" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center sm:justify-center sm:p-4" onClick={() => setShowNueva(false)}>
+          <div className="card w-full sm:max-w-lg max-h-[90vh] sm:max-h-[85vh] overflow-y-auto animate-scale-in rounded-t-2xl rounded-b-none sm:rounded-2xl" onClick={e => e.stopPropagation()}>
             <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <p className="section-title">Nueva Solicitud</p>
               <button onClick={() => setShowNueva(false)}><X className="w-5 h-5 text-slate-400" /></button>
@@ -839,8 +839,8 @@ function PedidosRRHH({ isAdmin, user, filteredTickets, baseTickets, ticketsActiv
 
       {/* Modal nuevo pedido */}
       {showNuevoTicket && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowNuevoTicket(false)}>
-          <div className="card w-full max-w-lg max-h-[85vh] overflow-y-auto animate-scale-in" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center sm:justify-center sm:p-4" onClick={() => setShowNuevoTicket(false)}>
+          <div className="card w-full sm:max-w-lg max-h-[90vh] sm:max-h-[85vh] overflow-y-auto animate-scale-in rounded-t-2xl rounded-b-none sm:rounded-2xl" onClick={e => e.stopPropagation()}>
             <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <p className="section-title">Nuevo Pedido a RRHH</p>
               <button onClick={() => setShowNuevoTicket(false)}><X className="w-5 h-5 text-slate-400" /></button>

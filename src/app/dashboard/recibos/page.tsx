@@ -342,6 +342,11 @@ export default function RecibosPage() {
       })
       const data = await res.json()
       if (!res.ok || !data.url) { alert('No se pudo obtener el link del recibo.'); return }
+      // En mobile el iframe no funciona en iOS — abrir directo en nueva pestaña
+      if (window.innerWidth < 768) {
+        window.open(data.url, '_blank', 'noopener,noreferrer')
+        return
+      }
       const emp = empleados.find(e => e.id === r.empleadoId)
       const label = emp ? `${emp.nombre} ${emp.apellido} — ${r.archivo}` : r.archivo
       setPdfViewer({ url: data.url, label })
