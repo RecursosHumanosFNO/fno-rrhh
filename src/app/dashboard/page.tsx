@@ -395,7 +395,9 @@ function EmployeeDashboard({ saludo, fechaStr, empleadoId }: { saludo: string, f
   const { empleado } = useAuth()
   const { solicitudes, recibos, novedades, eventos } = useData()
 
-  const misSolicitudes = solicitudes.filter(s => s.empleadoId === empleadoId)
+  const misSolicitudes = solicitudes
+    .filter(s => s.empleadoId === empleadoId)
+    .sort((a, b) => b.fechaCreacion.localeCompare(a.fechaCreacion))
   const misPendientes = misSolicitudes.filter(s => s.estado === 'pendiente')
   const ultimoRecibo = recibos
     .filter(r => r.empleadoId === empleadoId)
