@@ -107,17 +107,19 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
               </Link>
             </div>
           </div>
-          <div className="flex flex-col items-end gap-2 shrink-0">
-            <WeatherBadge className="flex flex-col items-end" />
-            <iframe
-              src="/flora.html"
-              className="border-0 rounded-xl overflow-hidden"
-              style={{ width: '140px', height: '140px', pointerEvents: 'auto' }}
-              title="Flora"
-              sandbox="allow-scripts"
-            />
-          </div>
+          <WeatherBadge className="shrink-0 flex flex-col items-end" />
         </div>
+      </div>
+
+      {/* ── Flora — mascota de la Fundación ───────────────────────────────── */}
+      <div className="card overflow-hidden">
+        <iframe
+          src="/flora.html"
+          className="w-full border-0"
+          style={{ height: '420px' }}
+          title="Flora — Mascota de la Fundación Neuquén Oeste"
+          sandbox="allow-scripts"
+        />
       </div>
 
       {/* Pending Registrations Alert */}
@@ -453,20 +455,11 @@ function EmployeeDashboard({ saludo, fechaStr, empleadoId }: { saludo: string, f
               </div>
             </div>
           </div>
-          <div className="flex flex-col items-end gap-2 shrink-0">
-            <WeatherBadge className="flex flex-col items-end" />
-            <iframe
-              src="/flora.html"
-              className="border-0 rounded-xl overflow-hidden"
-              style={{ width: '140px', height: '140px', pointerEvents: 'auto' }}
-              title="Flora"
-              sandbox="allow-scripts"
-            />
-          </div>
+          <WeatherBadge className="shrink-0 flex flex-col items-end" />
         </div>
       </div>
 
-      {/* ── Próximos eventos ──────────────────────────────────────────────── */}
+      {/* ── Flora — mascota de la Fundación ───────────────────────────────── */}
       <div className="card overflow-hidden">
         <iframe
           src="/flora.html"
