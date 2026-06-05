@@ -176,7 +176,7 @@ function EmpleadosContent() {
         fechaNacimiento: form.fechaNacimiento, email: emailNorm,
         telefono: form.telefono, direccion: '', foto: '', fotoCover: '', cuil: '',
         contactoEmergencia: { nombre: '', telefono: '', relacion: '' },
-        sector: form.sector, cargo: form.cargo,
+        sector: form.sector, cargo: form.cargo, cargosExtra: [],
         fechaIngreso: form.fechaIngreso,
         tipoContrato: form.tipoContrato,
         jornada: form.jornada,

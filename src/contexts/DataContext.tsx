@@ -771,7 +771,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       fechaNacimiento: '', email: reg.email, telefono: reg.telefono,
       direccion: '', foto: '', fotoCover: '', cuil: '',
       contactoEmergencia: { nombre: '', telefono: '', relacion: '' },
-      sector: reg.sector, cargo: reg.cargo, fechaIngreso: hoy,
+      sector: reg.sector, cargo: reg.cargo, cargosExtra: [], fechaIngreso: hoy,
       tipoContrato: 'Contrato', jornada: 'Full Time', supervisor: '',
       estado: 'activo', diasVacaciones: 14, diasVacacionesUsados: 0,
     }
