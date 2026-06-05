@@ -10,7 +10,7 @@ import {
   FileText, Download, Upload, Search, X, CheckCircle2,
   Loader2, AlertCircle, Eye, Cloud, HardDrive, Lock,
   Layers, ChevronRight, AlertTriangle, CheckCheck, User, Trash2,
-  PenLine, ShieldCheck, ClipboardList,
+  PenLine, ShieldCheck, ClipboardList, Plus,
 } from 'lucide-react'
 
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -151,6 +151,7 @@ export default function RecibosPage() {
   const [bulkProgress, setBulkProgress] = useState(0)
   const [bulkDone, setBulkDone] = useState({ ok: 0, fail: 0 })
   const bulkInputRef = useRef<HTMLInputElement>(null)
+  const bulkAddInputRef = useRef<HTMLInputElement>(null)
 
   // ── Listado filtrado ───────────────────────────────────────────────────
   const misRecibos = isAdmin ? recibos : recibos.filter(r => r.empleadoId === user?.empleadoId)
@@ -257,6 +258,26 @@ export default function RecibosPage() {
     analizarArchivos(files)
   }
 
+  // Agrega más archivos a la lista existente (sin reemplazar)
+  function handleAgregarMas(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []).filter(f => f.type === 'application/pdf')
+    if (!files.length) return
+    const existingNames = new Set(bulkRows.map(r => r.file.name))
+    const newFiles = files.filter(f => !existingNames.has(f.name))
+    if (!newFiles.length) return
+    const empActivos = empleados.filter(e => e.estado === 'activo')
+    const newRows: BulkRow[] = newFiles.map(file => {
+      const dni = extractDniFromFilename(file.name)
+      const monto = extractMontoFromFilename(file.name, dni)
+      const match = dni ? empActivos.find(e => normDni(e.dni ?? '') === normDni(dni)) : undefined
+      return { file, detectedDni: dni, empleadoId: match?.id ?? '', monto,
+        status: match ? 'matched' : 'unmatched' as BulkRow['status'],
+        selected: !!match, uploadStatus: 'pending' } as BulkRow
+    })
+    setBulkRows(prev => [...prev, ...newRows])
+    if (bulkAddInputRef.current) bulkAddInputRef.current.value = ''
+  }
+
   // ── Carga masiva — subir todos ─────────────────────────────────────────
   async function handleBulkUpload() {
     if (!bulkConfirmed) return
@@ -272,15 +293,14 @@ export default function RecibosPage() {
       setBulkRows(prev => prev.map(r => r.file.name === row.file.name ? { ...r, uploadStatus: 'uploading' } : r))
 
       try {
-        let storagePath: string | undefined
-        if (sb) {
-          const path = `${row.empleadoId}/${bulkAnio}/${bulkMes.toString().padStart(2, '0')}_${Date.now()}_${i}.pdf`
-          const { error } = await sb.storage.from('fno-recibos').upload(path, row.file, {
-            contentType: 'application/pdf', upsert: false,
-          })
-          if (!error) storagePath = path
-          else console.warn('[bulk] storage error:', error.message)
-        }
+        if (!sb) throw new Error('Supabase no configurado — el archivo no se puede almacenar.')
+        const path = `${row.empleadoId}/${bulkAnio}/${bulkMes.toString().padStart(2, '0')}_${Date.now()}_${i}.pdf`
+        const { error: upErr } = await sb.storage.from('fno-recibos').upload(path, row.file, {
+          contentType: 'application/pdf', upsert: false,
+        })
+        // Si el upload falla no creamos el recibo — error explícito en la fila
+        if (upErr) throw new Error(upErr.message)
+        const storagePath = path
 
         const emp = empleados.find(e => e.id === row.empleadoId)
         addRecibo({
@@ -929,7 +949,7 @@ export default function RecibosPage() {
               {bulkStep === 'preview' && (
                 <div className="p-5 space-y-4">
                   {/* Resumen de estado */}
-                  <div className="flex gap-3 flex-wrap">
+                  <div className="flex gap-2 flex-wrap items-center">
                     <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-sm px-3 py-2 rounded-lg">
                       <CheckCircle2 className="w-4 h-4" /> {bulkRows.filter(r => r.empleadoId).length} asignados
                     </div>
@@ -938,6 +958,21 @@ export default function RecibosPage() {
                         <AlertTriangle className="w-4 h-4" /> {sinAsignar} sin asignar
                       </div>
                     )}
+                    {/* Agregar más archivos */}
+                    <button
+                      onClick={() => bulkAddInputRef.current?.click()}
+                      className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Agregar más
+                    </button>
+                    <input
+                      ref={bulkAddInputRef}
+                      type="file"
+                      accept="application/pdf"
+                      multiple
+                      className="hidden"
+                      onChange={handleAgregarMas}
+                    />
                     <div className="ml-auto text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1">
                       Período: <span className="font-semibold text-slate-700 dark:text-slate-200">{MESES[bulkMes - 1]} {bulkAnio}</span>
                     </div>
@@ -953,6 +988,7 @@ export default function RecibosPage() {
                           <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">DNI detectado</th>
                           <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Empleado asignado</th>
                           <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Monto (ARS)</th>
+                          <th className="px-3 py-3 w-8"></th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -970,7 +1006,7 @@ export default function RecibosPage() {
                                       className="w-4 h-4 accent-teal-600 cursor-pointer" title="Seleccionar todo el sector" />
                                   )}
                                 </td>
-                                <td colSpan={4} className="px-4 py-2">
+                                <td colSpan={5} className="px-4 py-2">
                                   <span className="text-xs font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300">{sector}</span>
                                   <span className="text-xs text-slate-400 ml-2">({indices.length})</span>
                                 </td>
@@ -1044,6 +1080,16 @@ export default function RecibosPage() {
                                   onChange={e => setBulkRows(prev => prev.map((r, j) => j === i ? { ...r, monto: e.target.value } : r))}
                                   className="form-input text-xs py-1.5 w-28"
                                 />
+                              </td>
+                              {/* Quitar fila */}
+                              <td className="px-3 py-3">
+                                <button
+                                  onClick={() => setBulkRows(prev => prev.filter((_, j) => j !== i))}
+                                  title="Quitar archivo"
+                                  className="text-slate-300 hover:text-red-400 transition-colors"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
                               </td>
                             </tr>
                           )
