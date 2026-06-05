@@ -3,7 +3,7 @@
 import React, { useState, useRef, useCallback, useMemo } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
-import { formatFecha, formatMes, formatMonto } from '@/lib/utils'
+import { formatFecha, formatMes } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import * as XLSX from 'xlsx'
 import {
@@ -176,7 +176,7 @@ export default function RecibosPage() {
   }
 
   async function handleSubir() {
-    if (!uploadForm.empleadoId || !uploadForm.monto) return
+    if (!uploadForm.empleadoId) return
     setUploadStatus('uploading')
     setUploadError('')
     const emp = empleados.find(e => e.id === uploadForm.empleadoId)
@@ -202,7 +202,7 @@ export default function RecibosPage() {
       anio: uploadForm.anio,
       archivo: fileName,
       fechaSubida: new Date().toISOString().slice(0, 10),
-      monto: parseFloat(uploadForm.monto),
+      monto: 0,
       archivoUrl: storagePath,
       concepto: uploadForm.concepto,
     })
@@ -309,7 +309,7 @@ export default function RecibosPage() {
           anio: bulkAnio,
           archivo: `recibo_${emp?.apellido?.toLowerCase() ?? 'emp'}_${MESES[bulkMes - 1].toLowerCase()}_${bulkAnio}.pdf`,
           fechaSubida: new Date().toISOString().slice(0, 10),
-          monto: parseFloat(row.monto) || 0,
+          monto: 0,
           archivoUrl: storagePath,
           concepto: bulkConcepto,
         })
@@ -581,7 +581,6 @@ export default function RecibosPage() {
                 {isAdmin && <th className="table-header text-left">Empleado</th>}
                 <th className="table-header text-left">Período</th>
                 <th className="table-header text-left hidden sm:table-cell">Fecha de subida</th>
-                <th className="table-header text-right hidden md:table-cell">Monto</th>
                 <th className="table-header text-right">Acción</th>
               </tr>
             </thead>
@@ -633,9 +632,6 @@ export default function RecibosPage() {
                       </div>
                     </td>
                     <td className="table-cell hidden sm:table-cell text-slate-600 dark:text-slate-400 text-sm">{formatFecha(r.fechaSubida)}</td>
-                    <td className="table-cell text-right hidden md:table-cell">
-                      <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{formatMonto(r.monto)}</span>
-                    </td>
                     <td className="table-cell text-right">
                       <div className="inline-flex items-center gap-2 justify-end">
                         <button
@@ -845,10 +841,6 @@ export default function RecibosPage() {
                 </select>
               </div>
               <div>
-                <label className="form-label">Monto neto (ARS) *</label>
-                <input className="form-input" type="number" placeholder="Ej: 450000" value={uploadForm.monto} onChange={e => setUploadForm(f => ({ ...f, monto: e.target.value }))} disabled={uploadStatus === 'uploading'} />
-              </div>
-              <div>
                 <label className="form-label">Archivo PDF <span className="text-slate-400 font-normal ml-1">(guardado cifrado en la nube)</span></label>
                 <div
                   className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-colors ${selectedFile ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-900/10' : 'border-slate-300 dark:border-slate-600 hover:border-brand-500'}`}
@@ -864,7 +856,7 @@ export default function RecibosPage() {
               </div>
               <div className="flex gap-2 justify-end pt-2">
                 <button onClick={() => setShowUpload(false)} className="btn-secondary" disabled={uploadStatus === 'uploading'}>Cancelar</button>
-                <button onClick={handleSubir} disabled={!uploadForm.empleadoId || !uploadForm.monto || uploadStatus === 'uploading' || uploadStatus === 'success'} className="btn-primary disabled:opacity-50">
+                <button onClick={handleSubir} disabled={!uploadForm.empleadoId || uploadStatus === 'uploading' || uploadStatus === 'success'} className="btn-primary disabled:opacity-50">
                   {uploadStatus === 'uploading' ? <><Loader2 className="w-4 h-4 animate-spin" /> Subiendo...</> : <><Upload className="w-4 h-4" /> Subir recibo</>}
                 </button>
               </div>
@@ -901,7 +893,6 @@ export default function RecibosPage() {
                     <p className="font-semibold">¿Cómo nombrar los archivos?</p>
                     <div className="space-y-1 text-xs text-sky-700 dark:text-sky-400">
                       <p>✅ <code className="bg-sky-100 dark:bg-sky-900/40 px-1 rounded">20123456.pdf</code> → solo el DNI (7 u 8 dígitos)</p>
-                      <p>✅ <code className="bg-sky-100 dark:bg-sky-900/40 px-1 rounded">20123456_450000.pdf</code> → DNI + monto (opcional)</p>
                       <p>✅ <code className="bg-sky-100 dark:bg-sky-900/40 px-1 rounded">GARCIA_20123456.pdf</code> → también se detecta el DNI</p>
                       <p className="text-amber-600 dark:text-amber-400">⚠ Un archivo sin DNI reconocible quedará sin asignar y no se subirá hasta que lo asignes manualmente.</p>
                     </div>
@@ -987,7 +978,6 @@ export default function RecibosPage() {
                           <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Archivo PDF (DNI)</th>
                           <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">DNI detectado</th>
                           <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Empleado asignado</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Monto (ARS)</th>
                           <th className="px-3 py-3 w-8"></th>
                         </tr>
                       </thead>
@@ -1006,7 +996,7 @@ export default function RecibosPage() {
                                       className="w-4 h-4 accent-teal-600 cursor-pointer" title="Seleccionar todo el sector" />
                                   )}
                                 </td>
-                                <td colSpan={5} className="px-4 py-2">
+                                <td colSpan={4} className="px-4 py-2">
                                   <span className="text-xs font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300">{sector}</span>
                                   <span className="text-xs text-slate-400 ml-2">({indices.length})</span>
                                 </td>
@@ -1070,16 +1060,6 @@ export default function RecibosPage() {
                                     </button>
                                   </div>
                                 )}
-                              </td>
-                              {/* Monto */}
-                              <td className="px-4 py-3">
-                                <input
-                                  type="number"
-                                  placeholder="0"
-                                  value={row.monto}
-                                  onChange={e => setBulkRows(prev => prev.map((r, j) => j === i ? { ...r, monto: e.target.value } : r))}
-                                  className="form-input text-xs py-1.5 w-28"
-                                />
                               </td>
                               {/* Quitar fila */}
                               <td className="px-3 py-3">
