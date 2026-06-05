@@ -228,7 +228,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
           </button>
 
           {showNotifs && (
-            <div className="absolute right-0 top-12 w-80 card !bg-white dark:!bg-slate-900 shadow-xl z-50 overflow-hidden animate-scale-in">
+            <div className="absolute right-0 top-12 w-80 max-w-[calc(100vw-1rem)] card !bg-white dark:!bg-slate-900 shadow-xl z-50 overflow-hidden animate-scale-in">
               <div className="p-3 border-b border-sky-100 dark:border-slate-800 flex items-center justify-between">
                 <p className="font-semibold text-sm text-slate-800 dark:text-slate-100">
                   Notificaciones
