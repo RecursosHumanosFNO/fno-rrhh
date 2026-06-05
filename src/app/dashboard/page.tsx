@@ -111,6 +111,17 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
         </div>
       </div>
 
+      {/* ── Flora — mascota de la Fundación ───────────────────────────────── */}
+      <div className="card overflow-hidden">
+        <iframe
+          src="/flora.html"
+          className="w-full border-0"
+          style={{ height: '420px' }}
+          title="Flora — Mascota de la Fundación Neuquén Oeste"
+          sandbox="allow-scripts"
+        />
+      </div>
+
       {/* Pending Registrations Alert */}
       {pendingRegistrations.length > 0 && (
         <div className="card border-l-4 border-amber-500 p-4">
@@ -446,6 +457,17 @@ function EmployeeDashboard({ saludo, fechaStr, empleadoId }: { saludo: string, f
           </div>
           <WeatherBadge className="shrink-0 flex flex-col items-end" />
         </div>
+      </div>
+
+      {/* ── Flora — mascota de la Fundación ───────────────────────────────── */}
+      <div className="card overflow-hidden">
+        <iframe
+          src="/flora.html"
+          className="w-full border-0"
+          style={{ height: '420px' }}
+          title="Flora — Mascota de la Fundación Neuquén Oeste"
+          sandbox="allow-scripts"
+        />
       </div>
 
       {/* ── Próximos eventos — sección protagonista ────────────────────────── */}
