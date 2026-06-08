@@ -176,7 +176,7 @@ export default function LoginPage() {
           </div>
 
           <p className="text-center text-xs text-slate-400 dark:text-slate-600 mt-8">
-            © 2026 Fundación Neuquén Oeste — Portal Interno RRHH v2.0
+            © {new Date().getFullYear()} Fundación Neuquén Oeste — Portal Interno RRHH v2.0
           </p>
         </div>
       </div>

@@ -47,7 +47,7 @@ export default function RecibosPage() {
   // ── Estado filtros/tabla ───────────────────────────────────────────────
   const [query, setQuery] = useState('')
   const [mesFilter, setMesFilter] = useState('')
-  const [anioFilter, setAnioFilter] = useState(new Date().getFullYear().toString())
+  const [anioFilter, setAnioFilter] = useState('')
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; archivoUrl?: string; label: string } | null>(null)
   const [deleting, setDeleting] = useState(false)
@@ -448,8 +448,8 @@ export default function RecibosPage() {
           <option value="">Todos los años</option>
           {[ANIO_ACTUAL, ANIO_ACTUAL - 1, ANIO_ACTUAL - 2].map(y => <option key={y} value={y}>{y}</option>)}
         </select>
-        {(query || mesFilter || anioFilter !== new Date().getFullYear().toString()) && (
-          <button onClick={() => { setQuery(''); setMesFilter(''); setAnioFilter(new Date().getFullYear().toString()) }} className="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1">
+        {(query || mesFilter || anioFilter) && (
+          <button onClick={() => { setQuery(''); setMesFilter(''); setAnioFilter('') }} className="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1">
             <X className="w-3.5 h-3.5" /> Limpiar
           </button>
         )}
