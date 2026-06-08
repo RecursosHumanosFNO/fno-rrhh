@@ -33,6 +33,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const { pendingRegistrations, solicitudes } = useData()
 
   const isAdmin = user?.role === 'admin'
+  const isComunicaciones = user?.role === 'comunicaciones'
 
   // Perfil incompleto del usuario logueado (mismos campos que el detalle de empleado)
   const perfilIncompleto = !!empleado && [
@@ -66,7 +67,18 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     { href: '/dashboard/instructivo', label: 'Instructivo', icon: BookOpen },
   ]
 
-  const links = isAdmin ? adminLinks : employeeLinks
+  const comunicacionesLinks: NavLink[] = [
+    { href: '/dashboard', label: 'Inicio', icon: LayoutDashboard },
+    { href: '/dashboard/comunicaciones', label: 'Comunicaciones', icon: Megaphone },
+    { href: '/dashboard/eventos', label: 'Eventos y Cumpleaños', icon: CalendarDays },
+    { href: '/dashboard/recibos', label: 'Mis Recibos', icon: FileText },
+    { href: '/dashboard/solicitudes', label: 'Solicitudes y Pedidos', icon: ClipboardList },
+    { href: '/dashboard/fundacion', label: 'La Fundación', icon: Info },
+    { href: '/dashboard/perfil', label: 'Mi Perfil', icon: User, warn: perfilIncompleto },
+    { href: '/dashboard/instructivo', label: 'Instructivo', icon: BookOpen },
+  ]
+
+  const links = isAdmin ? adminLinks : isComunicaciones ? comunicacionesLinks : employeeLinks
 
   return (
     <aside className={cn(
@@ -105,7 +117,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {!collapsed && (
         <div className="mx-3 mt-3 px-3 py-1.5 bg-white/10 dark:bg-teal-900/30 rounded-lg border border-transparent dark:border-teal-700/30">
           <p className="text-blue-100 dark:text-teal-300 text-xs font-medium">
-            {isAdmin ? '🔑 Administrador RRHH' : '👤 Portal del Empleado'}
+            {isAdmin ? '🔑 Administrador RRHH' : isComunicaciones ? '📢 Comunicaciones' : '👤 Portal del Empleado'}
           </p>
         </div>
       )}

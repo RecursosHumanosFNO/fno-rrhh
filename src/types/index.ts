@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'employee'
+export type UserRole = 'admin' | 'employee' | 'comunicaciones'
 
 export type EmpleadoEstado = 'activo' | 'inactivo' | 'licencia' | 'vacaciones'
 

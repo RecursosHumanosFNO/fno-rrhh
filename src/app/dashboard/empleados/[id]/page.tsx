@@ -33,7 +33,7 @@ export default function EmpleadoDetailPage() {
   const [pdfViewer, setPdfViewer] = useState<{ url: string; label: string } | null>(null)
   const [resetStatus, setResetStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
   const [roleStatus, setRoleStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
-  const [confirmRole, setConfirmRole] = useState<'admin' | 'employee' | null>(null)
+  const [confirmRole, setConfirmRole] = useState<'admin' | 'employee' | 'comunicaciones' | null>(null)
   const [showDelete, setShowDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteErr, setDeleteErr] = useState('')
@@ -229,7 +229,7 @@ export default function EmpleadoDetailPage() {
     setTimeout(() => setResetStatus('idle'), 5000)
   }
 
-  async function handleSetRole(newRole: 'admin' | 'employee') {
+  async function handleSetRole(newRole: 'admin' | 'employee' | 'comunicaciones') {
     if (!user?.empleadoId) return
     setConfirmRole(null)
     setRoleStatus('loading')
@@ -548,30 +548,38 @@ export default function EmpleadoDetailPage() {
                       <p className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-3 flex items-center gap-2">
                         <Shield className="w-4 h-4" /> Rol de acceso
                       </p>
-                      <div className="flex items-center justify-between">
-                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                      <div className="flex items-center justify-between gap-3">
+                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${
                           empUser.role === 'admin'
                             ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
-                            : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                            : empUser.role === 'comunicaciones'
+                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
+                              : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
                         }`}>
-                          {empUser.role === 'admin' ? '⭐ Administrador' : '👤 Empleado'}
+                          {empUser.role === 'admin' ? '⭐ Administrador'
+                            : empUser.role === 'comunicaciones' ? '📢 Comunicaciones'
+                            : '👤 Empleado'}
                         </span>
 
-                        {/* No mostrar botón si es el perfil del propio admin */}
                         {id !== user?.empleadoId ? (
-                          <button
-                            onClick={() => setConfirmRole(empUser.role === 'admin' ? 'employee' : 'admin')}
-                            disabled={roleStatus === 'loading'}
-                            className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 ${
-                              empUser.role === 'admin'
-                                ? 'bg-red-50 hover:bg-red-100 text-red-700 dark:bg-red-900/20 dark:hover:bg-red-900/30 dark:text-red-400'
-                                : 'bg-amber-50 hover:bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:hover:bg-amber-900/30 dark:text-amber-300'
-                            }`}
-                          >
-                            {roleStatus === 'loading' ? (
-                              <><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Guardando...</>
-                            ) : empUser.role === 'admin' ? 'Quitar admin' : 'Hacer admin'}
-                          </button>
+                          roleStatus === 'loading' ? (
+                            <span className="text-xs text-slate-400 flex items-center gap-1">
+                              <Loader2 className="w-3 h-3 animate-spin" /> Guardando...
+                            </span>
+                          ) : (
+                            <select
+                              value={empUser.role}
+                              onChange={e => {
+                                const nuevo = e.target.value as 'admin' | 'employee' | 'comunicaciones'
+                                if (nuevo !== empUser.role) setConfirmRole(nuevo)
+                              }}
+                              className="form-select text-xs py-1 w-auto"
+                            >
+                              <option value="employee">👤 Empleado</option>
+                              <option value="comunicaciones">📢 Comunicaciones</option>
+                              <option value="admin">⭐ Administrador</option>
+                            </select>
+                          )
                         ) : (
                           <span className="text-xs text-slate-400 italic">Tu cuenta</span>
                         )}
@@ -1112,34 +1120,41 @@ export default function EmpleadoDetailPage() {
           <div className="card w-full max-w-sm animate-scale-in" onClick={e => e.stopPropagation()}>
             <div className="p-6 text-center">
               <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 ${
-                confirmRole === 'admin'
-                  ? 'bg-amber-100 dark:bg-amber-900/30'
-                  : 'bg-red-100 dark:bg-red-900/30'
+                confirmRole === 'admin' ? 'bg-amber-100 dark:bg-amber-900/30'
+                : confirmRole === 'comunicaciones' ? 'bg-blue-100 dark:bg-blue-900/30'
+                : 'bg-slate-100 dark:bg-slate-800'
               }`}>
-                <Shield className={`w-7 h-7 ${confirmRole === 'admin' ? 'text-amber-500' : 'text-red-500'}`} />
+                <Shield className={`w-7 h-7 ${
+                  confirmRole === 'admin' ? 'text-amber-500'
+                  : confirmRole === 'comunicaciones' ? 'text-blue-500'
+                  : 'text-slate-400'
+                }`} />
               </div>
               <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">
-                {confirmRole === 'admin' ? '¿Hacer administrador?' : '¿Quitar rol de admin?'}
+                {confirmRole === 'admin' ? '¿Hacer administrador?'
+                  : confirmRole === 'comunicaciones' ? '¿Asignar rol Comunicaciones?'
+                  : '¿Volver a empleado?'}
               </h3>
               <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
                 {confirmRole === 'admin'
-                  ? `${emp.nombre} ${emp.apellido} tendrá acceso completo al portal: empleados, recibos, estadísticas y configuración.`
-                  : `${emp.nombre} ${emp.apellido} pasará a ser empleado regular y perderá el acceso administrativo.`
-                }
+                  ? `${emp.nombre} tendrá acceso completo al portal: empleados, recibos, estadísticas y configuración.`
+                  : confirmRole === 'comunicaciones'
+                  ? `${emp.nombre} podrá crear y editar comunicados y eventos, pero no verá empleados, recibos ni datos administrativos.`
+                  : `${emp.nombre} pasará a ser empleado regular y solo verá sus propios datos.`}
               </p>
               <div className="flex gap-3">
                 <button onClick={() => setConfirmRole(null)} className="btn-secondary flex-1 justify-center">
                   Cancelar
                 </button>
                 <button
-                  onClick={() => handleSetRole(confirmRole)}
+                  onClick={() => handleSetRole(confirmRole!)}
                   className={`flex-1 justify-center px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors ${
-                    confirmRole === 'admin'
-                      ? 'bg-amber-500 hover:bg-amber-600'
-                      : 'bg-red-500 hover:bg-red-600'
+                    confirmRole === 'admin' ? 'bg-amber-500 hover:bg-amber-600'
+                    : confirmRole === 'comunicaciones' ? 'bg-blue-600 hover:bg-blue-700'
+                    : 'bg-slate-500 hover:bg-slate-600'
                   }`}
                 >
-                  {confirmRole === 'admin' ? 'Sí, hacer admin' : 'Sí, quitar admin'}
+                  Confirmar
                 </button>
               </div>
             </div>

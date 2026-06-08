@@ -29,7 +29,7 @@ function catIcon(cat: NovedadCategoria): React.ElementType {
 export default function ComunicacionesPage() {
   const { user } = useAuth()
   const { novedades, addNovedad, updateNovedad, deleteNovedad } = useData()
-  const isAdmin = user?.role === 'admin'
+  const isAdmin = user?.role === 'admin' || user?.role === 'comunicaciones'
 
   const [catFilter, setCatFilter] = useState<NovedadCategoria | ''>('')
   const [selectedNovedad, setSelectedNovedad] = useState<string | null>(null)

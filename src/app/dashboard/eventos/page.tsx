@@ -27,7 +27,7 @@ function emptyForm(): Omit<Evento, 'id'> {
 export default function EventosPage() {
   const { user } = useAuth()
   const { empleados, eventos, addEvento, updateEvento, deleteEvento } = useData()
-  const isAdmin = user?.role === 'admin'
+  const isAdmin = user?.role === 'admin' || user?.role === 'comunicaciones'
 
   const hoy = new Date()
   const [viewAnio, setViewAnio] = useState(hoy.getFullYear())
