@@ -507,7 +507,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       )
       if (supabase) {
         const full = updated.find(e => e.id === id)
-        if (full) supabase.from('fno_empleados').upsert(mapEmpleadoToSupabase(full)).then()
+        if (full) {
+          // Forzar desvinculacion: null para limpiar el campo en Supabase
+          // (el mapper lo omite cuando es undefined, así que hay que enviarlo explícito)
+          supabase.from('fno_empleados')
+            .upsert({ ...mapEmpleadoToSupabase(full), desvinculacion: null })
+            .then()
+        }
       }
       return updated
     })
