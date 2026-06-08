@@ -420,9 +420,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             return [...sinViejo, ev].sort((a, b) => a.fecha.localeCompare(b.fecha))
           })
         })
-        .subscribe((status) => {
-          console.log('[realtime] status:', status)
-        })
+        .subscribe()
     }
 
     // Solo conectar realtime cuando hay sesión activa
