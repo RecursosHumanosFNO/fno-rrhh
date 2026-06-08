@@ -129,7 +129,8 @@ export interface Empleado {
   diasVacacionesUsados: number
   cbu?: string
   banco?: string
-  desvinculacion?: DesvinculacionInfo        // Solo presente si estado === 'inactivo'
+  desvinculacion?: DesvinculacionInfo           // Baja actual (solo si estado === 'inactivo')
+  historialDesvinculaciones?: DesvinculacionInfo[] // Bajas anteriores (se preservan al reactivar)
 }
 
 export interface Recibo {

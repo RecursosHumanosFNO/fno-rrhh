@@ -846,6 +846,46 @@ export default function EmpleadoDetailPage() {
             </div>
           </div>
         )}
+
+        {/* Historial de desvinculaciones anteriores — solo admin, preservadas al reactivar */}
+        {isAdmin && emp.historialDesvinculaciones && emp.historialDesvinculaciones.length > 0 && (
+          <div className="card overflow-hidden">
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
+              <BriefcaseBusiness className="w-4 h-4 text-slate-400 shrink-0" />
+              <p className="section-title">Bajas anteriores ({emp.historialDesvinculaciones.length})</p>
+            </div>
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+              {[...emp.historialDesvinculaciones].reverse().map((baja, i) => (
+                <div key={i} className="p-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                  <div>
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Fecha</p>
+                    <p className="text-slate-700 dark:text-slate-200">{formatFecha(baja.fecha)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Motivo</p>
+                    <p className="text-slate-700 dark:text-slate-200">
+                      {DESVINCULACION_MOTIVO_LABEL[baja.motivo]}
+                      {baja.motivoDetalle ? ` — ${baja.motivoDetalle}` : ''}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Liquidación</p>
+                    <p className={baja.liquidacionFinal === 'entregada' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-500'}>
+                      {baja.liquidacionFinal === 'entregada' ? '✅ Entregada' : '⏳ Pendiente'}
+                    </p>
+                  </div>
+                  {baja.observaciones && (
+                    <div className="sm:col-span-3">
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Observaciones</p>
+                      <p className="text-slate-500 dark:text-slate-400 italic">{baja.observaciones}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="card p-5">
           <p className="section-title mb-4">Historial de Actividad</p>
           {misSolicitudes.length === 0 && misRecibos.length === 0 ? (

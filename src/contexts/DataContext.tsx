@@ -105,6 +105,7 @@ function mapSupabaseToEmpleado(row: Record<string, unknown>): Empleado {
     cbu: (row.cbu as string) ?? '',
     banco: (row.banco as string) ?? '',
     desvinculacion: (row.desvinculacion as DesvinculacionInfo) ?? undefined,
+    historialDesvinculaciones: (row.historial_desvinculaciones as DesvinculacionInfo[]) ?? undefined,
   }
 }
 function mapEmpleadoToSupabase(e: Empleado) {
@@ -122,6 +123,7 @@ function mapEmpleadoToSupabase(e: Empleado) {
   // Solo incluir desvinculacion si tiene valor para no romper inserts
   // cuando la columna aún no existe en la tabla de Supabase
   if (e.desvinculacion !== undefined) row.desvinculacion = e.desvinculacion
+  if (e.historialDesvinculaciones !== undefined) row.historial_desvinculaciones = e.historialDesvinculaciones
   return row
 }
 
@@ -498,20 +500,31 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     })
   }, [])
 
-  // Reactiva al empleado: borra el registro de desvinculación + pone estado=activo
+  // Reactiva al empleado: mueve la baja actual al historial (no se borra) + estado=activo
   const reactivarEmpleado = useCallback((id: string) => {
     setEmpleados(prev => {
-      const updated = prev.map(e => e.id === id
-        ? { ...e, estado: 'activo' as EmpleadoEstado, desvinculacion: undefined }
-        : e
-      )
+      const updated = prev.map(e => {
+        if (e.id !== id) return e
+        const historial = [
+          ...(e.historialDesvinculaciones ?? []),
+          ...(e.desvinculacion ? [e.desvinculacion] : []),  // preservar la baja actual
+        ]
+        return {
+          ...e,
+          estado: 'activo' as EmpleadoEstado,
+          desvinculacion: undefined,
+          historialDesvinculaciones: historial.length > 0 ? historial : undefined,
+        }
+      })
       if (supabase) {
         const full = updated.find(e => e.id === id)
         if (full) {
-          // Forzar desvinculacion: null para limpiar el campo en Supabase
-          // (el mapper lo omite cuando es undefined, así que hay que enviarlo explícito)
           supabase.from('fno_empleados')
-            .upsert({ ...mapEmpleadoToSupabase(full), desvinculacion: null })
+            .upsert({
+              ...mapEmpleadoToSupabase(full),
+              desvinculacion: null,                          // limpiar baja activa
+              historial_desvinculaciones: full.historialDesvinculaciones ?? null,
+            })
             .then()
         }
       }
