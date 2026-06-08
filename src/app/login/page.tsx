@@ -31,6 +31,7 @@ export default function LoginPage() {
     if (result === 'ok') router.replace('/dashboard')
     else if (result === 'pendiente') setError('Tu solicitud de acceso está pendiente de aprobación por el administrador.')
     else if (result === 'timeout') setError('El servidor está tardando en responder. Esperá un minuto y volvé a intentar.')
+    else if (result === 'desactivada') setError('⛔ Tu cuenta está desactivada. Comunicate con el área de RRHH para más información.')
     else setError('Email o contraseña incorrectos.')
   }
 

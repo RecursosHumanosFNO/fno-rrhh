@@ -5,6 +5,7 @@ import type {
   Empleado, Solicitud, Recibo, Novedad, Ticket, User, Evento,
   AppNotification, PendingRegistration, TicketEstado, UserRole, EmpleadoEstado,
   SolicitudEstado, SolicitudTipo, NovedadCategoria, TicketTipo, ReciboFirma,
+  DesvinculacionInfo,
 } from '@/types'
 import * as initial from '@/lib/mockData'
 import { uid, SOLICITUD_TIPO_LABEL } from '@/lib/utils'
@@ -24,6 +25,8 @@ interface DataContextType {
   addEmpleado: (e: Omit<Empleado, 'id'>) => string
   updateEmpleado: (id: string, data: Partial<Empleado>) => void
   deleteEmpleado: (id: string) => void
+  desactivarEmpleado: (id: string, info: DesvinculacionInfo) => void
+  reactivarEmpleado: (id: string) => void
   // Solicitudes
   addSolicitud: (s: Omit<Solicitud, 'id' | 'fechaCreacion' | 'estado'>) => void
   approveSolicitud: (id: string, comment: string) => void
@@ -101,6 +104,7 @@ function mapSupabaseToEmpleado(row: Record<string, unknown>): Empleado {
     diasVacacionesUsados: (row.dias_vacaciones_usados as number) ?? 0,
     cbu: (row.cbu as string) ?? '',
     banco: (row.banco as string) ?? '',
+    desvinculacion: (row.desvinculacion as DesvinculacionInfo) ?? undefined,
   }
 }
 function mapEmpleadoToSupabase(e: Empleado) {
@@ -114,6 +118,7 @@ function mapEmpleadoToSupabase(e: Empleado) {
     estado: e.estado, dias_vacaciones: e.diasVacaciones,
     dias_vacaciones_usados: e.diasVacacionesUsados,
     cbu: e.cbu ?? '', banco: e.banco ?? '',
+    desvinculacion: e.desvinculacion ?? null,
   }
 }
 
@@ -467,6 +472,36 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const updateEmpleado = useCallback((id: string, data: Partial<Empleado>) => {
     setEmpleados(prev => {
       const updated = prev.map(e => e.id === id ? { ...e, ...data } : e)
+      if (supabase) {
+        const full = updated.find(e => e.id === id)
+        if (full) supabase.from('fno_empleados').upsert(mapEmpleadoToSupabase(full)).then()
+      }
+      return updated
+    })
+  }, [])
+
+  // Desactiva al empleado: guarda el registro de desvinculación + pone estado=inactivo
+  const desactivarEmpleado = useCallback((id: string, info: DesvinculacionInfo) => {
+    setEmpleados(prev => {
+      const updated = prev.map(e => e.id === id
+        ? { ...e, estado: 'inactivo' as EmpleadoEstado, desvinculacion: info }
+        : e
+      )
+      if (supabase) {
+        const full = updated.find(e => e.id === id)
+        if (full) supabase.from('fno_empleados').upsert(mapEmpleadoToSupabase(full)).then()
+      }
+      return updated
+    })
+  }, [])
+
+  // Reactiva al empleado: borra el registro de desvinculación + pone estado=activo
+  const reactivarEmpleado = useCallback((id: string) => {
+    setEmpleados(prev => {
+      const updated = prev.map(e => e.id === id
+        ? { ...e, estado: 'activo' as EmpleadoEstado, desvinculacion: undefined }
+        : e
+      )
       if (supabase) {
         const full = updated.find(e => e.id === id)
         if (full) supabase.from('fno_empleados').upsert(mapEmpleadoToSupabase(full)).then()
@@ -836,7 +871,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     <DataContext.Provider value={{
       empleados, solicitudes, recibos, novedades, eventos, tickets, users,
       pendingRegistrations, notifications,
-      addEmpleado, updateEmpleado, deleteEmpleado,
+      addEmpleado, updateEmpleado, deleteEmpleado, desactivarEmpleado, reactivarEmpleado,
       addSolicitud, approveSolicitud, rejectSolicitud, editSolicitud, cancelSolicitud,
       addNovedad, updateNovedad, deleteNovedad,
       addEvento, updateEvento, deleteEvento,

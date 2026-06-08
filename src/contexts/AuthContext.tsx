@@ -6,7 +6,7 @@ import { useData } from './DataContext'
 import { supabase } from '@/lib/supabase'
 
 interface AuthContextType extends AuthState {
-  login: (email: string, password: string, remember: boolean) => Promise<'ok' | 'pendiente' | 'error' | 'timeout'>
+  login: (email: string, password: string, remember: boolean) => Promise<'ok' | 'pendiente' | 'error' | 'timeout' | 'desactivada'>
   logout: () => void
   updateEmpleado: (data: Partial<Empleado>) => void
   isLoading: boolean
@@ -87,7 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     email: string,
     password: string,
     _remember: boolean,
-  ): Promise<'ok' | 'pendiente' | 'error' | 'timeout'> => {
+  ): Promise<'ok' | 'pendiente' | 'error' | 'timeout' | 'desactivada'> => {
     const normalEmail = email.toLowerCase().trim()
 
     // Verificar pendientes (lista local, sin contraseñas)
@@ -99,7 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       // Timeout de 15s: evita spinner infinito si Supabase está pausado o con latencia
       const timeout = new Promise<'timeout'>(resolve => setTimeout(() => resolve('timeout'), 15000))
-      const attempt = (async (): Promise<'ok' | 'error'> => {
+      const attempt = (async (): Promise<'ok' | 'error' | 'desactivada'> => {
         const { data, error } = await supabase!.auth.signInWithPassword({ email: normalEmail, password })
         if (error || !data.user) return 'error'
         // Cargar el perfil y dejar la sesión lista ANTES de devolver 'ok'.
@@ -107,6 +107,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         //  no vería isAuthenticated=true al primer intento)
         const profile = await loadProfile(data.user.id)
         if (!profile) return 'error'
+        // Verificar directamente en Supabase para evitar race condition con el sync
+        const { data: empRow } = await supabase!
+          .from('fno_empleados').select('estado').eq('id', profile.empleadoId).maybeSingle()
+        if (empRow?.estado === 'inactivo') {
+          await supabase!.auth.signOut()
+          return 'desactivada'
+        }
         const emp = empleados.find(e => e.id === profile.empleadoId) ?? null
         setAuth({ user: profile, empleado: emp, isAuthenticated: true })
         return 'ok'

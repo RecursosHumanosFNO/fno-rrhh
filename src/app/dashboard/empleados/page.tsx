@@ -11,10 +11,10 @@ import {
 import {
   Search, Users, Plus, Download, LayoutGrid, List,
   Mail, Building2, Calendar, ChevronRight, X, CheckCircle2, XCircle,
-  SlidersHorizontal, ArrowUpDown,
+  SlidersHorizontal, ArrowUpDown, History,
 } from 'lucide-react'
 import Link from 'next/link'
-import type { EmpleadoEstado, Empleado } from '@/types'
+import type { EmpleadoEstado, Empleado, DesvinculacionMotivo } from '@/types'
 import * as XLSX from 'xlsx'
 
 // ── Excel export ──────────────────────────────────────────────────────────────
@@ -120,6 +120,23 @@ function EmpleadosContent() {
   const [view, setView] = useState<'grid' | 'list'>('grid')
   const [showNuevo, setShowNuevo] = useState(false)
   const [showPending, setShowPending] = useState(false)
+  const [mainTab, setMainTab] = useState<'activos' | 'historial'>('activos')
+
+  const DESVINCULACION_MOTIVO_LABEL: Record<DesvinculacionMotivo, string> = {
+    renuncia_voluntaria: 'Renuncia voluntaria', despido_sin_causa: 'Despido sin causa',
+    despido_con_causa: 'Despido con causa', jubilacion: 'Jubilación',
+    vencimiento_contrato: 'Vto. de contrato', acuerdo_mutuo: 'Acuerdo mutuo',
+    fallecimiento: 'Fallecimiento', otro: 'Otro',
+  }
+
+  const inactivos = useMemo(
+    () => allEmpleados.filter(e => e.estado === 'inactivo').sort((a, b) => {
+      const fa = a.desvinculacion?.fecha ?? ''
+      const fb = b.desvinculacion?.fecha ?? ''
+      return fb.localeCompare(fa)
+    }),
+    [allEmpleados],
+  )
 
   // Cargos únicos para el filtro (ordenados alfabéticamente)
   const cargosUnicos = useMemo(
@@ -136,6 +153,7 @@ function EmpleadosContent() {
 
   const filtered = useMemo(() => {
     const list = allEmpleados.filter(e => {
+      if (e.estado === 'inactivo') return false  // Inactivos van al tab Historial
       const matchQuery = `${e.nombre} ${e.apellido} ${e.cargo} ${e.email} ${e.dni}`.toLowerCase().includes(query.toLowerCase())
       const matchSector = !sectorFilter || e.sector === sectorFilter
       const matchEstado = !estadoFilter || e.estado === estadoFilter
@@ -231,7 +249,7 @@ function EmpleadosContent() {
         <div>
           <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Empleados</h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-0.5">
-            {allEmpleados.length} empleados · {allEmpleados.filter(e => e.estado === 'activo').length} activos
+            {allEmpleados.filter(e => e.estado !== 'inactivo').length} activos · {inactivos.length} en historial
             {pendingRegistrations.length > 0 && (
               <button onClick={() => setShowPending(true)} className="ml-2 inline-flex items-center gap-1 text-amber-600 hover:text-amber-700 font-medium">
                 · {pendingRegistrations.length} pendiente{pendingRegistrations.length > 1 ? 's' : ''} de aprobación ↗
@@ -252,6 +270,26 @@ function EmpleadosContent() {
             <Plus className="w-4 h-4" /> Nuevo empleado
           </button>
         </div>
+      </div>
+
+      {/* Tabs: Activos / Historial */}
+      <div className="flex gap-1 border-b border-slate-200 dark:border-slate-700">
+        {([
+          { key: 'activos', label: 'Empleados activos', icon: Users },
+          { key: 'historial', label: `Historial de bajas${inactivos.length > 0 ? ` (${inactivos.length})` : ''}`, icon: History },
+        ] as const).map(({ key, label, icon: Icon }) => (
+          <button
+            key={key}
+            onClick={() => setMainTab(key)}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              mainTab === key
+                ? 'border-brand-600 text-brand-700 dark:text-brand-400'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+            }`}
+          >
+            <Icon className="w-4 h-4" /> {label}
+          </button>
+        ))}
       </div>
 
       {/* Pending registrations quick panel */}
@@ -293,6 +331,81 @@ function EmpleadosContent() {
         </div>
       )}
 
+      {/* ══ HISTORIAL DE BAJAS ══ */}
+      {mainTab === 'historial' && (
+        <div className="space-y-3">
+          {inactivos.length === 0 ? (
+            <div className="card p-12 text-center">
+              <History className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+              <p className="text-slate-500 font-medium">Sin empleados desvinculados</p>
+              <p className="text-slate-400 text-sm mt-1">Cuando desactivés a un empleado, aparecerá aquí con sus datos de baja.</p>
+            </div>
+          ) : (
+            <div className="card overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-slate-800/60">
+                    <th className="table-header text-left">Empleado</th>
+                    <th className="table-header text-left hidden sm:table-cell">Motivo de baja</th>
+                    <th className="table-header text-left hidden md:table-cell">Fecha efectiva</th>
+                    <th className="table-header text-left hidden lg:table-cell">Telegrama</th>
+                    <th className="table-header text-left hidden lg:table-cell">Liquidación</th>
+                    <th className="table-header text-right"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {inactivos.map(emp => (
+                    <tr key={emp.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                      <td className="table-cell">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-slate-300 dark:bg-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-300 text-xs font-bold shrink-0 overflow-hidden">
+                            {emp.foto ? <img src={emp.foto} alt="" className="w-9 h-9 object-cover" /> : `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}`}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-slate-700 dark:text-slate-200">{emp.apellido}, {emp.nombre}</p>
+                            <p className="text-xs text-slate-400">{emp.cargo} · {emp.sector}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="table-cell hidden sm:table-cell text-slate-600 dark:text-slate-400">
+                        {emp.desvinculacion
+                          ? <>{DESVINCULACION_MOTIVO_LABEL[emp.desvinculacion.motivo]}{emp.desvinculacion.motivoDetalle ? ` — ${emp.desvinculacion.motivoDetalle}` : ''}</>
+                          : <span className="text-slate-400 italic">Sin datos</span>
+                        }
+                      </td>
+                      <td className="table-cell hidden md:table-cell text-slate-600 dark:text-slate-400">
+                        {emp.desvinculacion?.fecha ? formatFecha(emp.desvinculacion.fecha) : '—'}
+                      </td>
+                      <td className="table-cell hidden lg:table-cell">
+                        {emp.desvinculacion
+                          ? <span className={emp.desvinculacion.telegramaEntregado ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-500'}>
+                              {emp.desvinculacion.telegramaEntregado ? '✅ Entregado' : '⚠ Pendiente'}
+                            </span>
+                          : '—'}
+                      </td>
+                      <td className="table-cell hidden lg:table-cell">
+                        {emp.desvinculacion
+                          ? <span className={emp.desvinculacion.liquidacionFinal === 'entregada' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-500'}>
+                              {emp.desvinculacion.liquidacionFinal === 'entregada' ? '✅ Entregada' : '⏳ Pendiente'}
+                            </span>
+                          : '—'}
+                      </td>
+                      <td className="table-cell text-right">
+                        <Link href={`/dashboard/empleados/${emp.id}`} className="inline-flex items-center gap-1 text-sm text-brand-600 dark:text-brand-400 hover:underline font-medium">
+                          Ver <ChevronRight className="w-3.5 h-3.5" />
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ══ EMPLEADOS ACTIVOS ══ */}
+      {mainTab === 'activos' && (<>
       {/* Filters */}
       <div className="card p-4 flex flex-wrap gap-3 items-center">
         <div className="flex items-center gap-2 bg-[#d9eef7] dark:bg-slate-800 rounded-lg px-3 py-2 flex-1 min-w-48">
@@ -317,7 +430,6 @@ function EmpleadosContent() {
         <select className="form-select w-auto text-sm" value={estadoFilter} onChange={e => setEstadoFilter(e.target.value)}>
           <option value="">Todos los estados</option>
           <option value="activo">Activo</option>
-          <option value="inactivo">Inactivo</option>
           <option value="licencia">En Licencia</option>
           <option value="vacaciones">De Vacaciones</option>
         </select>
@@ -489,6 +601,7 @@ function EmpleadosContent() {
           </table>
         </div>
       )}
+      </>)}
 
       {/* Modal Nuevo Empleado */}
       {showNuevo && (

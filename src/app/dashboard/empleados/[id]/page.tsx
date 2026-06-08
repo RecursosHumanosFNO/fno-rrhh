@@ -8,14 +8,14 @@ import { SECTORES, CARGOS_POR_SECTOR } from '@/lib/mockData'
 import {
   EMPLEADO_ESTADO_COLOR, EMPLEADO_ESTADO_LABEL, SOLICITUD_TIPO_LABEL,
   SOLICITUD_ESTADO_COLOR, SOLICITUD_ESTADO_LABEL, formatFecha, formatMes,
-  formatMonto, calcularAntiguedad, calcularEdad,
+  calcularAntiguedad, calcularEdad,
 } from '@/lib/utils'
-import type { EmpleadoEstado, Empleado } from '@/types'
+import type { EmpleadoEstado, Empleado, DesvinculacionInfo, DesvinculacionMotivo } from '@/types'
 import {
   ArrowLeft, Edit2, Mail, Phone, MapPin, Calendar, Building2,
   FileText, ClipboardList, Clock, Download, User, Save, X, Plus,
   Shield, CheckCircle2, AlertTriangle, Lock, Eye, EyeOff,
-  Camera, AlertCircle, Loader2, Trash2,
+  Camera, AlertCircle, Loader2, Trash2, UserX, UserCheck, BriefcaseBusiness,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -25,7 +25,7 @@ export default function EmpleadoDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { user } = useAuth()
   const router = useRouter()
-  const { empleados, solicitudes, recibos, users, updateEmpleado, deleteEmpleado, setUserRole } = useData()
+  const { empleados, solicitudes, recibos, users, updateEmpleado, deleteEmpleado, setUserRole, desactivarEmpleado, reactivarEmpleado } = useData()
 
   const [tab, setTab] = useState(0)
   const [editMode, setEditMode] = useState(false)
@@ -37,6 +37,29 @@ export default function EmpleadoDetailPage() {
   const [showDelete, setShowDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteErr, setDeleteErr] = useState('')
+  // ── Desactivar / Reactivar ─────────────────────────────────────────────────
+  const [showDesactivar, setShowDesactivar] = useState(false)
+  const [showReactivar, setShowReactivar] = useState(false)
+  const DESVINCULACION_MOTIVO_LABEL: Record<DesvinculacionMotivo, string> = {
+    renuncia_voluntaria: 'Renuncia voluntaria',
+    despido_sin_causa: 'Despido sin causa',
+    despido_con_causa: 'Despido con causa',
+    jubilacion: 'Jubilación',
+    vencimiento_contrato: 'Vencimiento de contrato',
+    acuerdo_mutuo: 'Acuerdo mutuo',
+    fallecimiento: 'Fallecimiento',
+    otro: 'Otro',
+  }
+  const [desactivarForm, setDesactivarForm] = useState({
+    fecha: new Date().toISOString().slice(0, 10),
+    motivo: 'renuncia_voluntaria' as DesvinculacionMotivo,
+    motivoDetalle: '',
+    telegramaEntregado: false,
+    fechaTelegrama: '',
+    preaviso: 'no_aplica' as 'cumplido' | 'no_cumplido' | 'no_aplica',
+    liquidacionFinal: 'pendiente' as 'pendiente' | 'entregada',
+    observaciones: '',
+  })
   const fotoRef = useRef<HTMLInputElement>(null)
 
   const isAdmin = user?.role === 'admin'
@@ -323,10 +346,29 @@ export default function EmpleadoDetailPage() {
                   </button>
                 )}
                 {isAdmin && !editMode && id !== user?.empleadoId && (
-                  <button onClick={() => { setShowDelete(true); setDeleteErr('') }} title="Eliminar empleado"
-                    className="btn-secondary bg-red-500/20 border-red-300/40 text-white hover:bg-red-500/40">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <>
+                    {emp.estado === 'inactivo' ? (
+                      <button
+                        onClick={() => setShowReactivar(true)}
+                        title="Reactivar empleado"
+                        className="btn-secondary bg-emerald-500/20 border-emerald-300/40 text-white hover:bg-emerald-500/40 flex items-center gap-1.5"
+                      >
+                        <UserCheck className="w-4 h-4" /> Reactivar
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setShowDesactivar(true)}
+                        title="Desactivar empleado"
+                        className="btn-secondary bg-amber-500/20 border-amber-300/40 text-white hover:bg-amber-500/40 flex items-center gap-1.5"
+                      >
+                        <UserX className="w-4 h-4" /> Desactivar
+                      </button>
+                    )}
+                    <button onClick={() => { setShowDelete(true); setDeleteErr('') }} title="Eliminar empleado"
+                      className="btn-secondary bg-red-500/20 border-red-300/40 text-white hover:bg-red-500/40">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </>
                 )}
                 {isAdmin && editMode && (
                   <>
@@ -687,7 +729,7 @@ export default function EmpleadoDetailPage() {
                   </div>
                   <div className="flex-1">
                     <p className="font-medium text-slate-700 dark:text-slate-200">{formatMes(r.mes, r.anio)}</p>
-                    <p className="text-xs text-slate-400">Subido: {formatFecha(r.fechaSubida)} · {formatMonto(r.monto)}</p>
+                    <p className="text-xs text-slate-400">Subido: {formatFecha(r.fechaSubida)}</p>
                   </div>
                   {r.archivoUrl ? (
                     <button
@@ -747,6 +789,63 @@ export default function EmpleadoDetailPage() {
 
       {/* Tab: Historial */}
       {tab === 4 && (
+        <div className="space-y-4">
+        {/* Datos de desvinculación — solo si está inactivo */}
+        {emp.estado === 'inactivo' && emp.desvinculacion && (
+          <div className="card border-l-4 border-red-400 dark:border-red-500 overflow-hidden">
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
+              <BriefcaseBusiness className="w-5 h-5 text-red-500 shrink-0" />
+              <p className="section-title text-red-700 dark:text-red-400">Registro de desvinculación</p>
+            </div>
+            <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Fecha efectiva</p>
+                <p className="text-slate-700 dark:text-slate-200 font-medium">{formatFecha(emp.desvinculacion.fecha)}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Motivo</p>
+                <p className="text-slate-700 dark:text-slate-200 font-medium">
+                  {DESVINCULACION_MOTIVO_LABEL[emp.desvinculacion.motivo]}
+                  {emp.desvinculacion.motivoDetalle && ` — ${emp.desvinculacion.motivoDetalle}`}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Telegrama</p>
+                <p className={`font-medium ${emp.desvinculacion.telegramaEntregado ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                  {emp.desvinculacion.telegramaEntregado
+                    ? `Entregado${emp.desvinculacion.fechaTelegrama ? ` el ${formatFecha(emp.desvinculacion.fechaTelegrama)}` : ''}`
+                    : 'No entregado'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Preaviso</p>
+                <p className="text-slate-700 dark:text-slate-200 font-medium capitalize">
+                  {emp.desvinculacion.preaviso === 'cumplido' ? '✅ Cumplido'
+                    : emp.desvinculacion.preaviso === 'no_cumplido' ? '❌ No cumplido'
+                    : '— No aplica'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Liquidación final</p>
+                <p className={`font-medium ${emp.desvinculacion.liquidacionFinal === 'entregada' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                  {emp.desvinculacion.liquidacionFinal === 'entregada' ? '✅ Entregada' : '⏳ Pendiente'}
+                </p>
+              </div>
+              {emp.desvinculacion.registradoPor && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Registrado por</p>
+                  <p className="text-slate-700 dark:text-slate-200">{emp.desvinculacion.registradoPor} · {formatFecha(emp.desvinculacion.fechaRegistro)}</p>
+                </div>
+              )}
+              {emp.desvinculacion.observaciones && (
+                <div className="sm:col-span-2">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Observaciones</p>
+                  <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{emp.desvinculacion.observaciones}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
         <div className="card p-5">
           <p className="section-title mb-4">Historial de Actividad</p>
           {misSolicitudes.length === 0 && misRecibos.length === 0 ? (
@@ -774,6 +873,7 @@ export default function EmpleadoDetailPage() {
             </div>
           )}
         </div>
+        </div>
       )}
 
       {/* ── Visor de PDF integrado ──────────────────────────────────────── */}
@@ -795,6 +895,140 @@ export default function EmpleadoDetailPage() {
           </div>
           <div className="flex-1 overflow-hidden" onClick={e => e.stopPropagation()}>
             <iframe src={pdfViewer.url} className="w-full h-full border-0" title="Visor de recibo" />
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal DESACTIVAR empleado ──────────────────────────────────── */}
+      {showDesactivar && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center sm:justify-center sm:p-4" onClick={() => setShowDesactivar(false)}>
+          <div className="card w-full sm:max-w-lg max-h-[90vh] overflow-y-auto animate-scale-in rounded-t-2xl rounded-b-none sm:rounded-2xl" onClick={e => e.stopPropagation()}>
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <UserX className="w-5 h-5 text-amber-500" />
+                <p className="section-title">Desactivar a {emp.nombre} {emp.apellido}</p>
+              </div>
+              <button onClick={() => setShowDesactivar(false)}><X className="w-5 h-5 text-slate-400" /></button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 text-sm text-amber-700 dark:text-amber-400">
+                ⚠️ El empleado perderá el acceso al portal de inmediato. Podrás reactivarlo cuando quieras.
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="form-label">Fecha de desvinculación *</label>
+                  <input type="date" className="form-input" value={desactivarForm.fecha}
+                    onChange={e => setDesactivarForm(f => ({ ...f, fecha: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="form-label">Motivo *</label>
+                  <select className="form-select" value={desactivarForm.motivo}
+                    onChange={e => setDesactivarForm(f => ({ ...f, motivo: e.target.value as DesvinculacionMotivo }))}>
+                    {(Object.entries(DESVINCULACION_MOTIVO_LABEL) as [DesvinculacionMotivo, string][]).map(([k, v]) => (
+                      <option key={k} value={k}>{v}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              {desactivarForm.motivo === 'otro' && (
+                <div>
+                  <label className="form-label">Especificá el motivo</label>
+                  <input className="form-input" placeholder="Describí el motivo..." value={desactivarForm.motivoDetalle}
+                    onChange={e => setDesactivarForm(f => ({ ...f, motivoDetalle: e.target.value }))} />
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="form-label">Preaviso</label>
+                  <select className="form-select" value={desactivarForm.preaviso}
+                    onChange={e => setDesactivarForm(f => ({ ...f, preaviso: e.target.value as typeof desactivarForm.preaviso }))}>
+                    <option value="no_aplica">No aplica</option>
+                    <option value="cumplido">Cumplido</option>
+                    <option value="no_cumplido">No cumplido</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="form-label">Liquidación final</label>
+                  <select className="form-select" value={desactivarForm.liquidacionFinal}
+                    onChange={e => setDesactivarForm(f => ({ ...f, liquidacionFinal: e.target.value as 'pendiente' | 'entregada' }))}>
+                    <option value="pendiente">Pendiente</option>
+                    <option value="entregada">Entregada</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="flex items-center gap-2.5 cursor-pointer">
+                  <input type="checkbox" checked={desactivarForm.telegramaEntregado}
+                    onChange={e => setDesactivarForm(f => ({ ...f, telegramaEntregado: e.target.checked, fechaTelegrama: e.target.checked ? f.fechaTelegrama : '' }))}
+                    className="w-4 h-4 accent-teal-600" />
+                  <span className="form-label !mb-0">Telegrama de desvinculación entregado</span>
+                </label>
+                {desactivarForm.telegramaEntregado && (
+                  <div className="mt-2">
+                    <label className="form-label">Fecha de entrega del telegrama</label>
+                    <input type="date" className="form-input" value={desactivarForm.fechaTelegrama}
+                      onChange={e => setDesactivarForm(f => ({ ...f, fechaTelegrama: e.target.value }))} />
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="form-label">Observaciones <span className="font-normal text-slate-400">(opcional)</span></label>
+                <textarea className="form-input resize-none" rows={3} placeholder="Notas adicionales..."
+                  value={desactivarForm.observaciones}
+                  onChange={e => setDesactivarForm(f => ({ ...f, observaciones: e.target.value }))} />
+              </div>
+              <div className="flex gap-2 justify-end pt-1">
+                <button onClick={() => setShowDesactivar(false)} className="btn-secondary">Cancelar</button>
+                <button
+                  disabled={!desactivarForm.fecha || !desactivarForm.motivo}
+                  className="btn-primary bg-amber-600 hover:bg-amber-500 disabled:opacity-50"
+                  onClick={() => {
+                    const info: DesvinculacionInfo = {
+                      fecha: desactivarForm.fecha,
+                      motivo: desactivarForm.motivo,
+                      motivoDetalle: desactivarForm.motivoDetalle || undefined,
+                      telegramaEntregado: desactivarForm.telegramaEntregado,
+                      fechaTelegrama: desactivarForm.fechaTelegrama || undefined,
+                      preaviso: desactivarForm.preaviso,
+                      liquidacionFinal: desactivarForm.liquidacionFinal,
+                      observaciones: desactivarForm.observaciones || undefined,
+                      registradoPor: `${empleados.find(e => e.id === user?.empleadoId)?.nombre ?? ''} ${empleados.find(e => e.id === user?.empleadoId)?.apellido ?? ''}`.trim() || undefined,
+                      fechaRegistro: new Date().toISOString().slice(0, 10),
+                    }
+                    desactivarEmpleado(id, info)
+                    setShowDesactivar(false)
+                  }}
+                >
+                  <UserX className="w-4 h-4" /> Confirmar desvinculación
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal REACTIVAR empleado ────────────────────────────────────── */}
+      {showReactivar && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowReactivar(false)}>
+          <div className="card w-full max-w-sm animate-scale-in" onClick={e => e.stopPropagation()}>
+            <div className="p-6 text-center">
+              <div className="w-14 h-14 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                <UserCheck className="w-7 h-7 text-emerald-600" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">¿Reactivar a {emp.nombre} {emp.apellido}?</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+                El empleado volverá a tener acceso al portal con sus credenciales anteriores. Se borrarán los datos de desvinculación.
+              </p>
+              <div className="flex gap-3">
+                <button onClick={() => setShowReactivar(false)} className="btn-secondary flex-1 justify-center">Cancelar</button>
+                <button
+                  onClick={() => { reactivarEmpleado(id); setShowReactivar(false) }}
+                  className="flex-1 justify-center px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-500 transition-colors inline-flex items-center gap-2"
+                >
+                  <UserCheck className="w-4 h-4" /> Reactivar
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

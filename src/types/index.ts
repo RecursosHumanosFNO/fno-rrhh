@@ -2,6 +2,29 @@ export type UserRole = 'admin' | 'employee'
 
 export type EmpleadoEstado = 'activo' | 'inactivo' | 'licencia' | 'vacaciones'
 
+export type DesvinculacionMotivo =
+  | 'renuncia_voluntaria'
+  | 'despido_sin_causa'
+  | 'despido_con_causa'
+  | 'jubilacion'
+  | 'vencimiento_contrato'
+  | 'acuerdo_mutuo'
+  | 'fallecimiento'
+  | 'otro'
+
+export interface DesvinculacionInfo {
+  fecha: string                              // Fecha efectiva de desvinculación
+  motivo: DesvinculacionMotivo
+  motivoDetalle?: string                     // Detalle si motivo === 'otro'
+  telegramaEntregado: boolean
+  fechaTelegrama?: string                    // Fecha entrega telegrama (si aplica)
+  preaviso: 'cumplido' | 'no_cumplido' | 'no_aplica'
+  liquidacionFinal: 'pendiente' | 'entregada'
+  observaciones?: string
+  registradoPor?: string                     // Nombre del admin que registró la baja
+  fechaRegistro: string                      // Cuándo se cargó en el sistema
+}
+
 export type SolicitudEstado = 'pendiente' | 'aprobado' | 'rechazado'
 
 export type SolicitudTipo =
@@ -106,6 +129,7 @@ export interface Empleado {
   diasVacacionesUsados: number
   cbu?: string
   banco?: string
+  desvinculacion?: DesvinculacionInfo        // Solo presente si estado === 'inactivo'
 }
 
 export interface Recibo {
@@ -116,7 +140,7 @@ export interface Recibo {
   archivo: string
   archivoUrl?: string  // URL pública en Supabase Storage
   fechaSubida: string
-  monto: number
+  monto?: number
   concepto?: string    // 'Recibo mensual' | 'Sueldo Anual Complementario' | ...
 }
 
