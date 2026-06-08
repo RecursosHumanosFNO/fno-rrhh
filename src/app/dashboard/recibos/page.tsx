@@ -21,7 +21,6 @@ type BulkRow = {
   file: File
   detectedDni: string
   empleadoId: string      // '' = sin asignar
-  monto: string
   status: 'matched' | 'unmatched' | 'manual'
   selected: boolean       // si se incluye en el envío
   uploadStatus: 'pending' | 'uploading' | 'done' | 'error'
@@ -39,14 +38,6 @@ function extractDniFromFilename(name: string): string {
   return m ? m[1] : ''
 }
 
-function extractMontoFromFilename(name: string, dniFound: string): string {
-  const base = name.replace(/\.[^.]+$/, '')
-  const parts = base.split(/[_\-\s]+/)
-  for (const p of parts) {
-    if (/^\d{4,10}$/.test(p) && p !== dniFound) return p
-  }
-  return ''
-}
 
 export default function RecibosPage() {
   const { user } = useAuth()
@@ -56,7 +47,7 @@ export default function RecibosPage() {
   // ── Estado filtros/tabla ───────────────────────────────────────────────
   const [query, setQuery] = useState('')
   const [mesFilter, setMesFilter] = useState('')
-  const [anioFilter, setAnioFilter] = useState('2026')
+  const [anioFilter, setAnioFilter] = useState(new Date().getFullYear().toString())
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; archivoUrl?: string; label: string } | null>(null)
   const [deleting, setDeleting] = useState(false)
@@ -136,7 +127,6 @@ export default function RecibosPage() {
     empleadoId: '',
     mes: new Date().getMonth() + 1,
     anio: ANIO_ACTUAL,
-    monto: '',
     concepto: 'Recibo mensual',
   })
 
@@ -217,7 +207,7 @@ export default function RecibosPage() {
     if (storagePath) setUploadError('')
     setTimeout(() => {
       setUploadStatus('idle'); setShowUpload(false); setSelectedFile(null); setUploadError('')
-      setUploadForm({ empleadoId: '', mes: new Date().getMonth() + 1, anio: ANIO_ACTUAL, monto: '', concepto: 'Recibo mensual' })
+      setUploadForm({ empleadoId: '', mes: new Date().getMonth() + 1, anio: ANIO_ACTUAL, concepto: 'Recibo mensual' })
       if (fileInputRef.current) fileInputRef.current.value = ''
     }, 1800)
   }
@@ -228,7 +218,6 @@ export default function RecibosPage() {
       .filter(f => f.type === 'application/pdf')
       .map(file => {
         const dni = extractDniFromFilename(file.name)
-        const monto = extractMontoFromFilename(file.name, dni)
         const empActivos = empleados.filter(e => e.estado === 'activo')
         const match = dni
           ? empActivos.find(e => normDni(e.dni ?? '') === normDni(dni))
@@ -237,9 +226,8 @@ export default function RecibosPage() {
           file,
           detectedDni: dni,
           empleadoId: match?.id ?? '',
-          monto,
           status: match ? 'matched' : 'unmatched' as BulkRow['status'],
-          selected: !!match, // los que matchean vienen tildados por defecto
+          selected: !!match,
           uploadStatus: 'pending',
         } as BulkRow
       })
@@ -268,9 +256,8 @@ export default function RecibosPage() {
     const empActivos = empleados.filter(e => e.estado === 'activo')
     const newRows: BulkRow[] = newFiles.map(file => {
       const dni = extractDniFromFilename(file.name)
-      const monto = extractMontoFromFilename(file.name, dni)
       const match = dni ? empActivos.find(e => normDni(e.dni ?? '') === normDni(dni)) : undefined
-      return { file, detectedDni: dni, empleadoId: match?.id ?? '', monto,
+      return { file, detectedDni: dni, empleadoId: match?.id ?? '',
         status: match ? 'matched' : 'unmatched' as BulkRow['status'],
         selected: !!match, uploadStatus: 'pending' } as BulkRow
     })
@@ -461,8 +448,8 @@ export default function RecibosPage() {
           <option value="">Todos los años</option>
           {[ANIO_ACTUAL, ANIO_ACTUAL - 1, ANIO_ACTUAL - 2].map(y => <option key={y} value={y}>{y}</option>)}
         </select>
-        {(query || mesFilter || anioFilter !== '2026') && (
-          <button onClick={() => { setQuery(''); setMesFilter(''); setAnioFilter('2026') }} className="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1">
+        {(query || mesFilter || anioFilter !== new Date().getFullYear().toString()) && (
+          <button onClick={() => { setQuery(''); setMesFilter(''); setAnioFilter(new Date().getFullYear().toString()) }} className="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1">
             <X className="w-3.5 h-3.5" /> Limpiar
           </button>
         )}
