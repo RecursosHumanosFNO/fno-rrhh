@@ -29,12 +29,28 @@ export async function POST(req: NextRequest) {
     const sb = getSupabase()
     if (!sb) return NextResponse.json({ error: 'Servidor no configurado' }, { status: 503 })
 
-    // Verificar que quien hace el request es admin en la DB (lookup por auth_id)
-    const { data: requester } = await sb
+    // Verificar que quien hace el request es admin en la DB
+    // 1er intento: lookup por auth_id (flujo normal)
+    let { data: requester } = await sb
       .from('fno_users')
       .select('role')
       .eq('auth_id', requesterId)
       .maybeSingle()
+
+    // Fallback: auth_id puede no estar seteado en cuentas legacy →
+    // verificar usando el email que devuelve Supabase Auth
+    if (!requester && requesterId) {
+      const { data: authUser } = await sb.auth.admin.getUserById(requesterId)
+      if (authUser?.user?.email) {
+        const { data: byEmail } = await sb
+          .from('fno_users').select('role').eq('email', authUser.user.email).maybeSingle()
+        requester = byEmail
+        // Aprovechar para setear el auth_id que faltaba
+        if (byEmail) {
+          await sb.from('fno_users').update({ auth_id: requesterId }).eq('email', authUser.user.email)
+        }
+      }
+    }
 
     if (requester?.role !== 'admin') {
       return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })

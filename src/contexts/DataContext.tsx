@@ -108,7 +108,7 @@ function mapSupabaseToEmpleado(row: Record<string, unknown>): Empleado {
   }
 }
 function mapEmpleadoToSupabase(e: Empleado) {
-  return {
+  const row: Record<string, unknown> = {
     id: e.id, nombre: e.nombre, apellido: e.apellido, dni: e.dni,
     fecha_nacimiento: e.fechaNacimiento, email: e.email, telefono: e.telefono,
     direccion: e.direccion, foto: e.foto, foto_cover: e.fotoCover, cuil: e.cuil,
@@ -118,8 +118,11 @@ function mapEmpleadoToSupabase(e: Empleado) {
     estado: e.estado, dias_vacaciones: e.diasVacaciones,
     dias_vacaciones_usados: e.diasVacacionesUsados,
     cbu: e.cbu ?? '', banco: e.banco ?? '',
-    desvinculacion: e.desvinculacion ?? null,
   }
+  // Solo incluir desvinculacion si tiene valor para no romper inserts
+  // cuando la columna aún no existe en la tabla de Supabase
+  if (e.desvinculacion !== undefined) row.desvinculacion = e.desvinculacion
+  return row
 }
 
 // ── Mappers Supabase ↔ Solicitud ─────────────────────────────────────────────
@@ -827,7 +830,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: reg.email, password: reg.password, userId, empleadoId, role: 'employee', requesterId }),
-      }).catch(err => console.error('[auth] create-auth-user:', err))
+      }).then(async r => {
+        if (!r.ok) {
+          const err = await r.json().catch(() => ({}))
+          console.error('[auth] create-auth-user falló:', r.status, err)
+        }
+      }).catch(err => console.error('[auth] create-auth-user error de red:', err))
     }
     sendEmail('registration_approved', { nombre: reg.nombre, email: reg.email })
   }, [pendingRegistrations, addNotification])
