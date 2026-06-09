@@ -14,6 +14,21 @@ import {
 
 const TIPOS_EVENTO: EventoTipo[] = ['feriado', 'jornada', 'acto', 'capacitacion', 'reunion', 'receso', 'proyecto', 'institucional', 'reunion_padres', 'examen', 'inscripciones', 'salida', 'religioso', 'otro']
 
+const PORTAL_LAUNCH = '2026-06-09'
+const PORTAL_LAUNCH_YEAR = 2026
+const ANIVERSARIO_ID = '__aniversario_portal__'
+
+function makeAniversario(year: number): Evento {
+  const years = year - PORTAL_LAUNCH_YEAR
+  const titulo = years <= 0
+    ? '🎉 ¡Lanzamiento del Portal RRHH!'
+    : `🎉 ${years} ${years === 1 ? 'año' : 'años'} del Portal RRHH`
+  const descripcion = years <= 0
+    ? '¡Hoy ponemos en marcha el Portal de Empleados de la Fundación Neuquén Oeste!'
+    : `¡Hace ${years} ${years === 1 ? 'año' : 'años'} lanzamos el Portal RRHH! Gracias al equipo por acompañarnos.`
+  return { id: ANIVERSARIO_ID, titulo, fecha: `${year}-06-09`, tipo: 'institucional', descripcion }
+}
+
 const DIAS_SEMANA = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 const MESES_NOMBRE = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -90,17 +105,24 @@ export default function EventosPage() {
     return da - db
   }), [empleados, viewMes])
 
-  // ── Eventos del mes visible ───────────────────────────────────────────────
-  const eventosMes = useMemo(() => eventos.filter(ev => {
-    const f = parseLocalDate(ev.fecha)
-    return f.getFullYear() === viewAnio && f.getMonth() === viewMes
-  }), [eventos, viewAnio, viewMes])
+  // ── Aniversario del portal (virtual, recurrente cada 9 de junio) ─────────
+  const aniversarioPortal = useMemo(() => makeAniversario(viewAnio), [viewAnio])
+
+  // ── Eventos del mes visible (incluyendo aniversario si es junio) ──────────
+  const eventosMes = useMemo(() => {
+    const base = eventos.filter(ev => {
+      const f = parseLocalDate(ev.fecha)
+      return f.getFullYear() === viewAnio && f.getMonth() === viewMes
+    })
+    return viewMes === 5 ? [...base, aniversarioPortal] : base
+  }, [eventos, viewAnio, viewMes, aniversarioPortal])
 
   // ── Eventos del día seleccionado ──────────────────────────────────────────
   const eventosDia = useMemo(() => {
     if (!selectedDay) return []
-    return eventos.filter(ev => ev.fecha === selectedDay)
-  }, [eventos, selectedDay])
+    const base = eventos.filter(ev => ev.fecha === selectedDay)
+    return selectedDay === `${viewAnio}-06-09` ? [...base, aniversarioPortal] : base
+  }, [eventos, selectedDay, viewAnio, aniversarioPortal])
 
   // ── Navegar meses ─────────────────────────────────────────────────────────
   function prevMes() {
@@ -325,7 +347,7 @@ export default function EventosPage() {
                           </a>
                         )}
                       </div>
-                      {isAdmin && (
+                      {isAdmin && ev.id !== ANIVERSARIO_ID && (
                         <div className="flex gap-1 shrink-0">
                           <button onClick={() => openEdit(ev)} className="p-1.5 rounded-lg hover:bg-sky-100 dark:hover:bg-sky-900/20 text-slate-400 hover:text-sky-600 transition-colors">
                             <Edit2 className="w-3.5 h-3.5" />
@@ -392,7 +414,7 @@ export default function EventosPage() {
                         <span className={`badge text-xs shrink-0 ${EVENTO_TIPO_COLOR[ev.tipo]}`}>
                           {EVENTO_TIPO_LABEL[ev.tipo]}
                         </span>
-                        {isAdmin && (
+                        {isAdmin && ev.id !== ANIVERSARIO_ID && (
                           <div className="flex gap-1 shrink-0">
                             <button onClick={() => openEdit(ev)} className="p-1.5 rounded hover:bg-sky-100 dark:hover:bg-sky-900/20 text-slate-400 hover:text-sky-600 transition-colors">
                               <Edit2 className="w-3.5 h-3.5" />
@@ -445,7 +467,8 @@ export default function EventosPage() {
             {(() => {
               const desde = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate())
               const hasta = new Date(desde.getTime() + 30 * 24 * 60 * 60 * 1000)
-              const proximos = eventos.filter(ev => {
+              const anivActual = makeAniversario(hoy.getFullYear())
+              const proximos = [...eventos, anivActual].filter(ev => {
                 const f = parseLocalDate(ev.fecha)
                 return f >= desde && f <= hasta
               }).sort((a, b) => a.fecha.localeCompare(b.fecha))

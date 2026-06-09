@@ -93,11 +93,20 @@ export default function AIChatAssistant() {
     const hoy = new Date().toISOString().slice(0, 10)
     const hace30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
     const en120 = new Date(Date.now() + 120 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
-    const relevantes = eventos
-      .filter(e => e.fecha >= hace30 && e.fecha <= en120)
-      .sort((a, b) => a.fecha.localeCompare(b.fecha))
+    const relevantes = eventos.filter(e => e.fecha >= hace30 && e.fecha <= en120)
+    // Aniversario del portal (virtual, recurrente cada 9 de junio)
+    const anioActual = new Date().getFullYear()
+    const anivFecha = `${anioActual}-06-09`
+    const anivYears = anioActual - 2026
+    const anivTitulo = anivYears <= 0
+      ? '🎉 ¡Lanzamiento del Portal RRHH!'
+      : `🎉 ${anivYears} ${anivYears === 1 ? 'año' : 'años'} del Portal RRHH`
+    if (anivFecha >= hace30 && anivFecha <= en120) {
+      relevantes.push({ id: '__aniv__', titulo: anivTitulo, fecha: anivFecha, tipo: 'institucional' as const, descripcion: anivYears <= 0 ? '¡Hoy lanzamos el Portal de Empleados!' : `Hace ${anivYears} ${anivYears === 1 ? 'año' : 'años'} lanzamos el portal.` })
+    }
+
     if (relevantes.length === 0) return null
-    return relevantes
+    return relevantes.sort((a, b) => a.fecha.localeCompare(b.fecha))
       .map(e => {
         const tipoLabel = EVENTO_TIPO_LABEL[e.tipo] ?? e.tipo
         const desc = e.descripcion ? ` — ${e.descripcion}` : ''
