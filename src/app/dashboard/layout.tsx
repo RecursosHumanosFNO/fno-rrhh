@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
+import AIChatAssistant from '@/components/AIChatAssistant'
 import { cn } from '@/lib/utils'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -58,6 +59,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {children}
         </main>
       </div>
+
+      {/* Asistente IA flotante */}
+      <AIChatAssistant />
     </div>
   )
 }
