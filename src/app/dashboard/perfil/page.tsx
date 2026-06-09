@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { formatFecha, calcularAntiguedad, calcularEdad } from '@/lib/utils'
@@ -41,13 +41,35 @@ export default function PerfilPage() {
   })
 
   const [passForm, setPassForm] = useState({ nueva: '', confirm: '' })
-  const fotoRef = useRef<HTMLInputElement>(null)
-  const coverRef = useRef<HTMLInputElement>(null)
 
   if (!empleado || !user) return null
 
   const edad = empleado.fechaNacimiento ? calcularEdad(empleado.fechaNacimiento) : null
   const antiguedad = calcularAntiguedad(empleado.fechaIngreso)
+
+  // Abre el modo edición con los datos actuales del empleado (fix: form inicializado antes de que cargue empleado)
+  function handleEditStart() {
+    setForm({
+      nombre: empleado!.nombre,
+      apellido: empleado!.apellido,
+      dni: empleado!.dni,
+      cuil: empleado!.cuil ?? '',
+      fechaNacimiento: empleado!.fechaNacimiento,
+      telefono: empleado!.telefono,
+      direccion: empleado!.direccion,
+      contactoNombre: empleado!.contactoEmergencia.nombre,
+      contactoTelefono: empleado!.contactoEmergencia.telefono,
+      contactoRelacion: empleado!.contactoEmergencia.relacion,
+      cbu: empleado!.cbu ?? '',
+      banco: empleado!.banco ?? '',
+      sector: empleado!.sector,
+      cargo: empleado!.cargo,
+      jornada: empleado!.jornada,
+      supervisor: empleado!.supervisor ?? '',
+      fechaIngreso: empleado!.fechaIngreso,
+    })
+    setEditMode(true)
+  }
 
   function handleSave() {
     updateEmpleado({
@@ -201,8 +223,8 @@ export default function PerfilPage() {
           <div className="relative z-10 px-6 pt-5 pb-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                {/* Profile photo */}
-                <div className="relative group cursor-pointer shrink-0" onClick={() => fotoRef.current?.click()}>
+                {/* Profile photo — label nativo para máxima compatibilidad con file picker */}
+                <label className="relative group cursor-pointer shrink-0" title="Cambiar foto de perfil">
                   <div className="w-20 h-20 rounded-2xl border-[3px] border-white/50 shadow-xl overflow-hidden bg-brand-700">
                     {empleado.foto
                       ? <img src={empleado.foto} alt="" className="w-full h-full object-cover" />
@@ -215,13 +237,12 @@ export default function PerfilPage() {
                     <Camera className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                   <input
-                    ref={fotoRef}
                     type="file"
                     accept="image/*"
                     className="hidden"
                     onChange={e => e.target.files?.[0] && handlePhotoUpload(e.target.files[0], 'foto')}
                   />
-                </div>
+                </label>
 
                 <div>
                   <h2 className="text-xl font-bold text-white">{empleado.nombre} {empleado.apellido}</h2>
@@ -231,7 +252,7 @@ export default function PerfilPage() {
               </div>
 
               {!editMode ? (
-                <button onClick={() => setEditMode(true)} className="btn-secondary shrink-0 bg-white/15 border-white/25 text-white hover:bg-white/25">
+                <button onClick={handleEditStart} className="btn-secondary shrink-0 bg-white/15 border-white/25 text-white hover:bg-white/25">
                   <Edit2 className="w-4 h-4" /> Editar datos
                 </button>
               ) : (
@@ -264,20 +285,16 @@ export default function PerfilPage() {
             </div>
           </div>
 
-          {/* Change cover button */}
-          <button
-            onClick={() => coverRef.current?.click()}
-            className="absolute top-3 right-3 bg-black/30 hover:bg-black/50 text-white text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors z-10"
-          >
+          {/* Change cover button — label nativo para máxima compatibilidad */}
+          <label className="absolute top-3 right-3 bg-black/30 hover:bg-black/50 text-white text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors z-10 cursor-pointer">
             <ImageIcon className="w-3 h-3" /> Cambiar portada
-          </button>
-          <input
-            ref={coverRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={e => e.target.files?.[0] && handlePhotoUpload(e.target.files[0], 'fotoCover')}
-          />
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={e => e.target.files?.[0] && handlePhotoUpload(e.target.files[0], 'fotoCover')}
+            />
+          </label>
         </div>
       </div>
 
