@@ -223,35 +223,37 @@ export default function PerfilPage() {
           <div className="relative z-10 px-6 pt-5 pb-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                {/* Profile photo — label nativo para máxima compatibilidad con file picker */}
-                <div className="relative group shrink-0">
-                  <label className="cursor-pointer" title="Cambiar foto de perfil">
-                    <div className="w-20 h-20 rounded-2xl border-[3px] border-white/50 shadow-xl overflow-hidden bg-brand-700">
-                      {empleado.foto
-                        ? <img src={empleado.foto} alt="" className="w-full h-full object-cover" />
-                        : <div className="w-full h-full flex items-center justify-center text-white text-2xl font-bold">
-                            {empleado.nombre.charAt(0)}{empleado.apellido.charAt(0)}
-                          </div>
-                      }
-                    </div>
-                    <div className="absolute inset-0 rounded-2xl flex items-center justify-center bg-black/0 group-hover:bg-black/40 transition-colors">
-                      <Camera className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={e => e.target.files?.[0] && handlePhotoUpload(e.target.files[0], 'foto')}
-                    />
-                  </label>
-                  {empleado.foto && (
-                    <button
-                      onClick={() => updateEmpleado({ foto: '', fotoCover: '' })}
-                      title="Eliminar foto"
-                      className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                    >
-                      <X className="w-3 h-3 text-white" />
-                    </button>
+                {/* Profile photo */}
+                <div className="relative shrink-0">
+                  <div className="w-20 h-20 rounded-2xl border-[3px] border-white/50 shadow-xl overflow-hidden bg-brand-700">
+                    {empleado.foto
+                      ? <img src={empleado.foto} alt="" className="w-full h-full object-cover" />
+                      : <div className="w-full h-full flex items-center justify-center text-white text-2xl font-bold">
+                          {empleado.nombre.charAt(0)}{empleado.apellido.charAt(0)}
+                        </div>
+                    }
+                  </div>
+                  {editMode && (
+                    <>
+                      <label className="absolute inset-0 rounded-2xl flex items-center justify-center bg-black/40 cursor-pointer" title="Cambiar foto">
+                        <Camera className="w-5 h-5 text-white" />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={e => e.target.files?.[0] && handlePhotoUpload(e.target.files[0], 'foto')}
+                        />
+                      </label>
+                      {empleado.foto && (
+                        <button
+                          onClick={() => updateEmpleado({ foto: '', fotoCover: '' })}
+                          title="Eliminar foto"
+                          className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center shadow-md z-10"
+                        >
+                          <X className="w-3 h-3 text-white" />
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
 
@@ -296,7 +298,8 @@ export default function PerfilPage() {
             </div>
           </div>
 
-          {/* Botones portada — top right */}
+          {/* Botones portada — solo en modo edición */}
+          {editMode && (
           <div className="absolute top-3 right-3 flex items-center gap-1.5 z-10">
             <label className="bg-black/30 hover:bg-black/50 text-white text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer">
               <ImageIcon className="w-3 h-3" /> Cambiar portada
@@ -317,6 +320,7 @@ export default function PerfilPage() {
               </button>
             )}
           </div>
+          )}
         </div>
       </div>
 
