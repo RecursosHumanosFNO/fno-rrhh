@@ -654,6 +654,14 @@ export default function RecibosPage() {
                               <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded-lg" title={`Firmado el ${new Date(firma.firmadoEn).toLocaleString('es-AR')}`}>
                                 <ShieldCheck className="w-3.5 h-3.5" /> Firmado
                               </span>
+                            ) : esMio ? (
+                              // Admin viendo su propio recibo sin firmar → puede firmarlo
+                              <button
+                                onClick={() => { setFirmaModal({ id: r.id, label: formatMes(r.mes, r.anio) }); setFirmaAcepto(false) }}
+                                className="inline-flex items-center gap-1.5 text-sm py-1.5 px-3 rounded-lg border border-brand-300 dark:border-brand-700 text-brand-700 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-colors"
+                              >
+                                <PenLine className="w-4 h-4" /> Firmar
+                              </button>
                             ) : (
                               <span className="inline-flex items-center gap-1 text-xs text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg">
                                 Sin firmar
