@@ -55,9 +55,11 @@ function MessageContent({ content, isUser }: { content: string; isUser: boolean 
   return <div className={isUser ? 'text-white' : ''}>{parts}</div>
 }
 
+const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
+
 export default function AIChatAssistant() {
   const { empleado } = useAuth()
-  const { eventos } = useData()
+  const { eventos, empleados } = useData()
   const [open, setOpen] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -80,6 +82,20 @@ export default function AIChatAssistant() {
       .join('\n')
   }, [eventos]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Cumpleaños del equipo: solo nombre + día/mes, sin año (no expone edad)
+  const cumpleanos = useMemo(() => {
+    return empleados
+      .filter(e => e.fechaNacimiento && e.estado !== 'inactivo')
+      .map(e => {
+        const partes = e.fechaNacimiento.split('-')
+        const mes = parseInt(partes[1], 10) - 1
+        const dia = parseInt(partes[2], 10)
+        return `${e.nombre} ${e.apellido}: ${dia} de ${MESES[mes]}`
+      })
+      .sort()
+      .join('\n')
+  }, [empleados])
+
   // Memoizar para no recrear el objeto en cada render
   const context = useMemo(() => ({
     ...(empleado ? {
@@ -91,8 +107,9 @@ export default function AIChatAssistant() {
       fechaIngreso: empleado.fechaIngreso,
     } : {}),
     eventosResumen,
+    cumpleanos: cumpleanos || null,
     hoy: new Date().toISOString().slice(0, 10),
-  }), [empleado?.id, eventosResumen]) // eslint-disable-line react-hooks/exhaustive-deps
+  }), [empleado?.id, eventosResumen, cumpleanos]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const { messages, input, handleInputChange, handleSubmit, isLoading, setMessages, append, error } = useChat({
     api: '/api/chat',

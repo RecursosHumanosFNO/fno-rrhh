@@ -31,6 +31,11 @@ ${context.eventosResumen}
 
 Cuando te pregunten sobre jornadas, feriados, eventos o qué hay en el calendario, respondé usando estos datos reales. Indicá claramente las fechas.
 ` : ''}
+${context?.cumpleanos ? `CUMPLEAÑOS DEL EQUIPO (solo día y mes — esta info es pública para poder festejar en equipo):
+${context.cumpleanos}
+
+Podés compartir cuándo cumple años alguien del equipo cuando te lo pregunten. No reveles el año de nacimiento ni la edad.
+` : ''}
 
 SECCIONES DEL PORTAL con sus rutas (solo estas existen):
 - **Dashboard** → /dashboard : página de inicio con resumen general y solicitudes pendientes.
