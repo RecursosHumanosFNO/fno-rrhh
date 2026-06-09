@@ -190,6 +190,13 @@ export default function EmpleadoDetailPage() {
     setEditMode(false)
   }
 
+  // Elimina la foto del empleado
+  function handleDeletePhoto() {
+    updateEmpleado(emp!.id, { foto: '', fotoCover: '' })
+    setProfileFoto('')
+    setProfileFotoCover('')
+  }
+
   // Comprime/redimensiona a 400px max antes de guardar (evita fotos enormes en base64)
   function handlePhotoUpload(file: File) {
     const reader = new FileReader()
@@ -341,6 +348,15 @@ export default function EmpleadoDetailPage() {
                       >
                         <Camera className="w-5 h-5 text-white" />
                       </button>
+                      {fotoDisplay && (
+                        <button
+                          onClick={handleDeletePhoto}
+                          title="Eliminar foto"
+                          className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                        >
+                          <X className="w-3 h-3 text-white" />
+                        </button>
+                      )}
                       <input
                         ref={fotoRef}
                         type="file"
