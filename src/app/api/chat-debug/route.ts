@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   const key = process.env.GOOGLE_GENERATIVE_AI_API_KEY
   return Response.json({
