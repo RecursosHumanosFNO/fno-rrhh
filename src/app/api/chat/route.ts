@@ -1,7 +1,6 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { streamText } from 'ai'
 
-export const runtime = 'edge'
 export const maxDuration = 30
 
 const google = createGoogleGenerativeAI({
@@ -9,9 +8,10 @@ const google = createGoogleGenerativeAI({
 })
 
 export async function POST(req: Request) {
-  const { messages, context } = await req.json()
+  try {
+    const { messages, context } = await req.json()
 
-  const systemPrompt = `Sos el asistente virtual de RRHH de la Fundación Neuquén Oeste.
+    const systemPrompt = `Sos el asistente virtual de RRHH de la Fundación Neuquén Oeste.
 Respondés preguntas sobre recursos humanos, políticas internas, beneficios,
 licencias, vacaciones y el uso del portal.
 
@@ -20,9 +20,6 @@ ${context ? `Datos del empleado logueado:
 - Sector: ${context.sector || 'No asignado'}
 - Cargo: ${context.cargo || 'No asignado'}
 - Tipo de contrato: ${context.tipoContrato || 'No especificado'}
-- Días de vacaciones disponibles: ${context.diasVacaciones ?? 0}
-- Días de vacaciones utilizados: ${context.diasVacacionesUsados ?? 0}
-- Días de vacaciones restantes: ${(context.diasVacaciones ?? 0) - (context.diasVacacionesUsados ?? 0)}
 - Fecha de ingreso: ${context.fechaIngreso || 'No especificada'}
 ` : ''}
 
@@ -33,12 +30,18 @@ Reglas:
 - Sé conciso pero completo. Usá bullet points cuando sea útil.
 - No menciones datos sensibles como DNI, CUIL o CBU aunque los tengas.`
 
-  const result = await streamText({
-    model: google('gemini-2.0-flash'),
-    system: systemPrompt,
-    messages,
-    maxTokens: 1024,
-  })
+    const result = await streamText({
+      model: google('gemini-1.5-flash'),
+      system: systemPrompt,
+      messages,
+    })
 
-  return result.toDataStreamResponse()
+    return result.toDataStreamResponse()
+  } catch (err) {
+    console.error('[chat] error:', err)
+    return new Response(
+      JSON.stringify({ error: 'Error al procesar la consulta' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    )
+  }
 }

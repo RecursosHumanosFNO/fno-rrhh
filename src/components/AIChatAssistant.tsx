@@ -1,9 +1,9 @@
 'use client'
 
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useState, useMemo } from 'react'
 import { useChat } from 'ai/react'
 import { useAuth } from '@/contexts/AuthContext'
-import { Sparkles, X, Send, Loader2, ChevronDown } from 'lucide-react'
+import { Sparkles, X, Send, Loader2, ChevronDown, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export default function AIChatAssistant() {
@@ -11,20 +11,22 @@ export default function AIChatAssistant() {
   const [open, setOpen] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  const context = empleado ? {
+  // Memoizar para no recrear el objeto en cada render
+  const context = useMemo(() => empleado ? {
     nombre: empleado.nombre,
     apellido: empleado.apellido,
     sector: empleado.sector,
     cargo: empleado.cargo,
     tipoContrato: empleado.tipoContrato,
-    diasVacaciones: empleado.diasVacaciones,
-    diasVacacionesUsados: empleado.diasVacacionesUsados,
     fechaIngreso: empleado.fechaIngreso,
-  } : null
+  } : null, [empleado?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading, setMessages, append } = useChat({
+  const { messages, input, handleInputChange, handleSubmit, isLoading, setMessages, append, error } = useChat({
     api: '/api/chat',
     body: { context },
+    onError: (err) => {
+      console.error('[AIChatAssistant] error:', err)
+    },
   })
 
   // Scroll automático al último mensaje
@@ -141,6 +143,15 @@ export default function AIChatAssistant() {
               <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl rounded-tl-sm px-3 py-2">
                 <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
               </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="flex items-start gap-2 p-2 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
+              <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-red-600 dark:text-red-400">
+                Error al conectar con el asistente. Revisá tu conexión o intentá de nuevo.
+              </p>
             </div>
           )}
 
