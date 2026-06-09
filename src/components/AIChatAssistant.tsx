@@ -149,8 +149,8 @@ export default function AIChatAssistant() {
           {error && (
             <div className="flex items-start gap-2 p-2 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
               <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-red-600 dark:text-red-400">
-                Error al conectar con el asistente. Revisá tu conexión o intentá de nuevo.
+              <p className="text-xs text-red-600 dark:text-red-400 break-all">
+                {error.message || 'Error desconocido'}
               </p>
             </div>
           )}
