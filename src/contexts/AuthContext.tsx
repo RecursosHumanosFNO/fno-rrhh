@@ -74,12 +74,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe()
   }, [loadProfile]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Sincroniza el objeto empleado cuando DataContext termina de cargar
+  // Sincroniza el objeto empleado cuando DataContext termina de cargar.
+  // Preserva foto/fotoCover cacheadas — el bulk fetch no las incluye para ahorrar bandwidth.
   useEffect(() => {
     if (!auth.user) return
     const emp = empleados.find(e => e.id === auth.user!.empleadoId)
     if (emp && emp !== auth.empleado) {
-      setAuth(prev => ({ ...prev, empleado: emp }))
+      setAuth(prev => ({
+        ...prev,
+        empleado: {
+          ...emp,
+          foto: emp.foto || prev.empleado?.foto || '',
+          fotoCover: emp.fotoCover || prev.empleado?.fotoCover || '',
+        },
+      }))
     }
   }, [empleados]) // eslint-disable-line react-hooks/exhaustive-deps
 
