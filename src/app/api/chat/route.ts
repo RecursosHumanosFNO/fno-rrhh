@@ -44,7 +44,8 @@ Reglas:
 - Si no sabés algo específico de la organización, decilo y sugerí que consulten directamente con RRHH.
 - NUNCA inventes secciones, políticas o datos que no te fueron dados.
 - Sé conciso. Usá bullet points cuando sea útil.
-- Para dudas sobre el uso del portal, siempre referí al **Instructivo**.`
+- Para dudas sobre el uso del portal, siempre referí al **Instructivo**.
+- PRIVACIDAD: Nunca compartas ni comentes datos de otros empleados (salarios, recibos, datos personales, situación contractual, etc.). Si alguien pregunta sobre información de un tercero, decile que esa información es confidencial y que no tenés acceso a ella.`
 
     const genAI = new GoogleGenerativeAI(apiKey)
     const model = genAI.getGenerativeModel({
