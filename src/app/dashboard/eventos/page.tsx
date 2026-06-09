@@ -14,6 +14,24 @@ import {
 
 const TIPOS_EVENTO: EventoTipo[] = ['feriado', 'jornada', 'acto', 'capacitacion', 'reunion', 'receso', 'proyecto', 'institucional', 'reunion_padres', 'examen', 'inscripciones', 'salida', 'religioso', 'otro']
 
+// Fondo de celda del calendario (más saturado que el badge para que se vea bien)
+const EVENTO_TIPO_CELL_BG: Record<EventoTipo, string> = {
+  feriado:       'bg-blue-200 dark:bg-blue-900/60',
+  jornada:       'bg-purple-200 dark:bg-purple-900/60',
+  acto:          'bg-amber-200 dark:bg-amber-900/60',
+  capacitacion:  'bg-emerald-200 dark:bg-emerald-900/60',
+  reunion:       'bg-orange-200 dark:bg-orange-900/60',
+  receso:        'bg-cyan-200 dark:bg-cyan-900/60',
+  proyecto:      'bg-green-200 dark:bg-green-900/60',
+  institucional: 'bg-indigo-200 dark:bg-indigo-900/60',
+  reunion_padres:'bg-rose-200 dark:bg-rose-900/60',
+  examen:        'bg-red-200 dark:bg-red-900/60',
+  inscripciones: 'bg-teal-200 dark:bg-teal-900/60',
+  salida:        'bg-lime-200 dark:bg-lime-900/60',
+  religioso:     'bg-violet-200 dark:bg-violet-900/60',
+  otro:          'bg-slate-200 dark:bg-slate-700/80',
+}
+
 const PORTAL_LAUNCH = '2026-06-09'
 const PORTAL_LAUNCH_YEAR = 2026
 const ANIVERSARIO_ID = '__aniversario_portal__'
@@ -251,36 +269,49 @@ export default function EventosPage() {
                 const esFinDeSemana = [0, 6].includes((primerDia + (dia - 1)) % 7)
                 const tienePuntos = evs.length > 0 || cumpleCount > 0
 
+                // Color de celda: selected > evento > cumpleaños > hoy > default
+                const cellBg = esSelected
+                  ? 'bg-brand-700 shadow-md'
+                  : evs.length > 0
+                  ? EVENTO_TIPO_CELL_BG[evs[0].tipo]
+                  : cumpleCount > 0
+                  ? 'bg-pink-200 dark:bg-pink-900/60'
+                  : esHoy
+                  ? 'bg-sky-100 dark:bg-sky-900/30'
+                  : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+
                 return (
                   <button
                     key={fechaStr}
                     onClick={() => setSelectedDay(esSelected ? null : fechaStr)}
-                    className={`aspect-square rounded-lg p-1 flex flex-col items-center transition-all text-xs relative
-                      ${esSelected ? 'bg-brand-700 text-white shadow-md' : esHoy ? 'bg-sky-100 dark:bg-sky-900/30' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}
-                      ${esFinDeSemana && !esHoy && !esSelected ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}
-                    `}
+                    className={`aspect-square rounded-lg flex flex-col items-center justify-center transition-all relative cursor-pointer ${cellBg}`}
                   >
-                    <span className={`font-semibold text-sm leading-none mt-1 ${esHoy && !esSelected ? 'text-sky-700 dark:text-sky-400' : ''}`}>
+                    {/* Número del día — círculo azul si es hoy */}
+                    <span className={`font-semibold text-sm flex items-center justify-center
+                      ${esHoy && !esSelected
+                        ? 'w-6 h-6 rounded-full bg-sky-500 text-white'
+                        : esSelected
+                        ? 'text-white'
+                        : evs.length > 0 || cumpleCount > 0
+                        ? 'text-slate-900 dark:text-white'
+                        : esFinDeSemana
+                        ? 'text-slate-400 dark:text-slate-500'
+                        : 'text-slate-700 dark:text-slate-200'
+                      }
+                    `}>
                       {dia}
                     </span>
-                    {tienePuntos && (
-                      <div className="flex gap-1 mt-auto mb-1 flex-wrap justify-center">
-                        {evs.slice(0, 2).map((ev, j) => (
-                          <div
-                            key={j}
-                            className={`w-2 h-2 rounded-full shadow-sm ${esSelected ? 'bg-white/90' : EVENTO_TIPO_DOT[ev.tipo]}`}
-                          />
-                        ))}
-                        {/* Punto rosa de cumpleaños */}
-                        {cumpleCount > 0 && (
-                          <div className={`w-2 h-2 rounded-full shadow-sm ${esSelected ? 'bg-pink-200' : 'bg-pink-500'}`} />
-                        )}
-                        {evs.length > 2 && (
-                          <span className={`text-[9px] leading-none ${esSelected ? 'text-white/80' : 'text-slate-400'}`}>
-                            +{evs.length - 2}
-                          </span>
-                        )}
-                      </div>
+
+                    {/* Indicador de cumpleaños cuando la celda ya tiene color de evento */}
+                    {cumpleCount > 0 && evs.length > 0 && !esSelected && (
+                      <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-pink-500 border border-white dark:border-slate-900" />
+                    )}
+
+                    {/* Cantidad de eventos si hay más de uno */}
+                    {evs.length > 1 && !esSelected && (
+                      <span className="text-[9px] leading-none mt-0.5 opacity-60 text-slate-700 dark:text-white">
+                        {evs.length}
+                      </span>
                     )}
                   </button>
                 )
@@ -291,14 +322,14 @@ export default function EventosPage() {
             <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
               {TIPOS_EVENTO.map(t => (
                 <div key={t} className="flex items-center gap-1.5">
-                  <div className={`w-2.5 h-2.5 rounded-full shadow-sm ${EVENTO_TIPO_DOT[t]}`} />
+                  <div className={`w-3 h-3 rounded-sm ${EVENTO_TIPO_CELL_BG[t]}`} />
                   <span className="text-xs text-slate-500 dark:text-slate-400">
                     {EVENTO_TIPO_LABEL[t].replace(/^\S+\s/, '')}
                   </span>
                 </div>
               ))}
               <div className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full shadow-sm bg-pink-500" />
+                <div className="w-3 h-3 rounded-sm bg-pink-200 dark:bg-pink-900/60" />
                 <span className="text-xs text-slate-500 dark:text-slate-400">Cumpleaños</span>
               </div>
             </div>
