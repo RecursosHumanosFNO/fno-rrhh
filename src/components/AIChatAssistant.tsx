@@ -2,9 +2,57 @@
 
 import { useRef, useEffect, useState, useMemo } from 'react'
 import { useChat } from 'ai/react'
+import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
-import { Sparkles, X, Send, Loader2, ChevronDown, AlertCircle } from 'lucide-react'
+import { Sparkles, X, Send, Loader2, ChevronDown, AlertCircle, ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+// Renderiza texto con links markdown [texto](/ruta) como botones de navegación
+function MessageContent({ content, isUser }: { content: string; isUser: boolean }) {
+  // Regex para detectar [texto](/ruta)
+  const linkRegex = /\[([^\]]+)\]\((\/[^)]+)\)/g
+  const parts: React.ReactNode[] = []
+  let lastIndex = 0
+  let match
+
+  while ((match = linkRegex.exec(content)) !== null) {
+    // Texto antes del link
+    if (match.index > lastIndex) {
+      parts.push(
+        <span key={lastIndex} className="whitespace-pre-wrap">
+          {content.slice(lastIndex, match.index)}
+        </span>
+      )
+    }
+    // Botón de navegación
+    parts.push(
+      <Link
+        key={match.index}
+        href={match[2]}
+        className="inline-flex items-center gap-1.5 mt-1.5 px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium rounded-lg transition-colors"
+      >
+        {match[1]}
+        <ArrowRight className="w-3 h-3" />
+      </Link>
+    )
+    lastIndex = match.index + match[0].length
+  }
+
+  // Texto restante
+  if (lastIndex < content.length) {
+    parts.push(
+      <span key={lastIndex} className="whitespace-pre-wrap">
+        {content.slice(lastIndex)}
+      </span>
+    )
+  }
+
+  if (parts.length === 0) {
+    return <p className="whitespace-pre-wrap">{content}</p>
+  }
+
+  return <div className={isUser ? 'text-white' : ''}>{parts}</div>
+}
 
 export default function AIChatAssistant() {
   const { empleado } = useAuth()
@@ -130,7 +178,7 @@ export default function AIChatAssistant() {
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-sm',
                 )}
               >
-                <p className="whitespace-pre-wrap">{m.content}</p>
+                <MessageContent content={m.content} isUser={m.role === 'user'} />
               </div>
             </div>
           ))}
