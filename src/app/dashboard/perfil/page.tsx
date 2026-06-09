@@ -296,16 +296,27 @@ export default function PerfilPage() {
             </div>
           </div>
 
-          {/* Change cover button — label nativo para máxima compatibilidad */}
-          <label className="absolute top-3 right-3 bg-black/30 hover:bg-black/50 text-white text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors z-10 cursor-pointer">
-            <ImageIcon className="w-3 h-3" /> Cambiar portada
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={e => e.target.files?.[0] && handlePhotoUpload(e.target.files[0], 'fotoCover')}
-            />
-          </label>
+          {/* Botones portada — top right */}
+          <div className="absolute top-3 right-3 flex items-center gap-1.5 z-10">
+            <label className="bg-black/30 hover:bg-black/50 text-white text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer">
+              <ImageIcon className="w-3 h-3" /> Cambiar portada
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={e => e.target.files?.[0] && handlePhotoUpload(e.target.files[0], 'fotoCover')}
+              />
+            </label>
+            {empleado.fotoCover && (
+              <button
+                onClick={() => updateEmpleado({ fotoCover: '' })}
+                title="Eliminar portada"
+                className="w-6 h-6 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center shadow-md transition-colors"
+              >
+                <X className="w-3 h-3 text-white" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
