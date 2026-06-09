@@ -31,7 +31,7 @@ Reglas:
 - No menciones datos sensibles como DNI, CUIL o CBU aunque los tengas.`
 
     const result = await streamText({
-      model: google('gemini-1.5-flash'),
+      model: google('gemini-2.5-flash-lite'),
       system: systemPrompt,
       messages,
     })
