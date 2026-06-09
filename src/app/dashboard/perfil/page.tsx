@@ -269,7 +269,26 @@ export default function PerfilPage() {
                   <Edit2 className="w-4 h-4" /> Editar datos
                 </button>
               ) : (
-                <div className="flex gap-2 shrink-0">
+                <div className="flex flex-wrap gap-2 shrink-0 items-center">
+                  {/* Portada — en el mismo grupo que los botones, sin posición absoluta */}
+                  <label className="btn-secondary bg-white/15 border-white/25 text-white hover:bg-white/25 cursor-pointer">
+                    <ImageIcon className="w-4 h-4" /> Portada
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={e => e.target.files?.[0] && handlePhotoUpload(e.target.files[0], 'fotoCover')}
+                    />
+                  </label>
+                  {empleado.fotoCover && (
+                    <button
+                      onClick={() => updateEmpleado({ fotoCover: '' })}
+                      title="Eliminar portada"
+                      className="w-8 h-8 bg-red-500/80 hover:bg-red-600 rounded-lg flex items-center justify-center transition-colors"
+                    >
+                      <X className="w-3.5 h-3.5 text-white" />
+                    </button>
+                  )}
                   <button onClick={handleCancel} className="btn-secondary bg-white/15 border-white/25 text-white hover:bg-white/25">
                     <X className="w-4 h-4" /> Cancelar
                   </button>
@@ -298,29 +317,6 @@ export default function PerfilPage() {
             </div>
           </div>
 
-          {/* Botones portada — solo en modo edición */}
-          {editMode && (
-          <div className="absolute top-3 right-3 flex items-center gap-1.5 z-10">
-            <label className="bg-black/30 hover:bg-black/50 text-white text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer">
-              <ImageIcon className="w-3 h-3" /> Cambiar portada
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={e => e.target.files?.[0] && handlePhotoUpload(e.target.files[0], 'fotoCover')}
-              />
-            </label>
-            {empleado.fotoCover && (
-              <button
-                onClick={() => updateEmpleado({ fotoCover: '' })}
-                title="Eliminar portada"
-                className="w-6 h-6 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center shadow-md transition-colors"
-              >
-                <X className="w-3 h-3 text-white" />
-              </button>
-            )}
-          </div>
-          )}
         </div>
       </div>
 
