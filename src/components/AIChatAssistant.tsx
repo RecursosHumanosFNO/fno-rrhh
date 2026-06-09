@@ -29,7 +29,7 @@ function MessageContent({ content, isUser }: { content: string; isUser: boolean 
       <Link
         key={match.index}
         href={match[2]}
-        className="inline-flex items-center gap-1.5 mt-1.5 px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium rounded-lg transition-colors"
+        className="inline-flex items-center gap-1.5 mt-1.5 px-3 py-1.5 ai-gradient hover:opacity-90 text-white text-xs font-medium rounded-lg transition-opacity"
       >
         {match[1]}
         <ArrowRight className="w-3 h-3" />
@@ -101,7 +101,7 @@ export default function AIChatAssistant() {
         style={{ maxHeight: '520px' }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-brand-600 rounded-t-2xl">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 ai-gradient rounded-t-2xl">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 bg-white/20 rounded-full flex items-center justify-center">
               <Sparkles className="w-4 h-4 text-white" />
@@ -130,8 +130,8 @@ export default function AIChatAssistant() {
         <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0" style={{ maxHeight: '360px' }}>
           {messages.length === 0 && (
             <div className="text-center py-6">
-              <div className="w-12 h-12 bg-brand-50 dark:bg-brand-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Sparkles className="w-6 h-6 text-brand-500" />
+              <div className="w-12 h-12 ai-gradient rounded-full flex items-center justify-center mx-auto mb-3">
+                <Sparkles className="w-6 h-6 text-white" />
               </div>
               <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
                 ¡Hola{empleado ? `, ${empleado.nombre}` : ''}! 👋
@@ -166,15 +166,15 @@ export default function AIChatAssistant() {
               )}
             >
               {m.role === 'assistant' && (
-                <div className="w-6 h-6 bg-brand-100 dark:bg-brand-900/40 rounded-full flex items-center justify-center mr-2 mt-0.5 flex-shrink-0">
-                  <Sparkles className="w-3 h-3 text-brand-600 dark:text-brand-400" />
+                <div className="w-6 h-6 ai-gradient rounded-full flex items-center justify-center mr-2 mt-0.5 flex-shrink-0">
+                  <Sparkles className="w-3 h-3 text-white" />
                 </div>
               )}
               <div
                 className={cn(
                   'max-w-[80%] rounded-2xl px-3 py-2 text-sm leading-relaxed',
                   m.role === 'user'
-                    ? 'bg-brand-600 text-white rounded-tr-sm'
+                    ? 'ai-gradient text-white rounded-tr-sm'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-sm',
                 )}
               >
@@ -185,8 +185,8 @@ export default function AIChatAssistant() {
 
           {isLoading && (
             <div className="flex justify-start">
-              <div className="w-6 h-6 bg-brand-100 dark:bg-brand-900/40 rounded-full flex items-center justify-center mr-2 flex-shrink-0">
-                <Sparkles className="w-3 h-3 text-brand-600 dark:text-brand-400" />
+              <div className="w-6 h-6 ai-gradient rounded-full flex items-center justify-center mr-2 flex-shrink-0">
+                <Sparkles className="w-3 h-3 text-white" />
               </div>
               <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl rounded-tl-sm px-3 py-2">
                 <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
@@ -222,7 +222,7 @@ export default function AIChatAssistant() {
           <button
             type="submit"
             disabled={isLoading || !input.trim()}
-            className="w-8 h-8 bg-brand-600 hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl flex items-center justify-center transition-colors flex-shrink-0"
+            className="w-8 h-8 ai-gradient hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl flex items-center justify-center transition-opacity flex-shrink-0"
           >
             <Send className="w-3.5 h-3.5 text-white" />
           </button>
@@ -236,7 +236,7 @@ export default function AIChatAssistant() {
           'fixed bottom-4 right-4 z-50 w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all duration-300',
           open
             ? 'bg-slate-600 hover:bg-slate-700 rotate-0'
-            : 'bg-brand-600 hover:bg-brand-700 hover:scale-110',
+            : 'ai-gradient hover:opacity-90 hover:scale-110',
         )}
         title="Asistente RRHH"
       >

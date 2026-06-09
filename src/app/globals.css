@@ -53,6 +53,44 @@
   }
 }
 
+/* ── Asistente IA: gradiente iridiscente estilo Gemini ─────────── */
+@keyframes ai-shimmer {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.ai-gradient {
+  background: linear-gradient(
+    135deg,
+    #4f8ef7,
+    #a855f7,
+    #ec4899,
+    #06b6d4,
+    #6366f1,
+    #4f8ef7
+  );
+  background-size: 300% 300%;
+  animation: ai-shimmer 5s ease infinite;
+}
+
+.ai-gradient-text {
+  background: linear-gradient(
+    135deg,
+    #60a5fa,
+    #c084fc,
+    #f472b6,
+    #22d3ee,
+    #818cf8,
+    #60a5fa
+  );
+  background-size: 300% 300%;
+  animation: ai-shimmer 5s ease infinite;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 @layer components {
   .page-container {
     @apply p-6 space-y-6 animate-fade-in;
