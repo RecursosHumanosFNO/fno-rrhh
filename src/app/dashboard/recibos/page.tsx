@@ -43,6 +43,9 @@ export default function RecibosPage() {
   const { user } = useAuth()
   const { empleados, recibos, addRecibo, deleteRecibo, addNotification, firmas, firmarRecibo } = useData()
   const isAdmin = user?.role === 'admin'
+  const [adminTab, setAdminTab] = useState<'todos' | 'mis'>('todos')
+  // viewAsAdmin: controla el modo de visualización (admin con tab "mis" ve la vista de empleado)
+  const viewAsAdmin = isAdmin && adminTab === 'todos'
 
   // ── Estado filtros/tabla ───────────────────────────────────────────────
   const [query, setQuery] = useState('')
@@ -144,7 +147,7 @@ export default function RecibosPage() {
   const bulkAddInputRef = useRef<HTMLInputElement>(null)
 
   // ── Listado filtrado ───────────────────────────────────────────────────
-  const misRecibos = isAdmin ? recibos : recibos.filter(r => r.empleadoId === user?.empleadoId)
+  const misRecibos = viewAsAdmin ? recibos : recibos.filter(r => r.empleadoId === user?.empleadoId)
 
   const filtered = useMemo(() => misRecibos.filter(r => {
     const emp = empleados.find(e => e.id === r.empleadoId)
@@ -397,7 +400,7 @@ export default function RecibosPage() {
           <div className="hidden sm:flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2.5 py-1.5 rounded-lg">
             <Lock className="w-3.5 h-3.5" /> Acceso privado
           </div>
-          {isAdmin && (
+          {viewAsAdmin && (
             <>
               <button
                 onClick={() => setShowAuditoria(v => !v)}
@@ -425,9 +428,35 @@ export default function RecibosPage() {
         </div>
       </div>
 
+      {/* Tabs admin/empleado — solo si el usuario es admin */}
+      {isAdmin && (
+        <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 rounded-xl p-1 w-fit">
+          <button
+            onClick={() => setAdminTab('todos')}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              adminTab === 'todos'
+                ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+            }`}
+          >
+            Todos los recibos
+          </button>
+          <button
+            onClick={() => setAdminTab('mis')}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              adminTab === 'mis'
+                ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+            }`}
+          >
+            Mis recibos
+          </button>
+        </div>
+      )}
+
       {/* Filters */}
       <div className="card p-4 flex flex-wrap gap-3 items-center">
-        {isAdmin && (
+        {viewAsAdmin && (
           <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 rounded-lg px-3 py-2 flex-1 min-w-48">
             <Search className="w-4 h-4 text-slate-400 shrink-0" />
             <input
@@ -456,7 +485,7 @@ export default function RecibosPage() {
       </div>
 
       {/* ── Panel de auditoría de firmas (solo admin) ─────────────────────── */}
-      {isAdmin && showAuditoria && (() => {
+      {viewAsAdmin && showAuditoria && (() => {
         const firmasFiltradas = firmas.filter(f => {
           if (!auditQuery) return true
           const emp = empleados.find(e => e.id === f.empleadoId)
@@ -557,7 +586,7 @@ export default function RecibosPage() {
           <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
           <p className="text-slate-500 font-medium">No se encontraron recibos</p>
           <p className="text-slate-400 text-sm mt-1">
-            {isAdmin ? 'Subí recibos usando los botones de arriba' : 'Los recibos aparecerán aquí cuando RRHH los suba'}
+            {viewAsAdmin ? 'Subí recibos usando los botones de arriba' : 'Los recibos aparecerán aquí cuando RRHH los suba'}
           </p>
         </div>
       ) : (
@@ -565,7 +594,7 @@ export default function RecibosPage() {
           <table className="w-full">
             <thead>
               <tr>
-                {isAdmin && <th className="table-header text-left">Empleado</th>}
+                {viewAsAdmin && <th className="table-header text-left">Empleado</th>}
                 <th className="table-header text-left">Período</th>
                 <th className="table-header text-left hidden sm:table-cell">Fecha de subida</th>
                 <th className="table-header text-right">Acción</th>
@@ -580,7 +609,7 @@ export default function RecibosPage() {
                 const esMio = r.empleadoId === user?.empleadoId
                 return (
                   <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                    {isAdmin && (
+                    {viewAsAdmin && (
                       <td className="table-cell">
                         <div className="flex items-center gap-2.5">
                           <div className="w-8 h-8 rounded-full bg-brand-700 flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden">
@@ -633,8 +662,8 @@ export default function RecibosPage() {
                           {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : tieneArchivo ? <Eye className="w-4 h-4" /> : <Download className="w-4 h-4" />}
                           <span className="hidden sm:inline">{isDownloading ? 'Cargando...' : tieneArchivo ? 'Ver PDF' : 'Sin archivo'}</span>
                         </button>
-                        {/* Firma: empleado puede firmar, admin ve el estado */}
-                        {!isAdmin && esMio && (
+                        {/* Firma: empleado puede firmar, admin en tab "mis" también */}
+                        {!viewAsAdmin && esMio && (
                           firma ? (
                             <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded-lg" title={`Firmado el ${new Date(firma.firmadoEn).toLocaleString('es-AR')}`}>
                               <ShieldCheck className="w-3.5 h-3.5" /> Firmado
@@ -648,20 +677,12 @@ export default function RecibosPage() {
                             </button>
                           )
                         )}
-                        {isAdmin && (
+                        {viewAsAdmin && (
                           <>
                             {firma ? (
                               <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded-lg" title={`Firmado el ${new Date(firma.firmadoEn).toLocaleString('es-AR')}`}>
                                 <ShieldCheck className="w-3.5 h-3.5" /> Firmado
                               </span>
-                            ) : esMio ? (
-                              // Admin viendo su propio recibo sin firmar → puede firmarlo
-                              <button
-                                onClick={() => { setFirmaModal({ id: r.id, label: formatMes(r.mes, r.anio) }); setFirmaAcepto(false) }}
-                                className="inline-flex items-center gap-1.5 text-sm py-1.5 px-3 rounded-lg border border-brand-300 dark:border-brand-700 text-brand-700 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-colors"
-                              >
-                                <PenLine className="w-4 h-4" /> Firmar
-                              </button>
                             ) : (
                               <span className="inline-flex items-center gap-1 text-xs text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg">
                                 Sin firmar
@@ -763,7 +784,7 @@ export default function RecibosPage() {
       )}
 
       {/* Cards resumen empleado */}
-      {!isAdmin && (
+      {!viewAsAdmin && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="card p-4 text-center">
             <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{misRecibos.length}</p>
