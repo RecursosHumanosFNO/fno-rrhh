@@ -22,7 +22,7 @@ export default function AIChatAssistant() {
     fechaIngreso: empleado.fechaIngreso,
   } : null
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading, setMessages } = useChat({
+  const { messages, input, handleInputChange, handleSubmit, isLoading, setMessages, append } = useChat({
     api: '/api/chat',
     body: { context },
   })
@@ -91,20 +91,13 @@ export default function AIChatAssistant() {
               </p>
               <div className="mt-4 space-y-2">
                 {[
-                  '¿Cuántos días de vacaciones me quedan?',
                   '¿Cómo solicito una licencia?',
                   '¿Cómo uso el portal?',
+                  '¿Qué tipos de contrato existen?',
                 ].map(q => (
                   <button
                     key={q}
-                    onClick={() => {
-                      handleInputChange({ target: { value: q } } as React.ChangeEvent<HTMLInputElement>)
-                      // pequeño delay para que el state se actualice
-                      setTimeout(() => {
-                        const form = document.getElementById('ai-chat-form') as HTMLFormElement
-                        form?.requestSubmit()
-                      }, 50)
-                    }}
+                    onClick={() => append({ role: 'user', content: q })}
                     className="block w-full text-left text-xs bg-slate-50 dark:bg-slate-800 hover:bg-brand-50 dark:hover:bg-brand-900/30 text-slate-600 dark:text-slate-400 hover:text-brand-700 dark:hover:text-brand-300 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 transition-colors"
                   >
                     {q}
