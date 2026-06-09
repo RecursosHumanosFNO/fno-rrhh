@@ -63,12 +63,12 @@
 .ai-gradient {
   background: linear-gradient(
     135deg,
-    #4f8ef7,
-    #a855f7,
+    #d946ef,
     #ec4899,
-    #06b6d4,
-    #6366f1,
-    #4f8ef7
+    #f97316,
+    #f59e0b,
+    #a855f7,
+    #d946ef
   );
   background-size: 300% 300%;
   animation: ai-shimmer 5s ease infinite;
@@ -77,12 +77,12 @@
 .ai-gradient-text {
   background: linear-gradient(
     135deg,
-    #60a5fa,
-    #c084fc,
-    #f472b6,
-    #22d3ee,
-    #818cf8,
-    #60a5fa
+    #c026d3,
+    #e11d48,
+    #ea580c,
+    #d97706,
+    #7c3aed,
+    #c026d3
   );
   background-size: 300% 300%;
   animation: ai-shimmer 5s ease infinite;
