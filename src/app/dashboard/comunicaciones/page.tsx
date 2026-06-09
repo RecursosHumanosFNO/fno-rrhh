@@ -5,9 +5,21 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { supabase } from '@/lib/supabase'
 import {
-  NOVEDAD_CATEGORIA_COLOR, NOVEDAD_CATEGORIA_LABEL, NOVEDAD_CATEGORIAS, formatFecha,
+  NOVEDAD_CATEGORIA_COLOR, NOVEDAD_CATEGORIA_LABEL, NOVEDAD_CATEGORIAS,
+  EVENTO_TIPO_LABEL, EVENTO_TIPO_COLOR, formatFecha,
 } from '@/lib/utils'
-import type { NovedadCategoria } from '@/types'
+import type { NovedadCategoria, Novedad, Evento } from '@/types'
+
+// Categorías que corresponden a tipos de evento del calendario
+const EVENTO_TIPOS_SET = new Set([
+  'feriado', 'jornada', 'acto', 'capacitacion', 'reunion',
+  'receso', 'proyecto', 'institucional', 'reunion_padres',
+  'examen', 'inscripciones', 'salida', 'religioso', 'otro',
+])
+
+type DisplayItem =
+  | { kind: 'novedad'; date: string; item: Novedad }
+  | { kind: 'evento'; date: string; item: Evento }
 import {
   Megaphone, Plus, Pin, Calendar, PartyPopper, AlertTriangle,
   Bell, MessageSquare, X, ChevronRight, Trash2, Edit2, Save, Mail,
@@ -28,7 +40,7 @@ function catIcon(cat: NovedadCategoria): React.ElementType {
 
 export default function ComunicacionesPage() {
   const { user } = useAuth()
-  const { novedades, addNovedad, updateNovedad, deleteNovedad } = useData()
+  const { novedades, eventos, addNovedad, updateNovedad, deleteNovedad } = useData()
   const isAdmin = user?.role === 'admin' || user?.role === 'comunicaciones'
 
   const [catFilter, setCatFilter] = useState<NovedadCategoria | ''>('')
@@ -82,9 +94,21 @@ export default function ComunicacionesPage() {
     }
   }
 
-  const filtered = novedades
+  const filteredNovedades = novedades
     .filter(n => !catFilter || n.categoria === catFilter)
     .sort((a, b) => b.fechaPublicacion.localeCompare(a.fechaPublicacion))
+
+  // Los eventos del calendario se muestran cuando el filtro es "" (Todas) o coincide con su tipo
+  const shouldIncludeEventos = !catFilter || EVENTO_TIPOS_SET.has(catFilter)
+  const filteredEventos = shouldIncludeEventos
+    ? eventos.filter(e => !catFilter || e.tipo === catFilter)
+    : []
+
+  // Lista unificada ordenada por fecha desc
+  const displayItems: DisplayItem[] = [
+    ...filteredNovedades.map(n => ({ kind: 'novedad' as const, date: n.fechaPublicacion, item: n })),
+    ...filteredEventos.map(e => ({ kind: 'evento' as const, date: e.fecha, item: e })),
+  ].sort((a, b) => b.date.localeCompare(a.date))
 
   function handlePublicar() {
     if (!newForm.titulo.trim() || !newForm.contenido.trim()) return
@@ -166,14 +190,55 @@ export default function ComunicacionesPage() {
         })}
       </div>
 
-      {/* Novedades list */}
+      {/* Lista unificada: novedades + eventos del calendario */}
       <div className="space-y-4">
-        {filtered.length === 0 ? (
+        {displayItems.length === 0 ? (
           <div className="card p-10 text-center">
             <Megaphone className="w-10 h-10 text-slate-300 mx-auto mb-2" />
             <p className="text-slate-500">No hay novedades en esta categoría.</p>
           </div>
-        ) : filtered.map(n => {
+        ) : displayItems.map(display => {
+          if (display.kind === 'evento') {
+            const e = display.item
+            return (
+              <div key={`ev-${e.id}`} className="card p-5 transition-all hover:shadow-card-hover border-l-4 border-l-purple-400 dark:border-l-purple-500">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center shrink-0">
+                    <Calendar className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <span className={`badge ${EVENTO_TIPO_COLOR[e.tipo] ?? 'bg-purple-100 text-purple-800'}`}>
+                        {EVENTO_TIPO_LABEL[e.tipo] ?? e.tipo}
+                      </span>
+                      <span className="badge bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                        <Calendar className="w-3 h-3 mr-0.5 inline" /> Del calendario
+                      </span>
+                    </div>
+                    <h3 className="font-semibold text-slate-800 dark:text-slate-100">{e.titulo}</h3>
+                    {e.descripcion && (
+                      <p className="text-sm text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">{e.descripcion}</p>
+                    )}
+                    {e.imagen && (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img src={e.imagen} alt="" className="mt-3 rounded-xl border border-slate-200 dark:border-slate-700 max-h-80 w-auto" />
+                    )}
+                    {e.adjuntoUrl && (
+                      <a href={e.adjuntoUrl} target="_blank" rel="noopener noreferrer" download={e.adjuntoNombre}
+                        className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-brand-700 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/20 hover:bg-brand-100 dark:hover:bg-brand-900/40 rounded-lg px-2.5 py-1.5 transition-colors w-fit">
+                        <Download className="w-3.5 h-3.5" /> {e.adjuntoNombre || 'Descargar adjunto'}
+                      </a>
+                    )}
+                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
+                      📅 {formatFecha(e.fecha)} · Sección Eventos y Cumpleaños
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )
+          }
+
+          const n = display.item
           const Icon = catIcon(n.categoria)
           const isSelected = selectedNovedad === n.id
           return (

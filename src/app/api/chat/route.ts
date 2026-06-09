@@ -17,12 +17,19 @@ export async function POST(req: Request) {
     const systemPrompt = `Sos el asistente virtual de RRHH de la Fundación Neuquén Oeste.
 Ayudás a los empleados con preguntas sobre recursos humanos, políticas internas, licencias, contratos y el uso del portal.
 
-${context ? `Datos del empleado logueado:
+Fecha de hoy: ${context?.hoy || new Date().toISOString().slice(0, 10)}
+
+${context?.nombre ? `Datos del empleado logueado:
 - Nombre: ${context.nombre} ${context.apellido}
 - Sector: ${context.sector || 'No asignado'}
 - Cargo: ${context.cargo || 'No asignado'}
 - Tipo de contrato: ${context.tipoContrato || 'No especificado'}
 - Fecha de ingreso: ${context.fechaIngreso || 'No especificada'}
+` : ''}
+${context?.eventosResumen ? `AGENDA DEL PORTAL (últimos 30 días y próximos 120):
+${context.eventosResumen}
+
+Cuando te pregunten sobre jornadas, feriados, eventos o qué hay en el calendario, respondé usando estos datos reales. Indicá claramente las fechas.
 ` : ''}
 
 SECCIONES DEL PORTAL con sus rutas (solo estas existen):

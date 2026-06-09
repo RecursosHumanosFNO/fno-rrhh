@@ -4,8 +4,9 @@ import { useRef, useEffect, useState, useMemo } from 'react'
 import { useChat } from 'ai/react'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
+import { useData } from '@/contexts/DataContext'
+import { EVENTO_TIPO_LABEL, cn } from '@/lib/utils'
 import { Sparkles, X, Send, Loader2, ChevronDown, AlertCircle, ArrowRight } from 'lucide-react'
-import { cn } from '@/lib/utils'
 
 // Renderiza texto con links markdown [texto](/ruta) como botones de navegación
 function MessageContent({ content, isUser }: { content: string; isUser: boolean }) {
@@ -56,18 +57,42 @@ function MessageContent({ content, isUser }: { content: string; isUser: boolean 
 
 export default function AIChatAssistant() {
   const { empleado } = useAuth()
+  const { eventos } = useData()
   const [open, setOpen] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
+  // Formatear eventos relevantes para la IA (últimos 30 días + próximos 120)
+  const eventosResumen = useMemo(() => {
+    const hoy = new Date().toISOString().slice(0, 10)
+    const hace30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+    const en120 = new Date(Date.now() + 120 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+    const relevantes = eventos
+      .filter(e => e.fecha >= hace30 && e.fecha <= en120)
+      .sort((a, b) => a.fecha.localeCompare(b.fecha))
+    if (relevantes.length === 0) return null
+    return relevantes
+      .map(e => {
+        const tipoLabel = EVENTO_TIPO_LABEL[e.tipo] ?? e.tipo
+        const desc = e.descripcion ? ` — ${e.descripcion}` : ''
+        const pasado = e.fecha < hoy ? ' [pasado]' : e.fecha === hoy ? ' [HOY]' : ''
+        return `${e.fecha}${pasado} ${tipoLabel}: ${e.titulo}${desc}`
+      })
+      .join('\n')
+  }, [eventos]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Memoizar para no recrear el objeto en cada render
-  const context = useMemo(() => empleado ? {
-    nombre: empleado.nombre,
-    apellido: empleado.apellido,
-    sector: empleado.sector,
-    cargo: empleado.cargo,
-    tipoContrato: empleado.tipoContrato,
-    fechaIngreso: empleado.fechaIngreso,
-  } : null, [empleado?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  const context = useMemo(() => ({
+    ...(empleado ? {
+      nombre: empleado.nombre,
+      apellido: empleado.apellido,
+      sector: empleado.sector,
+      cargo: empleado.cargo,
+      tipoContrato: empleado.tipoContrato,
+      fechaIngreso: empleado.fechaIngreso,
+    } : {}),
+    eventosResumen,
+    hoy: new Date().toISOString().slice(0, 10),
+  }), [empleado?.id, eventosResumen]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const { messages, input, handleInputChange, handleSubmit, isLoading, setMessages, append, error } = useChat({
     api: '/api/chat',
