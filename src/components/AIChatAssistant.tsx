@@ -57,11 +57,36 @@ function MessageContent({ content, isUser }: { content: string; isUser: boolean 
 
 const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
 
+const SUGERENCIAS_POOL = [
+  '¿Cómo solicito una licencia?',
+  '¿Cómo uso el portal?',
+  '¿Qué hay en el calendario este mes?',
+  '¿Cuándo es el próximo feriado?',
+  '¿Cuándo cumple años alguien del equipo?',
+  '¿Cómo pido vacaciones?',
+  '¿Cómo descargo mi recibo de sueldo?',
+  '¿Cómo actualizo mis datos de perfil?',
+  '¿Qué jornadas institucionales hay próximamente?',
+  '¿Cómo firmo un recibo digitalmente?',
+  '¿Cómo abro un ticket de soporte?',
+  '¿Cuándo es el próximo acto escolar?',
+]
+
+function pickRandom(arr: string[], n: number): string[] {
+  return [...arr].sort(() => Math.random() - 0.5).slice(0, n)
+}
+
 export default function AIChatAssistant() {
   const { empleado } = useAuth()
   const { eventos, empleados } = useData()
   const [open, setOpen] = useState(false)
+  const [suggestions, setSuggestions] = useState<string[]>(() => pickRandom(SUGERENCIAS_POOL, 3))
   const bottomRef = useRef<HTMLDivElement>(null)
+
+  // Rotar sugerencias cada vez que se abre el panel
+  useEffect(() => {
+    if (open) setSuggestions(pickRandom(SUGERENCIAS_POOL, 3))
+  }, [open])
 
   // Formatear eventos relevantes para la IA (últimos 30 días + próximos 120)
   const eventosResumen = useMemo(() => {
@@ -182,11 +207,7 @@ export default function AIChatAssistant() {
                 Soy tu asistente de RRHH. Podés preguntarme sobre vacaciones, licencias, contratos y más.
               </p>
               <div className="mt-4 space-y-2">
-                {[
-                  '¿Cómo solicito una licencia?',
-                  '¿Cómo uso el portal?',
-                  '¿Qué tipos de contrato existen?',
-                ].map(q => (
+                {suggestions.map(q => (
                   <button
                     key={q}
                     onClick={() => append({ role: 'user', content: q })}
