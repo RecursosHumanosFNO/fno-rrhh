@@ -83,6 +83,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [empleados]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Carga foto/fotoCover del usuario logueado (no se incluyen en el fetch masivo para ahorrar bandwidth)
+  useEffect(() => {
+    if (!auth.user?.empleadoId || !supabase) return
+    supabase
+      .from('fno_empleados')
+      .select('foto, foto_cover')
+      .eq('id', auth.user.empleadoId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setAuth(prev => prev.empleado
+            ? { ...prev, empleado: { ...prev.empleado, foto: (data.foto as string) ?? '', fotoCover: (data.foto_cover as string) ?? '' } }
+            : prev
+          )
+        }
+      })
+  }, [auth.user?.empleadoId]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const login = useCallback(async (
     email: string,
     password: string,

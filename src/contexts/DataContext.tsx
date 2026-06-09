@@ -292,7 +292,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       const [usersRes, pendingRes, empRes, solRes, recRes, novRes, tickRes, notifRes, evtRes, firmasRes] = await Promise.all([
         supabase.from('fno_users').select('id, email, role, empleado_id'),
         supabase.from('fno_pending').select('*'),
-        supabase.from('fno_empleados').select('*'),
+        supabase.from('fno_empleados').select('id, nombre, apellido, dni, fecha_nacimiento, email, telefono, direccion, cuil, contacto_emergencia, sector, cargo, cargos_extra, fecha_ingreso, tipo_contrato, jornada, supervisor, estado, dias_vacaciones, dias_vacaciones_usados, cbu, banco, desvinculacion, historial_desvinculaciones'),
         supabase.from('fno_solicitudes').select('*'),
         supabase.from('fno_recibos').select('*'),
         supabase.from('fno_novedades').select('*'),
@@ -378,7 +378,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         // Empleados
         .on('postgres_changes', { event: '*', schema: 'public', table: 'fno_empleados' }, ({ eventType, new: n, old: o }) => {
           if (eventType === 'DELETE') setEmpleados(prev => prev.filter(e => e.id !== (o as { id: string }).id))
-          else setEmpleados(prev => upsert(prev, mapSupabaseToEmpleado(n as Record<string, unknown>)))
+          else setEmpleados(prev => {
+            // Preservar foto/fotoCover cacheadas si el evento Realtime no las trae
+            const incoming = mapSupabaseToEmpleado(n as Record<string, unknown>)
+            const existing = prev.find(e => e.id === incoming.id)
+            if (existing && !incoming.foto && existing.foto) incoming.foto = existing.foto
+            if (existing && !incoming.fotoCover && existing.fotoCover) incoming.fotoCover = existing.fotoCover
+            return upsert(prev, incoming)
+          })
         })
         // Usuarios
         .on('postgres_changes', { event: '*', schema: 'public', table: 'fno_users' }, ({ eventType, new: n, old: o }) => {

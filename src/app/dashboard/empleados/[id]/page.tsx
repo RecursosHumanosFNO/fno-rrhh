@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
+import { supabase } from '@/lib/supabase'
 import { SECTORES, CARGOS_POR_SECTOR } from '@/lib/mockData'
 import {
   EMPLEADO_ESTADO_COLOR, EMPLEADO_ESTADO_LABEL, SOLICITUD_TIPO_LABEL,
@@ -61,9 +62,31 @@ export default function EmpleadoDetailPage() {
     observaciones: '',
   })
   const fotoRef = useRef<HTMLInputElement>(null)
+  // Fotos cargadas on-demand (no vienen en el fetch masivo para ahorrar bandwidth)
+  const [profileFoto, setProfileFoto] = useState<string | null>(null)
+  const [profileFotoCover, setProfileFotoCover] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!id) return
+    setProfileFoto(null)
+    setProfileFotoCover(null)
+    supabase?.from('fno_empleados')
+      .select('foto, foto_cover')
+      .eq('id', id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setProfileFoto((data.foto as string) ?? '')
+          setProfileFotoCover((data.foto_cover as string) ?? '')
+        }
+      })
+  }, [id])
 
   const isAdmin = user?.role === 'admin'
   const emp = empleados.find(e => e.id === id)
+  // Foto: prioridad a cambios locales (handlePhotoUpload), luego la cargada on-demand
+  const fotoDisplay = emp?.foto || profileFoto || ''
+  const fotoCoverDisplay = emp?.fotoCover || profileFotoCover || ''
   const accesoDenegado = !!user && !isAdmin && user?.empleadoId !== id
 
   useEffect(() => {
@@ -116,7 +139,7 @@ export default function EmpleadoDetailPage() {
     ...(!emp.contactoEmergencia?.nombre ? ['Contacto emergencia — nombre'] : []),
     ...(!emp.contactoEmergencia?.telefono ? ['Contacto emergencia — teléfono'] : []),
     ...(!emp.contactoEmergencia?.relacion ? ['Contacto emergencia — relación'] : []),
-    ...(!emp.foto ? ['Foto de perfil'] : []),
+    ...(!fotoDisplay ? ['Foto de perfil'] : []),
   ]
 
   async function handleSave() {
@@ -167,26 +190,25 @@ export default function EmpleadoDetailPage() {
     setEditMode(false)
   }
 
-  // Comprime/redimensiona a 400px max antes de guardar (evita fotos enormes)
+  // Comprime/redimensiona a 400px max antes de guardar (evita fotos enormes en base64)
   function handlePhotoUpload(file: File) {
     const reader = new FileReader()
     reader.onload = e => {
       const img = new Image()
       img.onload = () => {
-        // 800px máximo para que se vea nítido en pantallas retina (2x)
-        const scale = Math.min(1, 800 / Math.max(img.width, img.height))
+        // 400px máximo — suficiente para foto de perfil, reduce peso ~10x vs 800px/0.95
+        const scale = Math.min(1, 400 / Math.max(img.width, img.height))
         const w = Math.round(img.width * scale)
         const h = Math.round(img.height * scale)
         const canvas = document.createElement('canvas')
         canvas.width = w; canvas.height = h
         const ctx = canvas.getContext('2d')
         if (!ctx) return
-        // Activar suavizado para mejor calidad al escalar
         ctx.imageSmoothingEnabled = true
         ctx.imageSmoothingQuality = 'high'
         ctx.drawImage(img, 0, 0, w, h)
-        // Calidad 0.95 — notablemente mejor sin aumentar demasiado el peso
-        updateEmpleado(emp!.id, { foto: canvas.toDataURL('image/jpeg', 0.95) })
+        // Calidad 0.80 — buen equilibrio calidad/peso para foto de perfil
+        updateEmpleado(emp!.id, { foto: canvas.toDataURL('image/jpeg', 0.80) })
       }
       img.src = e.target?.result as string
     }
@@ -292,11 +314,11 @@ export default function EmpleadoDetailPage() {
         <div className="relative">
           {/* Blurred cover background */}
           <div className="absolute inset-0">
-            {emp.fotoCover
-              ? <img src={emp.fotoCover} alt="" className="w-full h-full object-cover scale-105 blur-sm" />
+            {fotoCoverDisplay
+              ? <img src={fotoCoverDisplay} alt="" className="w-full h-full object-cover scale-105 blur-sm" />
               : null
             }
-            <div className={`absolute inset-0 ${emp.fotoCover ? 'bg-gradient-to-b from-slate-900/60 via-slate-900/65 to-slate-900/80' : 'bg-gradient-to-r from-brand-700 to-brand-500'}`} />
+            <div className={`absolute inset-0 ${fotoCoverDisplay ? 'bg-gradient-to-b from-slate-900/60 via-slate-900/65 to-slate-900/80' : 'bg-gradient-to-r from-brand-700 to-brand-500'}`} />
           </div>
 
           {/* Content overlay */}
@@ -306,8 +328,8 @@ export default function EmpleadoDetailPage() {
                 {/* Photo */}
                 <div className="relative group shrink-0">
                   <div className="w-20 h-20 rounded-2xl bg-brand-700 border-[3px] border-white/50 flex items-center justify-center text-white text-2xl font-bold shadow-xl overflow-hidden">
-                    {emp.foto
-                      ? <img src={emp.foto} alt="" className="w-full h-full object-cover" />
+                    {fotoDisplay
+                      ? <img src={fotoDisplay} alt="" className="w-full h-full object-cover" />
                       : `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}`
                     }
                   </div>
