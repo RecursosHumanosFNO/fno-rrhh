@@ -253,12 +253,16 @@ function mapSupabaseToEvento(row: Record<string, unknown>): Evento {
     destinatarios: (row.destinatarios as string[]) ?? [],
   }
 }
-function mapEventoToSupabase(e: Evento) {
-  return {
+function mapEventoToSupabase(e: Evento, baseOnly = false) {
+  const base = {
     id: e.id, titulo: e.titulo, fecha: e.fecha, tipo: e.tipo,
     descripcion: e.descripcion ?? '', empleado_id: e.empleadoId ?? null,
     imagen: e.imagen ?? null,
     adjunto_url: e.adjuntoUrl ?? null, adjunto_nombre: e.adjuntoNombre ?? null,
+  }
+  if (baseOnly) return base
+  return {
+    ...base,
     importante: e.importante ?? false,
     fijado: e.fijado ?? false,
     destinatarios: e.destinatarios ?? [],
@@ -692,7 +696,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       addNotification({ texto: `Nuevo evento: ${e.titulo} — ${e.fecha}`, tipo: 'novedad' })
     }
     if (supabase) supabase.from('fno_eventos').insert(mapEventoToSupabase(nuevo)).then(({ error }) => {
-      if (error) console.error('[supabase] insert fno_eventos:', error)
+      if (error) {
+        // Retry sin columnas nuevas si la migración SQL no se corrió todavía
+        supabase.from('fno_eventos').insert(mapEventoToSupabase(nuevo, true)).then(({ error: e2 }) => {
+          if (e2) console.error('[supabase] insert fno_eventos:', e2)
+        })
+      }
     })
     if (notifyChannels.includes('email')) {
       sendEmail('novedad_publicada', { titulo: e.titulo, contenido: e.descripcion ?? '', autor: 'RRHH', imagen: e.imagen ?? '' })
@@ -707,7 +716,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       // Solo persisten los eventos custom (los fijos viven en el código)
       if (supabase && !EVENTOS_FIJOS_IDS.has(id)) {
         const full = updated.find(e => e.id === id)
-        if (full) supabase.from('fno_eventos').upsert(mapEventoToSupabase(full)).then()
+        if (full) supabase.from('fno_eventos').upsert(mapEventoToSupabase(full)).then(({ error }) => {
+          if (error) supabase.from('fno_eventos').upsert(mapEventoToSupabase(full, true)).then()
+        })
       }
       return updated
     })

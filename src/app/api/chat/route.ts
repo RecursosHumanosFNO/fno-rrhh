@@ -43,7 +43,7 @@ SECCIONES DEL PORTAL con sus rutas (solo estas existen):
 - **Recibos de Sueldo** → /dashboard/recibos : ver, subir y firmar recibos.
 - **Solicitudes y Pedidos** → /dashboard/solicitudes : enviar y gestionar solicitudes (licencias, pedidos, etc.).
 - **Comunicaciones** → /dashboard/comunicaciones : mensajes y comunicados internos.
-- **Eventos y Cumpleaños** → /dashboard/eventos : calendario de eventos del equipo.
+- **Calendario** → /dashboard/eventos : calendario de eventos del equipo.
 - **Estadísticas** → /dashboard/estadisticas : gráficos y datos del personal (solo admins).
 - **La Fundación** → /dashboard/fundacion : información institucional.
 - **Instructivo** → /dashboard/instructivo : manual de uso del portal, guía paso a paso.

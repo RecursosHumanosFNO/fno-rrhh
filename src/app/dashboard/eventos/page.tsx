@@ -276,7 +276,7 @@ export default function EventosPage() {
     <div className="page-container">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Eventos y Calendario</h1>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Calendario</h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-0.5">
             Calendario institucional, actos escolares y cumpleaños del equipo
           </p>

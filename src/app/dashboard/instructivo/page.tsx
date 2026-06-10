@@ -135,7 +135,7 @@ function GuiaEmpleados() {
         </ul>
       </Section>
 
-      <Section icon={Calendar} number={7} title="Eventos y Cumpleaños">
+      <Section icon={Calendar} number={7} title="Calendario">
         <p>El calendario institucional con feriados nacionales, jornadas, actos escolares, capacitaciones, recesos y proyectos:</p>
         <ul className="list-disc pl-6 space-y-1.5">
           <li>Los <strong>cumpleaños del equipo</strong> aparecen marcados en rosa 🎂.</li>
@@ -280,7 +280,7 @@ function GuiaComunicaciones() {
       </Section>
 
       <Section icon={Calendar} number={4} title="Gestionar el calendario de eventos" color="purple">
-        <p>Accedé a <strong>Eventos y Cumpleaños</strong> para crear, editar y eliminar eventos:</p>
+        <p>Accedé a <strong>Calendario</strong> para crear, editar y eliminar eventos:</p>
         <ol className="list-decimal pl-6 space-y-1.5">
           <li>Hacé clic en el botón <strong>"+ Nuevo evento"</strong> o directamente en un <strong>día del calendario</strong>.</li>
           <li>Completá el <strong>título</strong>, elegí el <strong>tipo</strong> (feriado, jornada, acto, etc.) y la <strong>fecha</strong>.</li>
@@ -482,7 +482,7 @@ function GuiaAdmin() {
             ['Reactivar empleado', 'Empleados → filtrar Inactivos → Reactivar'],
             ['Ver estadísticas', 'Estadísticas (menú lateral)'],
             ['Publicar novedad', 'Comunicaciones → Publicar novedad'],
-            ['Crear evento en calendario', 'Eventos y Cumpleaños → + Nuevo evento'],
+            ['Crear evento en calendario', 'Calendario → + Nuevo evento'],
             ['Responder ticket de soporte', 'Solicitudes y Pedidos → tickets'],
           ].map(([accion, donde]) => (
             <div key={accion} className="flex gap-3 px-4 py-2.5 odd:bg-slate-50/50 dark:odd:bg-slate-800/30">

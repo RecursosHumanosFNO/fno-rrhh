@@ -284,7 +284,7 @@ export default function ComunicacionesPage() {
                       </a>
                     )}
                     <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
-                      📅 {formatFecha(e.fecha)} · Sección Eventos y Cumpleaños
+                      📅 {formatFecha(e.fecha)} · Sección Calendario
                     </p>
                   </div>
                 </div>
@@ -536,7 +536,7 @@ export default function ComunicacionesPage() {
                       <Calendar className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                       <div>
                         <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Agregar al calendario institucional</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">También aparecerá en Eventos y Cumpleaños</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">También aparecerá en Calendario</p>
                       </div>
                     </div>
                   </label>
