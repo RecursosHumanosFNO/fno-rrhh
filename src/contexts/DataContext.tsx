@@ -723,7 +723,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (full) {
           const sb = supabase
           sb.from('fno_eventos').upsert(mapEventoToSupabase(full)).then(({ error }) => {
-            if (error) sb.from('fno_eventos').upsert(mapEventoToSupabase(full, true)).then()
+            if (error) {
+              console.warn('[supabase] upsert fno_eventos (full):', error.message, error.code)
+              sb.from('fno_eventos').upsert(mapEventoToSupabase(full, true)).then(({ error: e2 }) => {
+                if (e2) console.error('[supabase] upsert fno_eventos (base):', e2.message, e2.code)
+              })
+            }
           })
         }
       }
@@ -734,7 +739,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const deleteEvento = useCallback((id: string) => {
     setEventos(prev => prev.filter(e => e.id !== id))
     if (supabase && !EVENTOS_FIJOS_IDS.has(id)) {
-      supabase.from('fno_eventos').delete().eq('id', id).then()
+      supabase.from('fno_eventos').delete().eq('id', id).then(({ error }) => {
+        if (error) {
+          console.error('[supabase] delete fno_eventos:', error.message, error.code)
+          alert(`No se pudo eliminar el evento de la base de datos: ${error.message}`)
+        }
+      })
     }
   }, [])
 
