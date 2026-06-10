@@ -335,6 +335,114 @@ export default function EventosPage() {
             </div>
           </div>
 
+          {/* Próximos eventos (30 días) */}
+          <div className="card p-5">
+            <p className="section-title text-base mb-4 flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-brand-600 dark:text-brand-400" /> Próximos 30 días
+            </p>
+            {(() => {
+              const desde = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate())
+              const hasta = new Date(desde.getTime() + 30 * 24 * 60 * 60 * 1000)
+              const anivActual = makeAniversario(hoy.getFullYear())
+              const proximos = [...eventos, anivActual].filter(ev => {
+                const f = parseLocalDate(ev.fecha)
+                return f >= desde && f <= hasta
+              }).sort((a, b) => a.fecha.localeCompare(b.fecha))
+
+              if (proximos.length === 0) return (
+                <p className="text-slate-400 text-sm text-center py-4">Sin eventos en los próximos 30 días</p>
+              )
+              return (
+                <div className="space-y-3">
+                  {proximos.slice(0, 8).map(ev => {
+                    const f = parseLocalDate(ev.fecha)
+                    const diff = Math.round((f.getTime() - desde.getTime()) / (1000 * 60 * 60 * 24))
+                    return (
+                      <div key={ev.id} className="flex items-start gap-2.5">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold ${EVENTO_TIPO_COLOR[ev.tipo]}`}>
+                          {diff === 0 ? 'HOY' : `${diff}d`}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{ev.titulo}</p>
+                          <p className="text-xs text-slate-400">{formatFecha(ev.fecha)}</p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })()}
+          </div>
+
+          {/* Lista completa del mes */}
+          {(eventosMes.length > 0 || cumpleaniosMes.length > 0) && (
+            <div className="card p-5">
+              <p className="section-title mb-4 flex items-center gap-2">
+                <Calendar className="w-4 h-4" /> Eventos de {MESES_NOMBRE[viewMes]}
+              </p>
+              <div className="space-y-2">
+                {[
+                  ...eventosMes.map(ev => ({
+                    fecha: ev.fecha,
+                    content: (
+                      <div key={ev.id} className="flex items-start gap-3">
+                        <div className="text-center shrink-0 w-10">
+                          <p className="text-base font-bold text-slate-800 dark:text-slate-100">
+                            {parseLocalDate(ev.fecha).getDate()}
+                          </p>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{ev.titulo}</p>
+                          {ev.descripcion && <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{ev.descripcion}</p>}
+                        </div>
+                        <span className={`badge text-xs shrink-0 ${EVENTO_TIPO_COLOR[ev.tipo]}`}>
+                          {EVENTO_TIPO_LABEL[ev.tipo]}
+                        </span>
+                        {isAdmin && ev.id !== ANIVERSARIO_ID && (
+                          <div className="flex gap-1 shrink-0">
+                            <button onClick={() => openEdit(ev)} className="p-1.5 rounded hover:bg-sky-100 dark:hover:bg-sky-900/20 text-slate-400 hover:text-sky-600 transition-colors">
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => setConfirmDelete(ev.id)} className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 transition-colors">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ),
+                  })),
+                ].sort((a, b) => a.fecha.localeCompare(b.fecha)).map((item, i) => (
+                  <div key={i} className="p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                    {item.content}
+                  </div>
+                ))}
+
+                {cumpleaniosMes.map(e => {
+                  const d = String(parseLocalDate(e.fechaNacimiento).getDate()).padStart(2, '0')
+                  return (
+                    <div key={`c${e.id}`} className="p-3 rounded-xl border border-pink-100 dark:border-pink-900/20 bg-pink-50/50 dark:bg-pink-900/10">
+                      <div className="flex items-center gap-3">
+                        <div className="text-center shrink-0 w-10">
+                          <p className="text-base font-bold text-pink-600 dark:text-pink-400">{parseInt(d)}</p>
+                        </div>
+                        <div className="w-7 h-7 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center text-pink-600 text-xs font-bold overflow-hidden shrink-0">
+                          {e.foto ? <img src={e.foto} alt="" className="w-7 h-7 object-cover" /> : `${e.nombre.charAt(0)}${e.apellido.charAt(0)}`}
+                        </div>
+                        <p className="text-sm font-medium text-slate-700 dark:text-slate-200 flex-1">
+                          🎂 Cumpleaños de {e.nombre} {e.apellido}
+                        </p>
+                        <span className="badge text-xs bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300">Cumpleaños</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Sidebar ──────────────────────────────────────────────────────── */}
+        <div className="space-y-4">
           {/* Panel de día seleccionado */}
           {selectedDay && (
             <div className="card p-5 animate-scale-in">
@@ -420,114 +528,6 @@ export default function EventosPage() {
               })()}
             </div>
           )}
-
-          {/* Lista completa del mes */}
-          {(eventosMes.length > 0 || cumpleaniosMes.length > 0) && (
-            <div className="card p-5">
-              <p className="section-title mb-4 flex items-center gap-2">
-                <Calendar className="w-4 h-4" /> Eventos de {MESES_NOMBRE[viewMes]}
-              </p>
-              <div className="space-y-2">
-                {[
-                  ...eventosMes.map(ev => ({
-                    fecha: ev.fecha,
-                    content: (
-                      <div key={ev.id} className="flex items-start gap-3">
-                        <div className="text-center shrink-0 w-10">
-                          <p className="text-base font-bold text-slate-800 dark:text-slate-100">
-                            {parseLocalDate(ev.fecha).getDate()}
-                          </p>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{ev.titulo}</p>
-                          {ev.descripcion && <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{ev.descripcion}</p>}
-                        </div>
-                        <span className={`badge text-xs shrink-0 ${EVENTO_TIPO_COLOR[ev.tipo]}`}>
-                          {EVENTO_TIPO_LABEL[ev.tipo]}
-                        </span>
-                        {isAdmin && ev.id !== ANIVERSARIO_ID && (
-                          <div className="flex gap-1 shrink-0">
-                            <button onClick={() => openEdit(ev)} className="p-1.5 rounded hover:bg-sky-100 dark:hover:bg-sky-900/20 text-slate-400 hover:text-sky-600 transition-colors">
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                            <button onClick={() => setConfirmDelete(ev.id)} className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 transition-colors">
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ),
-                  })),
-                ].sort((a, b) => a.fecha.localeCompare(b.fecha)).map((item, i) => (
-                  <div key={i} className="p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                    {item.content}
-                  </div>
-                ))}
-
-                {cumpleaniosMes.map(e => {
-                  const d = String(parseLocalDate(e.fechaNacimiento).getDate()).padStart(2, '0')
-                  return (
-                    <div key={`c${e.id}`} className="p-3 rounded-xl border border-pink-100 dark:border-pink-900/20 bg-pink-50/50 dark:bg-pink-900/10">
-                      <div className="flex items-center gap-3">
-                        <div className="text-center shrink-0 w-10">
-                          <p className="text-base font-bold text-pink-600 dark:text-pink-400">{parseInt(d)}</p>
-                        </div>
-                        <div className="w-7 h-7 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center text-pink-600 text-xs font-bold overflow-hidden shrink-0">
-                          {e.foto ? <img src={e.foto} alt="" className="w-7 h-7 object-cover" /> : `${e.nombre.charAt(0)}${e.apellido.charAt(0)}`}
-                        </div>
-                        <p className="text-sm font-medium text-slate-700 dark:text-slate-200 flex-1">
-                          🎂 Cumpleaños de {e.nombre} {e.apellido}
-                        </p>
-                        <span className="badge text-xs bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300">Cumpleaños</span>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* ── Sidebar ──────────────────────────────────────────────────────── */}
-        <div className="space-y-4">
-          {/* Próximos eventos (30 días) */}
-          <div className="card p-5">
-            <p className="section-title text-base mb-4 flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-brand-600 dark:text-brand-400" /> Próximos 30 días
-            </p>
-            {(() => {
-              const desde = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate())
-              const hasta = new Date(desde.getTime() + 30 * 24 * 60 * 60 * 1000)
-              const anivActual = makeAniversario(hoy.getFullYear())
-              const proximos = [...eventos, anivActual].filter(ev => {
-                const f = parseLocalDate(ev.fecha)
-                return f >= desde && f <= hasta
-              }).sort((a, b) => a.fecha.localeCompare(b.fecha))
-
-              if (proximos.length === 0) return (
-                <p className="text-slate-400 text-sm text-center py-4">Sin eventos en los próximos 30 días</p>
-              )
-              return (
-                <div className="space-y-3">
-                  {proximos.slice(0, 8).map(ev => {
-                    const f = parseLocalDate(ev.fecha)
-                    const diff = Math.round((f.getTime() - desde.getTime()) / (1000 * 60 * 60 * 24))
-                    return (
-                      <div key={ev.id} className="flex items-start gap-2.5">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold ${EVENTO_TIPO_COLOR[ev.tipo]}`}>
-                          {diff === 0 ? 'HOY' : `${diff}d`}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{ev.titulo}</p>
-                          <p className="text-xs text-slate-400">{formatFecha(ev.fecha)}</p>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )
-            })()}
-          </div>
 
           {/* Cumpleaños del mes */}
           <div className="card p-5">

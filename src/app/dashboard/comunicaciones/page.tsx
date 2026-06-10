@@ -104,11 +104,11 @@ export default function ComunicacionesPage() {
     ? eventos.filter(e => !catFilter || e.tipo === catFilter)
     : []
 
-  // Lista unificada ordenada por fecha desc
+  // Lista unificada ordenada por fecha asc (más próximo primero)
   const displayItems: DisplayItem[] = [
     ...filteredNovedades.map(n => ({ kind: 'novedad' as const, date: n.fechaPublicacion, item: n })),
     ...filteredEventos.map(e => ({ kind: 'evento' as const, date: e.fecha, item: e })),
-  ].sort((a, b) => b.date.localeCompare(a.date))
+  ].sort((a, b) => a.date.localeCompare(b.date))
 
   function handlePublicar() {
     if (!newForm.titulo.trim() || !newForm.contenido.trim()) return
