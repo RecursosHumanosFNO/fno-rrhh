@@ -99,9 +99,10 @@ export default function ComunicacionesPage() {
     .sort((a, b) => b.fechaPublicacion.localeCompare(a.fechaPublicacion))
 
   // Los eventos del calendario se muestran cuando el filtro es "" (Todas) o coincide con su tipo
+  const hoy = new Date().toISOString().slice(0, 10)
   const shouldIncludeEventos = !catFilter || EVENTO_TIPOS_SET.has(catFilter)
   const filteredEventos = shouldIncludeEventos
-    ? eventos.filter(e => !catFilter || e.tipo === catFilter)
+    ? eventos.filter(e => e.fecha >= hoy && (!catFilter || e.tipo === catFilter))
     : []
 
   // Lista unificada ordenada por fecha asc (más próximo primero)
