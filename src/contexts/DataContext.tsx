@@ -695,14 +695,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     if (notifyChannels.includes('app')) {
       addNotification({ texto: `Nuevo evento: ${e.titulo} — ${e.fecha}`, tipo: 'novedad' })
     }
-    if (supabase) supabase.from('fno_eventos').insert(mapEventoToSupabase(nuevo)).then(({ error }) => {
-      if (error) {
-        // Retry sin columnas nuevas si la migración SQL no se corrió todavía
-        supabase.from('fno_eventos').insert(mapEventoToSupabase(nuevo, true)).then(({ error: e2 }) => {
-          if (e2) console.error('[supabase] insert fno_eventos:', e2)
-        })
-      }
-    })
+    if (supabase) {
+      const sb = supabase
+      sb.from('fno_eventos').insert(mapEventoToSupabase(nuevo)).then(({ error }) => {
+        if (error) {
+          // Retry sin columnas nuevas si la migración SQL no se corrió todavía
+          sb.from('fno_eventos').insert(mapEventoToSupabase(nuevo, true)).then(({ error: e2 }) => {
+            if (e2) console.error('[supabase] insert fno_eventos:', e2)
+          })
+        }
+      })
+    }
     if (notifyChannels.includes('email')) {
       sendEmail('novedad_publicada', { titulo: e.titulo, contenido: e.descripcion ?? '', autor: 'RRHH', imagen: e.imagen ?? '' })
     }
@@ -716,9 +719,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       // Solo persisten los eventos custom (los fijos viven en el código)
       if (supabase && !EVENTOS_FIJOS_IDS.has(id)) {
         const full = updated.find(e => e.id === id)
-        if (full) supabase.from('fno_eventos').upsert(mapEventoToSupabase(full)).then(({ error }) => {
-          if (error) supabase.from('fno_eventos').upsert(mapEventoToSupabase(full, true)).then()
-        })
+        if (full) {
+          const sb = supabase
+          sb.from('fno_eventos').upsert(mapEventoToSupabase(full)).then(({ error }) => {
+            if (error) sb.from('fno_eventos').upsert(mapEventoToSupabase(full, true)).then()
+          })
+        }
       }
       return updated
     })
