@@ -699,9 +699,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       const sb = supabase
       sb.from('fno_eventos').insert(mapEventoToSupabase(nuevo)).then(({ error }) => {
         if (error) {
-          // Retry sin columnas nuevas si la migración SQL no se corrió todavía
+          console.warn('[supabase] insert fno_eventos (full):', error.message, error.code)
+          // Retry sin columnas nuevas (por si la migración SQL todavía no se corrió)
           sb.from('fno_eventos').insert(mapEventoToSupabase(nuevo, true)).then(({ error: e2 }) => {
-            if (e2) console.error('[supabase] insert fno_eventos:', e2)
+            if (e2) console.error('[supabase] insert fno_eventos (base):', e2.message, e2.code)
           })
         }
       })

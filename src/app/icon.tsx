@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og'
 
+export const runtime = 'edge'
 export const size = { width: 400, height: 400 }
 export const contentType = 'image/png'
 
