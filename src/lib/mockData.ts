@@ -14,6 +14,7 @@ export const SECTORES = [
   'Área de Deportes',
   'Buffet',
   'Hidroponía',
+  'Auxiliares',
 ]
 
 // ─── Lista plana de puestos (para filtros y comunicaciones) ──────────────────
@@ -137,6 +138,10 @@ export const CARGOS_POR_SECTOR: Record<string, string[]> = {
     'Técnico/a en Hidroponía',
     'Operario/a',
     'Coordinador/a de Huerta',
+  ],
+  'Auxiliares': [
+    'Coordinador/a Auxiliares',
+    'Auxiliar de Servicio',
   ],
 }
 
