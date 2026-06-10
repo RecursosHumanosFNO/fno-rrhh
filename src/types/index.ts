@@ -169,6 +169,7 @@ export interface Novedad {
   fechaPublicacion: string
   autor: string
   importante: boolean
+  fijado?: boolean
   imagen?: string
   adjuntoUrl?: string
   adjuntoNombre?: string

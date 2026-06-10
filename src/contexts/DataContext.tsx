@@ -34,7 +34,7 @@ interface DataContextType {
   editSolicitud: (id: string, estado: 'aprobado' | 'rechazado', comment: string) => void
   cancelSolicitud: (id: string) => void
   // Novedades
-  addNovedad: (n: Omit<Novedad, 'id'>, notifyEmail?: boolean) => void
+  addNovedad: (n: Omit<Novedad, 'id'>, notifyChannels?: ('app' | 'email')[]) => void
   updateNovedad: (id: string, data: Partial<Omit<Novedad, 'id'>>) => void
   deleteNovedad: (id: string) => void
   // Eventos
@@ -182,6 +182,7 @@ function mapSupabaseToNovedad(row: Record<string, unknown>): Novedad {
     fechaPublicacion: row.fecha_publicacion as string,
     autor: (row.autor as string) ?? '',
     importante: (row.importante as boolean) ?? false,
+    fijado: (row.fijado as boolean) ?? false,
     imagen: (row.imagen as string) || undefined,
     adjuntoUrl: (row.adjunto_url as string) || undefined,
     adjuntoNombre: (row.adjunto_nombre as string) || undefined,
@@ -191,7 +192,8 @@ function mapNovedadToSupabase(n: Novedad) {
   return {
     id: n.id, titulo: n.titulo, contenido: n.contenido,
     categoria: n.categoria, fecha_publicacion: n.fechaPublicacion,
-    autor: n.autor, importante: n.importante, imagen: n.imagen ?? '',
+    autor: n.autor, importante: n.importante, fijado: n.fijado ?? false,
+    imagen: n.imagen ?? '',
     adjunto_url: n.adjuntoUrl ?? null, adjunto_nombre: n.adjuntoNombre ?? null,
   }
 }
@@ -646,14 +648,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, [solicitudes, addNotification])
 
   // ── Novedades ──────────────────────────────────────────────────────────────
-  const addNovedad = useCallback((n: Omit<Novedad, 'id'>, notifyEmail = false) => {
+  const addNovedad = useCallback((n: Omit<Novedad, 'id'>, notifyChannels: ('app' | 'email')[] = []) => {
     const nueva = { ...n, id: uid() }
     setNovedades(prev => [nueva, ...prev])
-    addNotification({ texto: `Nueva novedad publicada: ${n.titulo}`, tipo: 'novedad' })
+    if (notifyChannels.includes('app')) {
+      addNotification({ texto: `Nueva novedad publicada: ${n.titulo}`, tipo: 'novedad' })
+    }
     if (supabase) supabase.from('fno_novedades').insert(mapNovedadToSupabase(nueva)).then(({ error }) => {
       if (error) console.error('[supabase] insert fno_novedades:', error)
     })
-    if (notifyEmail) {
+    if (notifyChannels.includes('email')) {
       sendEmail('novedad_publicada', { titulo: n.titulo, contenido: n.contenido, autor: n.autor, imagen: n.imagen ?? '' })
     }
   }, [addNotification])
