@@ -8,7 +8,7 @@ import {
   NOVEDAD_CATEGORIA_COLOR, NOVEDAD_CATEGORIA_LABEL, NOVEDAD_CATEGORIAS,
   EVENTO_TIPO_LABEL, EVENTO_TIPO_COLOR, formatFecha,
 } from '@/lib/utils'
-import type { NovedadCategoria, Novedad, Evento } from '@/types'
+import type { NovedadCategoria, Novedad, Evento, EventoTipo } from '@/types'
 
 // Categorías que corresponden a tipos de evento del calendario
 const EVENTO_TIPOS_SET = new Set([
@@ -40,16 +40,25 @@ function catIcon(cat: NovedadCategoria): React.ElementType {
 
 type NotifyChannel = 'app' | 'email'
 
+const TIPOS_EVENTO: EventoTipo[] = [
+  'jornada', 'acto', 'capacitacion', 'reunion', 'receso',
+  'proyecto', 'institucional', 'reunion_padres', 'examen',
+  'inscripciones', 'salida', 'religioso', 'otro',
+]
+
 const FORM_INICIAL = {
   titulo: '', contenido: '', categoria: 'novedad' as NovedadCategoria,
   importante: false, fijado: false,
   notifyChannels: [] as NotifyChannel[],
   imagen: '', adjuntoUrl: '', adjuntoNombre: '',
+  addToCalendario: false,
+  calendarioFecha: '',
+  calendarioTipo: 'jornada' as EventoTipo,
 }
 
 export default function ComunicacionesPage() {
   const { user } = useAuth()
-  const { novedades, eventos, addNovedad, updateNovedad, deleteNovedad } = useData()
+  const { novedades, eventos, addNovedad, updateNovedad, deleteNovedad, addEvento } = useData()
   const isAdmin = user?.role === 'admin' || user?.role === 'comunicaciones'
 
   const [catFilter, setCatFilter] = useState<NovedadCategoria | ''>('')
@@ -158,6 +167,16 @@ export default function ComunicacionesPage() {
         adjuntoUrl: newForm.adjuntoUrl || undefined,
         adjuntoNombre: newForm.adjuntoNombre || undefined,
       }, newForm.notifyChannels)
+      if (newForm.addToCalendario && newForm.calendarioFecha) {
+        addEvento({
+          titulo: newForm.titulo,
+          fecha: newForm.calendarioFecha,
+          tipo: newForm.calendarioTipo,
+          descripcion: newForm.contenido,
+          importante: newForm.importante,
+          fijado: newForm.fijado,
+        }, newForm.notifyChannels)
+      }
     }
     setShowNueva(false)
     setNewForm(FORM_INICIAL)
@@ -170,6 +189,7 @@ export default function ComunicacionesPage() {
       importante: n.importante, fijado: n.fijado ?? false,
       notifyChannels: [],
       imagen: n.imagen ?? '', adjuntoUrl: n.adjuntoUrl ?? '', adjuntoNombre: n.adjuntoNombre ?? '',
+      addToCalendario: false, calendarioFecha: '', calendarioTipo: 'jornada',
     })
     setShowNueva(true)
   }
@@ -505,9 +525,45 @@ export default function ComunicacionesPage() {
                 </div>
               )}
 
+              {/* Cross-post al calendario (solo al crear) */}
+              {!editId && (
+                <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                  <label className="flex items-center gap-3 cursor-pointer p-3 bg-emerald-50 dark:bg-emerald-900/20 border-b border-slate-200 dark:border-slate-700">
+                    <input type="checkbox" checked={newForm.addToCalendario}
+                      onChange={e => setNewForm(f => ({ ...f, addToCalendario: e.target.checked }))}
+                      className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-400" />
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                      <div>
+                        <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Agregar al calendario institucional</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">También aparecerá en Eventos y Cumpleaños</p>
+                      </div>
+                    </div>
+                  </label>
+                  {newForm.addToCalendario && (
+                    <div className="p-3 grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="form-label">Fecha del evento *</label>
+                        <input type="date" className="form-input" value={newForm.calendarioFecha}
+                          onChange={e => setNewForm(f => ({ ...f, calendarioFecha: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label className="form-label">Tipo de evento</label>
+                        <select className="form-select" value={newForm.calendarioTipo}
+                          onChange={e => setNewForm(f => ({ ...f, calendarioTipo: e.target.value as EventoTipo }))}>
+                          {TIPOS_EVENTO.map(t => <option key={t} value={t}>{EVENTO_TIPO_LABEL[t]}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="flex gap-2 justify-end">
                 <button onClick={handleCerrarModal} className="btn-secondary">Cancelar</button>
-                <button onClick={handlePublicar} disabled={!newForm.titulo.trim() || !newForm.contenido.trim()} className="btn-primary disabled:opacity-50">
+                <button onClick={handlePublicar}
+                  disabled={!newForm.titulo.trim() || !newForm.contenido.trim() || (newForm.addToCalendario && !newForm.calendarioFecha)}
+                  className="btn-primary disabled:opacity-50">
                   <Save className="w-4 h-4" />
                   {editId ? 'Guardar cambios' : 'Publicar'}
                 </button>

@@ -5,12 +5,18 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { supabase } from '@/lib/supabase'
 import { parseLocalDate, EVENTO_TIPO_LABEL, EVENTO_TIPO_COLOR, EVENTO_TIPO_DOT, formatFecha } from '@/lib/utils'
-import type { EventoTipo, Evento } from '@/types'
+import type { EventoTipo, Evento, NovedadCategoria } from '@/types'
 import {
   Calendar, PartyPopper, Plus, ChevronLeft, ChevronRight,
   Edit2, Trash2, X, Save, Image as ImageIcon, Loader2,
-  Paperclip, Download,
+  Paperclip, Download, Pin, Bell, Mail, Lock, Users, Megaphone,
 } from 'lucide-react'
+
+type NotifyChannel = 'app' | 'email'
+type EventoForm = Omit<Evento, 'id'> & {
+  notifyChannels: NotifyChannel[]
+  addToComunicaciones: boolean
+}
 
 const TIPOS_EVENTO: EventoTipo[] = ['feriado', 'jornada', 'acto', 'capacitacion', 'reunion', 'receso', 'proyecto', 'institucional', 'reunion_padres', 'examen', 'inscripciones', 'salida', 'religioso', 'otro']
 
@@ -53,13 +59,17 @@ const MESES_NOMBRE = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ]
 
-function emptyForm(): Omit<Evento, 'id'> {
-  return { titulo: '', fecha: '', tipo: 'jornada', descripcion: '' }
+function emptyForm(): EventoForm {
+  return {
+    titulo: '', fecha: '', tipo: 'jornada', descripcion: '',
+    importante: false, fijado: false, destinatarios: [],
+    notifyChannels: [], addToComunicaciones: false,
+  }
 }
 
 export default function EventosPage() {
-  const { user } = useAuth()
-  const { empleados, eventos, addEvento, updateEvento, deleteEvento } = useData()
+  const { user, empleado } = useAuth()
+  const { empleados, eventos, addEvento, updateEvento, deleteEvento, addNovedad } = useData()
   const isAdmin = user?.role === 'admin' || user?.role === 'comunicaciones'
 
   const hoy = new Date()
@@ -67,7 +77,8 @@ export default function EventosPage() {
   const [viewMes, setViewMes] = useState(hoy.getMonth()) // 0-based
 
   const [modal, setModal] = useState<{ mode: 'add' | 'edit'; evento?: Evento; fechaDefault?: string } | null>(null)
-  const [form, setForm] = useState<Omit<Evento, 'id'>>(emptyForm())
+  const [form, setForm] = useState<EventoForm>(emptyForm())
+  const [destSearch, setDestSearch] = useState('')
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [uploadingImg, setUploadingImg] = useState(false)
@@ -112,6 +123,15 @@ export default function EventosPage() {
     }
   }
 
+  // ── Eventos visibles según destinatarios ─────────────────────────────────
+  const eventosVisibles = useMemo(() => {
+    return eventos.filter(ev => {
+      if (!ev.destinatarios || ev.destinatarios.length === 0) return true
+      if (isAdmin) return true
+      return ev.destinatarios.includes(empleado?.id ?? '')
+    })
+  }, [eventos, isAdmin, empleado?.id])
+
   // ── Cumpleaños del mes actual ─────────────────────────────────────────────
   const cumpleaniosMes = useMemo(() => empleados.filter(e => {
     if (!e.fechaNacimiento) return false
@@ -128,19 +148,19 @@ export default function EventosPage() {
 
   // ── Eventos del mes visible (incluyendo aniversario si es junio) ──────────
   const eventosMes = useMemo(() => {
-    const base = eventos.filter(ev => {
+    const base = eventosVisibles.filter(ev => {
       const f = parseLocalDate(ev.fecha)
       return f.getFullYear() === viewAnio && f.getMonth() === viewMes
     })
     return viewMes === 5 ? [...base, aniversarioPortal] : base
-  }, [eventos, viewAnio, viewMes, aniversarioPortal])
+  }, [eventosVisibles, viewAnio, viewMes, aniversarioPortal])
 
   // ── Eventos del día seleccionado ──────────────────────────────────────────
   const eventosDia = useMemo(() => {
     if (!selectedDay) return []
-    const base = eventos.filter(ev => ev.fecha === selectedDay)
+    const base = eventosVisibles.filter(ev => ev.fecha === selectedDay)
     return selectedDay === `${viewAnio}-06-09` ? [...base, aniversarioPortal] : base
-  }, [eventos, selectedDay, viewAnio, aniversarioPortal])
+  }, [eventosVisibles, selectedDay, viewAnio, aniversarioPortal])
 
   // ── Navegar meses ─────────────────────────────────────────────────────────
   function prevMes() {
@@ -157,19 +177,58 @@ export default function EventosPage() {
   // ── Abrir modal ───────────────────────────────────────────────────────────
   function openAdd(fechaDefault?: string) {
     setForm({ ...emptyForm(), fecha: fechaDefault ?? '' })
+    setDestSearch('')
     setModal({ mode: 'add', fechaDefault })
   }
   function openEdit(ev: Evento) {
-    setForm({ titulo: ev.titulo, fecha: ev.fecha, tipo: ev.tipo, descripcion: ev.descripcion ?? '', imagen: ev.imagen, adjuntoUrl: ev.adjuntoUrl, adjuntoNombre: ev.adjuntoNombre })
+    setForm({
+      titulo: ev.titulo, fecha: ev.fecha, tipo: ev.tipo,
+      descripcion: ev.descripcion ?? '', imagen: ev.imagen,
+      adjuntoUrl: ev.adjuntoUrl, adjuntoNombre: ev.adjuntoNombre,
+      importante: ev.importante ?? false, fijado: ev.fijado ?? false,
+      destinatarios: ev.destinatarios ?? [],
+      notifyChannels: [], addToComunicaciones: false,
+    })
+    setDestSearch('')
     setModal({ mode: 'edit', evento: ev })
+  }
+
+  function toggleDest(id: string) {
+    setForm(f => ({
+      ...f,
+      destinatarios: (f.destinatarios ?? []).includes(id)
+        ? (f.destinatarios ?? []).filter(d => d !== id)
+        : [...(f.destinatarios ?? []), id],
+    }))
+  }
+
+  function toggleNotify(ch: NotifyChannel) {
+    setForm(f => ({
+      ...f,
+      notifyChannels: f.notifyChannels.includes(ch)
+        ? f.notifyChannels.filter(c => c !== ch)
+        : [...f.notifyChannels, ch],
+    }))
   }
 
   function handleSave() {
     if (!form.titulo.trim() || !form.fecha) return
+    const { notifyChannels, addToComunicaciones, ...eventoData } = form
     if (modal?.mode === 'edit' && modal.evento) {
-      updateEvento(modal.evento.id, form)
+      updateEvento(modal.evento.id, eventoData)
     } else {
-      addEvento(form)
+      addEvento(eventoData, notifyChannels)
+    }
+    if (addToComunicaciones) {
+      addNovedad({
+        titulo: form.titulo,
+        contenido: form.descripcion ?? '',
+        categoria: 'evento' as NovedadCategoria,
+        fechaPublicacion: new Date().toISOString().slice(0, 10),
+        autor: 'RRHH',
+        importante: form.importante ?? false,
+        fijado: form.fijado ?? false,
+      }, notifyChannels)
     }
     setModal(null)
   }
@@ -344,7 +403,7 @@ export default function EventosPage() {
               const desde = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate())
               const hasta = new Date(desde.getTime() + 30 * 24 * 60 * 60 * 1000)
               const anivActual = makeAniversario(hoy.getFullYear())
-              const proximos = [...eventos, anivActual].filter(ev => {
+              const proximos = [...eventosVisibles, anivActual].filter(ev => {
                 const f = parseLocalDate(ev.fecha)
                 return f >= desde && f <= hasta
               }).sort((a, b) => a.fecha.localeCompare(b.fecha))
@@ -563,67 +622,51 @@ export default function EventosPage() {
       {/* ── Modal agregar/editar evento ──────────────────────────────────────── */}
       {modal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setModal(null)}>
-          <div className="card w-full max-w-md animate-scale-in" onClick={e => e.stopPropagation()}>
-            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <div className="card w-full max-w-lg animate-scale-in max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between sticky top-0 bg-[#eef8fc] dark:bg-slate-900 z-10">
               <p className="section-title">
                 {modal.mode === 'edit' ? 'Editar evento' : 'Nuevo evento'}
               </p>
               <button onClick={() => setModal(null)}><X className="w-5 h-5 text-slate-400" /></button>
             </div>
             <div className="p-5 space-y-4">
+              {/* Título */}
               <div>
                 <label className="form-label">Título *</label>
-                <input
-                  className="form-input"
-                  placeholder="Ej: Acto por el Día de la Bandera"
-                  value={form.titulo}
-                  onChange={e => setForm(f => ({ ...f, titulo: e.target.value }))}
-                  autoFocus
-                />
+                <input className="form-input" placeholder="Ej: Acto por el Día de la Bandera"
+                  value={form.titulo} onChange={e => setForm(f => ({ ...f, titulo: e.target.value }))} autoFocus />
               </div>
+              {/* Fecha + Tipo */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="form-label">Fecha *</label>
-                  <input
-                    className="form-input"
-                    type="date"
-                    value={form.fecha}
-                    onChange={e => setForm(f => ({ ...f, fecha: e.target.value }))}
-                  />
+                  <input className="form-input" type="date" value={form.fecha}
+                    onChange={e => setForm(f => ({ ...f, fecha: e.target.value }))} />
                 </div>
                 <div>
                   <label className="form-label">Tipo *</label>
-                  <select
-                    className="form-select"
-                    value={form.tipo}
-                    onChange={e => setForm(f => ({ ...f, tipo: e.target.value as EventoTipo }))}
-                  >
-                    {TIPOS_EVENTO.map(t => (
-                      <option key={t} value={t}>{EVENTO_TIPO_LABEL[t]}</option>
-                    ))}
+                  <select className="form-select" value={form.tipo}
+                    onChange={e => setForm(f => ({ ...f, tipo: e.target.value as EventoTipo }))}>
+                    {TIPOS_EVENTO.map(t => <option key={t} value={t}>{EVENTO_TIPO_LABEL[t]}</option>)}
                   </select>
                 </div>
               </div>
+              {/* Descripción */}
               <div>
                 <label className="form-label">Descripción (opcional)</label>
-                <textarea
-                  className="form-input resize-none"
-                  rows={3}
-                  placeholder="Detalles adicionales..."
-                  value={form.descripcion}
-                  onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))}
-                />
+                <textarea className="form-input resize-none" rows={3} placeholder="Detalles adicionales..."
+                  value={form.descripcion} onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))} />
               </div>
-              {/* Imagen / GIF (opcional) */}
+
+              {/* Imagen */}
               <div>
                 <label className="form-label">Imagen o GIF <span className="text-slate-400 font-normal">(opcional)</span></label>
                 {form.imagen ? (
                   <div className="relative inline-block">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={form.imagen} alt="" className="max-h-40 rounded-xl border border-slate-200 dark:border-slate-700" />
                     <button type="button" onClick={() => setForm(f => ({ ...f, imagen: undefined }))}
-                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center shadow" title="Quitar imagen">
-                      <X className="w-3.5 h-3.5" />
-                    </button>
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center shadow"><X className="w-3.5 h-3.5" /></button>
                   </div>
                 ) : (
                   <button type="button" onClick={() => imgRef.current?.click()} disabled={uploadingImg}
@@ -634,16 +677,15 @@ export default function EventosPage() {
                 <input ref={imgRef} type="file" accept="image/*,image/gif" className="hidden"
                   onChange={e => e.target.files?.[0] && handleImageUpload(e.target.files[0])} />
               </div>
-              {/* Archivo adjunto (PDF, Word, etc.) opcional */}
+
+              {/* Adjunto */}
               <div>
                 <label className="form-label">Archivo adjunto <span className="text-slate-400 font-normal">(PDF, Word, Excel... opcional)</span></label>
                 {form.adjuntoUrl ? (
                   <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2">
                     <Paperclip className="w-4 h-4 text-brand-600 dark:text-brand-400 shrink-0" />
                     <span className="text-sm text-slate-700 dark:text-slate-300 truncate flex-1">{form.adjuntoNombre}</span>
-                    <button type="button" onClick={() => setForm(f => ({ ...f, adjuntoUrl: undefined, adjuntoNombre: undefined }))} className="text-slate-400 hover:text-red-500" title="Quitar adjunto">
-                      <X className="w-4 h-4" />
-                    </button>
+                    <button type="button" onClick={() => setForm(f => ({ ...f, adjuntoUrl: undefined, adjuntoNombre: undefined }))} className="text-slate-400 hover:text-red-500"><X className="w-4 h-4" /></button>
                   </div>
                 ) : (
                   <button type="button" onClick={() => fileRef.current?.click()} disabled={uploadingFile}
@@ -654,13 +696,121 @@ export default function EventosPage() {
                 <input ref={fileRef} type="file" className="hidden"
                   onChange={e => e.target.files?.[0] && handleFileUpload(e.target.files[0])} />
               </div>
-              <div className="flex gap-2 justify-end">
+
+              {/* Opciones: importante + fijado */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={form.importante ?? false}
+                    onChange={e => setForm(f => ({ ...f, importante: e.target.checked }))}
+                    className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" />
+                  <span className="text-sm text-slate-600 dark:text-slate-400">Marcar como importante</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={form.fijado ?? false}
+                    onChange={e => setForm(f => ({ ...f, fijado: e.target.checked }))}
+                    className="w-4 h-4 rounded border-slate-300 text-amber-500 focus:ring-amber-400" />
+                  <span className="text-sm text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                    <Pin className="w-3.5 h-3.5 text-amber-500" /> Fijar en Comunicaciones
+                  </span>
+                </label>
+              </div>
+
+              {/* Destinatarios (privado) */}
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <div className="bg-slate-50 dark:bg-slate-800/60 px-4 py-2.5 border-b border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-slate-500" />
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Visibilidad</p>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">Sin selección = visible para todos los empleados</p>
+                </div>
+                <div className="p-3 space-y-2">
+                  {(form.destinatarios ?? []).length > 0 && (
+                    <div className="flex items-center gap-2 mb-1">
+                      <Lock className="w-3.5 h-3.5 text-amber-500" />
+                      <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                        Evento privado — solo {(form.destinatarios ?? []).length} {(form.destinatarios ?? []).length === 1 ? 'persona' : 'personas'}
+                      </span>
+                      <button type="button" onClick={() => setForm(f => ({ ...f, destinatarios: [] }))}
+                        className="ml-auto text-xs text-slate-400 hover:text-red-500 underline">Limpiar</button>
+                    </div>
+                  )}
+                  <input type="text" placeholder="Buscar empleado..." value={destSearch}
+                    onChange={e => setDestSearch(e.target.value)}
+                    className="form-input py-1.5 text-sm" />
+                  <div className="max-h-36 overflow-y-auto space-y-1">
+                    {empleados
+                      .filter(e => e.estado !== 'inactivo')
+                      .filter(e => destSearch === '' || `${e.nombre} ${e.apellido}`.toLowerCase().includes(destSearch.toLowerCase()))
+                      .map(e => (
+                        <label key={e.id} className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer">
+                          <input type="checkbox"
+                            checked={(form.destinatarios ?? []).includes(e.id)}
+                            onChange={() => toggleDest(e.id)}
+                            className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" />
+                          <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold overflow-hidden shrink-0">
+                            {e.foto ? <img src={e.foto} alt="" className="w-6 h-6 object-cover" /> : `${e.nombre[0]}${e.apellido[0]}`}
+                          </div>
+                          <span className="text-sm text-slate-700 dark:text-slate-200">{e.nombre} {e.apellido}</span>
+                          <span className="text-xs text-slate-400 ml-auto">{e.cargo}</span>
+                        </label>
+                      ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Notificaciones */}
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <div className="bg-slate-50 dark:bg-slate-800/60 px-4 py-2.5 border-b border-slate-200 dark:border-slate-700">
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Notificaciones al guardar</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Podés marcar más de una</p>
+                </div>
+                <div className="p-3 space-y-2">
+                  <label className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                    <input type="checkbox" checked={form.notifyChannels.includes('app')}
+                      onChange={() => toggleNotify('app')}
+                      className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" />
+                    <Bell className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+                    <div>
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Notificación en la app</p>
+                      <p className="text-xs text-slate-400">Aparece en el ícono de campana del portal</p>
+                    </div>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                    <input type="checkbox" checked={form.notifyChannels.includes('email')}
+                      onChange={() => toggleNotify('email')}
+                      className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" />
+                    <Mail className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    <div>
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Notificar por email</p>
+                      <p className="text-xs text-slate-400">Envía aviso al correo institucional</p>
+                    </div>
+                  </label>
+                  {form.notifyChannels.length === 0 && (
+                    <p className="text-xs text-slate-400 px-2 italic">Sin aviso — el evento se guarda sin notificar.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Cross-post a Comunicaciones (solo al crear) */}
+              {modal.mode === 'add' && (
+                <label className="flex items-center gap-2 cursor-pointer bg-purple-50 dark:bg-purple-900/20 rounded-xl p-3 border border-purple-100 dark:border-purple-800">
+                  <input type="checkbox" checked={form.addToComunicaciones}
+                    onChange={e => setForm(f => ({ ...f, addToComunicaciones: e.target.checked }))}
+                    className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-400" />
+                  <div className="flex items-center gap-1.5">
+                    <Megaphone className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                    <div>
+                      <p className="text-sm font-medium text-purple-700 dark:text-purple-300">Agregar también a Comunicaciones</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Aparecerá como comunicado en esa sección</p>
+                    </div>
+                  </div>
+                </label>
+              )}
+
+              <div className="flex gap-2 justify-end pt-1">
                 <button onClick={() => setModal(null)} className="btn-secondary">Cancelar</button>
-                <button
-                  onClick={handleSave}
-                  disabled={!form.titulo.trim() || !form.fecha}
-                  className="btn-primary disabled:opacity-50"
-                >
+                <button onClick={handleSave} disabled={!form.titulo.trim() || !form.fecha} className="btn-primary disabled:opacity-50">
                   <Save className="w-4 h-4" />
                   {modal.mode === 'edit' ? 'Guardar cambios' : 'Crear evento'}
                 </button>

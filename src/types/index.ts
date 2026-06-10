@@ -190,6 +190,9 @@ export interface Evento {
   imagen?: string
   adjuntoUrl?: string
   adjuntoNombre?: string
+  importante?: boolean
+  fijado?: boolean
+  destinatarios?: string[] // IDs de empleados; vacío = visible para todos
 }
 
 export interface Ticket {

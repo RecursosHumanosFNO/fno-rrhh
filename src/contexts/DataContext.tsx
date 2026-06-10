@@ -38,7 +38,7 @@ interface DataContextType {
   updateNovedad: (id: string, data: Partial<Omit<Novedad, 'id'>>) => void
   deleteNovedad: (id: string) => void
   // Eventos
-  addEvento: (e: Omit<Evento, 'id'>) => void
+  addEvento: (e: Omit<Evento, 'id'>, notifyChannels?: ('app' | 'email')[]) => void
   updateEvento: (id: string, data: Partial<Omit<Evento, 'id'>>) => void
   deleteEvento: (id: string) => void
   // Recibos
@@ -248,6 +248,9 @@ function mapSupabaseToEvento(row: Record<string, unknown>): Evento {
     imagen: (row.imagen as string) || undefined,
     adjuntoUrl: (row.adjunto_url as string) || undefined,
     adjuntoNombre: (row.adjunto_nombre as string) || undefined,
+    importante: (row.importante as boolean) ?? false,
+    fijado: (row.fijado as boolean) ?? false,
+    destinatarios: (row.destinatarios as string[]) ?? [],
   }
 }
 function mapEventoToSupabase(e: Evento) {
@@ -256,6 +259,9 @@ function mapEventoToSupabase(e: Evento) {
     descripcion: e.descripcion ?? '', empleado_id: e.empleadoId ?? null,
     imagen: e.imagen ?? null,
     adjunto_url: e.adjuntoUrl ?? null, adjunto_nombre: e.adjuntoNombre ?? null,
+    importante: e.importante ?? false,
+    fijado: e.fijado ?? false,
+    destinatarios: e.destinatarios ?? [],
   }
 }
 
@@ -679,13 +685,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   // ── Eventos (CRUD) ─────────────────────────────────────────────────────────
-  const addEvento = useCallback((e: Omit<Evento, 'id'>) => {
+  const addEvento = useCallback((e: Omit<Evento, 'id'>, notifyChannels: ('app' | 'email')[] = []) => {
     const nuevo: Evento = { ...e, id: uid() }
     setEventos(prev => [...prev, nuevo].sort((a, b) => a.fecha.localeCompare(b.fecha)))
+    if (notifyChannels.includes('app')) {
+      addNotification({ texto: `Nuevo evento: ${e.titulo} — ${e.fecha}`, tipo: 'novedad' })
+    }
     if (supabase) supabase.from('fno_eventos').insert(mapEventoToSupabase(nuevo)).then(({ error }) => {
       if (error) console.error('[supabase] insert fno_eventos:', error)
     })
-  }, [])
+    if (notifyChannels.includes('email')) {
+      sendEmail('novedad_publicada', { titulo: e.titulo, contenido: e.descripcion ?? '', autor: 'RRHH', imagen: e.imagen ?? '' })
+    }
+  }, [addNotification])
 
   const updateEvento = useCallback((id: string, data: Partial<Omit<Evento, 'id'>>) => {
     setEventos(prev => {
