@@ -218,7 +218,7 @@ export default function EventosPage() {
     if (!form.titulo.trim() || !form.fecha) return
     const { notifyChannels, addToComunicaciones, ...eventoData } = form
     if (modal?.mode === 'edit' && modal.evento) {
-      updateEvento(modal.evento.id, eventoData)
+      updateEvento(modal.evento.id, eventoData, notifyChannels)
     } else {
       addEvento(eventoData, notifyChannels)
     }

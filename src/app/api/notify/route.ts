@@ -198,10 +198,34 @@ export async function POST(req: NextRequest) {
       })
     }
 
+    /* ── Notificación de evento → destinatarios o todo el equipo ──────────── */
+    else if (type === 'evento_notificacion') {
+      const emails = (data.emails ?? '').split(',').map(e => e.trim()).filter(Boolean)
+      if (emails.length > 0) {
+        const esEdicion = data.esEdicion === '1'
+        await transporter.sendMail({
+          from, to: ADMIN_EMAIL, bcc: emails,
+          subject: `📅 ${esEdicion ? 'Evento actualizado' : 'Nuevo evento'}: ${data.titulo}`,
+          html: base(`
+            <h3 style="color:${BRAND};margin-top:0;">📅 ${esEdicion ? 'Evento actualizado' : 'Nuevo evento en el calendario'}</h3>
+            <div style="background:#f1f5f9;border-radius:8px;padding:16px;margin:20px 0;">
+              <p style="margin:0 0 8px 0;font-weight:700;color:#1e293b;font-size:16px;">${data.titulo}</p>
+              <p style="margin:0 0 8px 0;color:#475569;font-size:13px;">📆 ${data.fecha}</p>
+              ${data.descripcion ? `<p style="margin:0;color:#475569;white-space:pre-wrap;">${data.descripcion}</p>` : ''}
+              ${data.imagen ? `<img src="${data.imagen}" alt="" style="margin-top:12px;max-width:100%;border-radius:8px;display:block;" />` : ''}
+            </div>
+            ${btn('Ver en el calendario', `${PORTAL_URL}/dashboard/eventos`)}
+          `),
+        })
+      }
+    }
+
     /* ── Novedad publicada → todos ─────────────────────────────────────────── */
     else if (type === 'novedad_publicada') {
+      const emails = (data.emails ?? '').split(',').map(e => e.trim()).filter(Boolean)
       await transporter.sendMail({
         from, to: ADMIN_EMAIL,
+        bcc: emails.length > 0 ? emails : undefined,
         subject: `📢 Nueva novedad publicada: ${data.titulo}`,
         html: base(`
           <h3 style="color:${BRAND};margin-top:0;">Nueva novedad publicada</h3>
