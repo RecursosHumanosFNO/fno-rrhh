@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { supabase } from '@/lib/supabase'
 import ImageLightbox from '@/components/ImageLightbox'
+import Linkify from '@/components/Linkify'
 import { parseLocalDate, EVENTO_TIPO_LABEL, EVENTO_TIPO_COLOR, EVENTO_TIPO_DOT, formatFecha } from '@/lib/utils'
 import type { EventoTipo, Evento, NovedadCategoria } from '@/types'
 import {
@@ -549,7 +550,7 @@ export default function EventosPage() {
                         )}
                       </div>
                       <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{ev.titulo}</p>
-                      {ev.descripcion && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">{ev.descripcion}</p>}
+                      {ev.descripcion && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed"><Linkify text={ev.descripcion} /></p>}
                       {ev.imagen && (
                         <img
                           src={ev.imagen} alt=""

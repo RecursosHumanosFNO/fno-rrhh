@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { supabase } from '@/lib/supabase'
 import ImageLightbox from '@/components/ImageLightbox'
+import Linkify from '@/components/Linkify'
 import {
   NOVEDAD_CATEGORIA_COLOR, NOVEDAD_CATEGORIA_LABEL, NOVEDAD_CATEGORIAS,
   EVENTO_TIPO_LABEL, EVENTO_TIPO_COLOR, formatFecha,
@@ -282,12 +283,12 @@ export default function ComunicacionesPage() {
                           title="Ver imagen completa"
                         />
                         {e.descripcion && (
-                          <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed flex-1 min-w-0">{e.descripcion}</p>
+                          <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed flex-1 min-w-0"><Linkify text={e.descripcion} /></p>
                         )}
                       </div>
                     ) : (
                       e.descripcion && (
-                        <p className="text-sm text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">{e.descripcion}</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-300 mt-1 leading-relaxed"><Linkify text={e.descripcion} /></p>
                       )
                     )}
                     {e.adjuntoUrl && (
@@ -353,10 +354,10 @@ export default function ComunicacionesPage() {
                           className="rounded-xl border border-slate-200 dark:border-slate-700 w-full sm:w-72 sm:shrink-0 cursor-zoom-in hover:opacity-90 transition-opacity"
                           title="Ver imagen completa"
                         />
-                        <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed flex-1 min-w-0">{n.contenido}</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed flex-1 min-w-0"><Linkify text={n.contenido} /></p>
                       </div>
                     ) : (
-                      <p className="text-sm text-slate-600 dark:text-slate-300 mt-1 leading-relaxed animate-fade-in">{n.contenido}</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-300 mt-1 leading-relaxed animate-fade-in"><Linkify text={n.contenido} /></p>
                     )
                   ) : (
                     <>
