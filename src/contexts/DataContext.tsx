@@ -317,7 +317,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         supabase.from('fno_recibos').select('*'),
         supabase.from('fno_novedades').select('*'),
         supabase.from('fno_tickets').select('*'),
-        supabase.from('fno_notifs').select('*').order('fecha', { ascending: false }),
+        supabase.from('fno_notifs').select('*').order('fecha', { ascending: false }).limit(200),
         supabase.from('fno_eventos').select('*'),
         supabase.from('fno_recibo_firmas').select('*'),
       ])
@@ -376,11 +376,23 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  // Sync al montar + polling cada 30s como fallback
+  // Sync al montar + al volver a la pestaña + fallback lento cada 10 min.
+  // OJO: NO bajar este intervalo — un polling de 30s descargaba toda la base
+  // ~120 veces/hora por pestaña y reventó la cuota de egress de Supabase.
+  // Los cambios en vivo ya llegan por Realtime; esto es solo red de seguridad.
   useEffect(() => {
     syncFromSupabase()
-    const interval = setInterval(syncFromSupabase, 30_000)
-    return () => clearInterval(interval)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') syncFromSupabase()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') syncFromSupabase()
+    }, 600_000)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      clearInterval(interval)
+    }
   }, [syncFromSupabase])
 
   // ── Supabase Realtime — solo se conecta cuando hay sesión activa ─────────────
