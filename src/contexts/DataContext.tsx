@@ -227,12 +227,20 @@ function mapSupabaseToNotif(row: Record<string, unknown>): AppNotification {
     fecha: row.fecha as string,
     tipo: row.tipo as AppNotification['tipo'],
     empleadoId: (row.empleado_id as string) || undefined,
+    soloAdmin: (row.solo_admin as boolean) ?? false,
+    soloEmpleado: (row.solo_empleado as boolean) ?? false,
   }
 }
-function mapNotifToSupabase(n: AppNotification) {
-  return {
+function mapNotifToSupabase(n: AppNotification, baseOnly = false) {
+  const base = {
     id: n.id, texto: n.texto, leida: n.leida, fecha: n.fecha,
     tipo: n.tipo, empleado_id: n.empleadoId ?? '',
+  }
+  if (baseOnly) return base
+  return {
+    ...base,
+    solo_admin: n.soloAdmin ?? false,
+    solo_empleado: n.soloEmpleado ?? false,
   }
 }
 
@@ -478,7 +486,18 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const addNotification = useCallback((n: Omit<AppNotification, 'id' | 'fecha' | 'leida'>) => {
     const notif: AppNotification = { ...n, id: uid(), fecha: new Date().toISOString().slice(0, 10), leida: false }
     setNotifications(prev => [notif, ...prev])
-    if (supabase) supabase.from('fno_notifs').insert(mapNotifToSupabase(notif)).then()
+    if (supabase) {
+      const sb = supabase
+      sb.from('fno_notifs').insert(mapNotifToSupabase(notif)).then(({ error }) => {
+        if (error) {
+          console.warn('[supabase] insert fno_notifs (full):', error.message, error.code)
+          // Retry sin columnas nuevas (por si la migración SQL todavía no se corrió)
+          sb.from('fno_notifs').insert(mapNotifToSupabase(notif, true)).then(({ error: e2 }) => {
+            if (e2) console.error('[supabase] insert fno_notifs (base):', e2.message, e2.code)
+          })
+        }
+      })
+    }
   }, [])
 
   // ── Empleados ──────────────────────────────────────────────────────────────
@@ -713,24 +732,20 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (notifyChannels.includes('email')) {
-      // Leer la lista actual de empleados sin agregar dependencia
-      setEmpleados(prev => {
-        const targets = dest.length > 0
-          ? prev.filter(e => dest.includes(e.id))
-          : prev.filter(e => e.estado === 'activo')
-        const emails = targets.map(e => e.email).filter(Boolean)
-        if (emails.length > 0) {
-          sendEmail('evento_notificacion', {
-            emails: emails.join(','),
-            titulo: ev.titulo, descripcion: ev.descripcion ?? '',
-            fecha: ev.fecha, imagen: ev.imagen ?? '',
-            esEdicion: esEdicion ? '1' : '',
-          })
-        }
-        return prev
-      })
+      const targets = dest.length > 0
+        ? empleados.filter(e => dest.includes(e.id))
+        : empleados.filter(e => e.estado === 'activo')
+      const emails = targets.map(e => e.email).filter(Boolean)
+      if (emails.length > 0) {
+        sendEmail('evento_notificacion', {
+          emails: emails.join(','),
+          titulo: ev.titulo, descripcion: ev.descripcion ?? '',
+          fecha: ev.fecha, imagen: ev.imagen ?? '',
+          esEdicion: esEdicion ? '1' : '',
+        })
+      }
     }
-  }, [addNotification])
+  }, [empleados, addNotification])
 
   const addEvento = useCallback((e: Omit<Evento, 'id'>, notifyChannels: ('app' | 'email')[] = []) => {
     const nuevo: Evento = { ...e, id: uid() }
@@ -751,27 +766,27 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, [notifyEvento])
 
   const updateEvento = useCallback((id: string, data: Partial<Omit<Evento, 'id'>>, notifyChannels: ('app' | 'email')[] = []) => {
-    setEventos(prev => {
-      const updated = prev
-        .map(e => e.id === id ? { ...e, ...data } : e)
-        .sort((a, b) => a.fecha.localeCompare(b.fecha))
-      const full = updated.find(e => e.id === id)
-      if (full) notifyEvento(full, notifyChannels, true)
-      // Solo persisten los eventos custom (los fijos viven en el código)
-      if (supabase && !EVENTOS_FIJOS_IDS.has(id) && full) {
-        const sb = supabase
-        sb.from('fno_eventos').upsert(mapEventoToSupabase(full)).then(({ error }) => {
-          if (error) {
-            console.warn('[supabase] upsert fno_eventos (full):', error.message, error.code)
-            sb.from('fno_eventos').upsert(mapEventoToSupabase(full, true)).then(({ error: e2 }) => {
-              if (e2) console.error('[supabase] upsert fno_eventos (base):', e2.message, e2.code)
-            })
-          }
-        })
-      }
-      return updated
-    })
-  }, [notifyEvento])
+    const existing = eventos.find(e => e.id === id)
+    const full: Evento | undefined = existing ? { ...existing, ...data } : undefined
+    setEventos(prev => prev
+      .map(e => e.id === id ? { ...e, ...data } : e)
+      .sort((a, b) => a.fecha.localeCompare(b.fecha))
+    )
+    if (!full) return
+    notifyEvento(full, notifyChannels, true)
+    // Solo persisten los eventos custom (los fijos viven en el código)
+    if (supabase && !EVENTOS_FIJOS_IDS.has(id)) {
+      const sb = supabase
+      sb.from('fno_eventos').upsert(mapEventoToSupabase(full)).then(({ error }) => {
+        if (error) {
+          console.warn('[supabase] upsert fno_eventos (full):', error.message, error.code)
+          sb.from('fno_eventos').upsert(mapEventoToSupabase(full, true)).then(({ error: e2 }) => {
+            if (e2) console.error('[supabase] upsert fno_eventos (base):', e2.message, e2.code)
+          })
+        }
+      })
+    }
+  }, [eventos, notifyEvento])
 
   const deleteEvento = useCallback((id: string) => {
     setEventos(prev => prev.filter(e => e.id !== id))
