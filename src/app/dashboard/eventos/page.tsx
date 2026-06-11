@@ -530,30 +530,30 @@ export default function EventosPage() {
               ) : (
                 <div className="space-y-2">
                   {eventosDia.map(ev => (
-                    <div key={ev.id} className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-                      <span className={`badge text-xs shrink-0 ${EVENTO_TIPO_COLOR[ev.tipo]}`}>
-                        {EVENTO_TIPO_LABEL[ev.tipo]}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{ev.titulo}</p>
-                        {ev.descripcion && <p className="text-xs text-slate-400 mt-0.5">{ev.descripcion}</p>}
-                        {ev.imagen && <img src={ev.imagen} alt="" className="mt-2 rounded-lg border border-slate-200 dark:border-slate-700 max-h-44 w-auto" />}
-                        {ev.adjuntoUrl && (
-                          <a href={ev.adjuntoUrl} target="_blank" rel="noopener noreferrer" download={ev.adjuntoNombre}
-                            className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-brand-700 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/20 hover:bg-brand-100 dark:hover:bg-brand-900/40 rounded-lg px-2.5 py-1.5 transition-colors w-fit">
-                            <Download className="w-3.5 h-3.5" /> {ev.adjuntoNombre || 'Descargar adjunto'}
-                          </a>
+                    <div key={ev.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <span className={`badge text-xs ${EVENTO_TIPO_COLOR[ev.tipo]}`}>
+                          {EVENTO_TIPO_LABEL[ev.tipo]}
+                        </span>
+                        {isAdmin && ev.id !== ANIVERSARIO_ID && (
+                          <div className="flex gap-1 shrink-0">
+                            <button onClick={() => openEdit(ev)} className="p-1.5 rounded-lg hover:bg-sky-100 dark:hover:bg-sky-900/20 text-slate-400 hover:text-sky-600 transition-colors">
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => setConfirmDelete(ev.id)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 transition-colors">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         )}
                       </div>
-                      {isAdmin && ev.id !== ANIVERSARIO_ID && (
-                        <div className="flex gap-1 shrink-0">
-                          <button onClick={() => openEdit(ev)} className="p-1.5 rounded-lg hover:bg-sky-100 dark:hover:bg-sky-900/20 text-slate-400 hover:text-sky-600 transition-colors">
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={() => setConfirmDelete(ev.id)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 transition-colors">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{ev.titulo}</p>
+                      {ev.descripcion && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">{ev.descripcion}</p>}
+                      {ev.imagen && <img src={ev.imagen} alt="" className="mt-2 rounded-lg border border-slate-200 dark:border-slate-700 w-full max-h-56 object-cover" />}
+                      {ev.adjuntoUrl && (
+                        <a href={ev.adjuntoUrl} target="_blank" rel="noopener noreferrer" download={ev.adjuntoNombre}
+                          className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-brand-700 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/20 hover:bg-brand-100 dark:hover:bg-brand-900/40 rounded-lg px-2.5 py-1.5 transition-colors w-fit">
+                          <Download className="w-3.5 h-3.5" /> {ev.adjuntoNombre || 'Descargar adjunto'}
+                        </a>
                       )}
                     </div>
                   ))}

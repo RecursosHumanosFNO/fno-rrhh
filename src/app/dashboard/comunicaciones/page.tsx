@@ -270,12 +270,18 @@ export default function ComunicacionesPage() {
                       </span>
                     </div>
                     <h3 className="font-semibold text-slate-800 dark:text-slate-100">{e.titulo}</h3>
-                    {e.descripcion && (
-                      <p className="text-sm text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">{e.descripcion}</p>
-                    )}
-                    {e.imagen && (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img src={e.imagen} alt="" className="mt-3 rounded-xl border border-slate-200 dark:border-slate-700 max-h-80 w-auto" />
+                    {e.imagen ? (
+                      <div className="mt-3 flex flex-col sm:flex-row gap-4 items-start">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={e.imagen} alt="" className="rounded-xl border border-slate-200 dark:border-slate-700 w-full sm:w-72 sm:shrink-0" />
+                        {e.descripcion && (
+                          <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed flex-1 min-w-0">{e.descripcion}</p>
+                        )}
+                      </div>
+                    ) : (
+                      e.descripcion && (
+                        <p className="text-sm text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">{e.descripcion}</p>
+                      )
                     )}
                     {e.adjuntoUrl && (
                       <a href={e.adjuntoUrl} target="_blank" rel="noopener noreferrer" download={e.adjuntoNombre}
@@ -330,14 +336,23 @@ export default function ComunicacionesPage() {
                     )}
                   </div>
                   <h3 className="font-semibold text-slate-800 dark:text-slate-100">{n.titulo}</h3>
-                  {isSelected
-                    ? <p className="text-sm text-slate-600 dark:text-slate-300 mt-1 leading-relaxed animate-fade-in">{n.contenido}</p>
-                    : <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{n.contenido}</p>
-                  }
-                  {n.imagen && (
-                    isSelected
-                      ? <img src={n.imagen} alt="" className="mt-3 rounded-xl border border-slate-200 dark:border-slate-700 max-h-80 w-auto animate-fade-in" /> /* eslint-disable-line @next/next/no-img-element */
-                      : <span className="inline-flex items-center gap-1 text-xs text-brand-600 dark:text-brand-400 mt-1.5"><ImageIcon className="w-3.5 h-3.5" /> Incluye imagen</span>
+                  {isSelected ? (
+                    n.imagen ? (
+                      <div className="mt-3 flex flex-col sm:flex-row gap-4 items-start animate-fade-in">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={n.imagen} alt="" className="rounded-xl border border-slate-200 dark:border-slate-700 w-full sm:w-72 sm:shrink-0" />
+                        <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed flex-1 min-w-0">{n.contenido}</p>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-slate-600 dark:text-slate-300 mt-1 leading-relaxed animate-fade-in">{n.contenido}</p>
+                    )
+                  ) : (
+                    <>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{n.contenido}</p>
+                      {n.imagen && (
+                        <span className="inline-flex items-center gap-1 text-xs text-brand-600 dark:text-brand-400 mt-1.5"><ImageIcon className="w-3.5 h-3.5" /> Incluye imagen</span>
+                      )}
+                    </>
                   )}
                   {n.adjuntoUrl && (
                     <a href={n.adjuntoUrl} target="_blank" rel="noopener noreferrer" download={n.adjuntoNombre}
