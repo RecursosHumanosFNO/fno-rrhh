@@ -757,6 +757,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         })
       }
     }
+
+    // Confirmación para el admin: a quién se le envió el aviso
+    const nombresDest = dest.length > 0
+      ? empleados.filter(e => dest.includes(e.id)).map(e => `${e.nombre} ${e.apellido}`).join(', ') || `${dest.length} empleado(s)`
+      : 'todo el equipo'
+    const canales = notifyChannels.map(c => c === 'app' ? 'app' : 'mail').join(' + ')
+    addNotification({
+      texto: `✓ Aviso de "${ev.titulo}" enviado a ${nombresDest} (${canales})`,
+      tipo: 'sistema', soloAdmin: true,
+    })
   }, [empleados, addNotification])
 
   const addEvento = useCallback((e: Omit<Evento, 'id'>, notifyChannels: ('app' | 'email')[] = []) => {
