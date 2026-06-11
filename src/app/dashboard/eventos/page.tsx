@@ -4,6 +4,7 @@ import { useState, useMemo, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { supabase } from '@/lib/supabase'
+import ImageLightbox from '@/components/ImageLightbox'
 import { parseLocalDate, EVENTO_TIPO_LABEL, EVENTO_TIPO_COLOR, EVENTO_TIPO_DOT, formatFecha } from '@/lib/utils'
 import type { EventoTipo, Evento, NovedadCategoria } from '@/types'
 import {
@@ -81,6 +82,7 @@ export default function EventosPage() {
   const [destSearch, setDestSearch] = useState('')
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const [lightbox, setLightbox] = useState<string | null>(null)
   const [uploadingImg, setUploadingImg] = useState(false)
   const [uploadingFile, setUploadingFile] = useState(false)
   const imgRef = useRef<HTMLInputElement>(null)
@@ -548,7 +550,14 @@ export default function EventosPage() {
                       </div>
                       <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{ev.titulo}</p>
                       {ev.descripcion && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">{ev.descripcion}</p>}
-                      {ev.imagen && <img src={ev.imagen} alt="" className="mt-2 rounded-lg border border-slate-200 dark:border-slate-700 w-full max-h-56 object-cover" />}
+                      {ev.imagen && (
+                        <img
+                          src={ev.imagen} alt=""
+                          onClick={() => setLightbox(ev.imagen!)}
+                          className="mt-2 rounded-lg border border-slate-200 dark:border-slate-700 w-full max-h-56 object-cover cursor-zoom-in hover:opacity-90 transition-opacity"
+                          title="Ver imagen completa"
+                        />
+                      )}
                       {ev.adjuntoUrl && (
                         <a href={ev.adjuntoUrl} target="_blank" rel="noopener noreferrer" download={ev.adjuntoNombre}
                           className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-brand-700 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/20 hover:bg-brand-100 dark:hover:bg-brand-900/40 rounded-lg px-2.5 py-1.5 transition-colors w-fit">
@@ -840,6 +849,9 @@ export default function EventosPage() {
           </div>
         </div>
       )}
+
+      {/* Visor de imagen */}
+      {lightbox && <ImageLightbox src={lightbox} onClose={() => setLightbox(null)} />}
     </div>
   )
 }

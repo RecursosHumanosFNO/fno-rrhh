@@ -4,6 +4,7 @@ import { useState, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { supabase } from '@/lib/supabase'
+import ImageLightbox from '@/components/ImageLightbox'
 import {
   NOVEDAD_CATEGORIA_COLOR, NOVEDAD_CATEGORIA_LABEL, NOVEDAD_CATEGORIAS,
   EVENTO_TIPO_LABEL, EVENTO_TIPO_COLOR, formatFecha,
@@ -69,6 +70,7 @@ export default function ComunicacionesPage() {
   const [newForm, setNewForm] = useState(FORM_INICIAL)
   const [uploadingImg, setUploadingImg] = useState(false)
   const [uploadingFile, setUploadingFile] = useState(false)
+  const [lightbox, setLightbox] = useState<string | null>(null)
   const imgRef = useRef<HTMLInputElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -273,7 +275,12 @@ export default function ComunicacionesPage() {
                     {e.imagen ? (
                       <div className="mt-3 flex flex-col sm:flex-row gap-4 items-start">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={e.imagen} alt="" className="rounded-xl border border-slate-200 dark:border-slate-700 w-full sm:w-72 sm:shrink-0" />
+                        <img
+                          src={e.imagen} alt=""
+                          onClick={() => setLightbox(e.imagen!)}
+                          className="rounded-xl border border-slate-200 dark:border-slate-700 w-full sm:w-72 sm:shrink-0 cursor-zoom-in hover:opacity-90 transition-opacity"
+                          title="Ver imagen completa"
+                        />
                         {e.descripcion && (
                           <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed flex-1 min-w-0">{e.descripcion}</p>
                         )}
@@ -340,7 +347,12 @@ export default function ComunicacionesPage() {
                     n.imagen ? (
                       <div className="mt-3 flex flex-col sm:flex-row gap-4 items-start animate-fade-in">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={n.imagen} alt="" className="rounded-xl border border-slate-200 dark:border-slate-700 w-full sm:w-72 sm:shrink-0" />
+                        <img
+                          src={n.imagen} alt=""
+                          onClick={ev => { ev.stopPropagation(); setLightbox(n.imagen!) }}
+                          className="rounded-xl border border-slate-200 dark:border-slate-700 w-full sm:w-72 sm:shrink-0 cursor-zoom-in hover:opacity-90 transition-opacity"
+                          title="Ver imagen completa"
+                        />
                         <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed flex-1 min-w-0">{n.contenido}</p>
                       </div>
                     ) : (
@@ -587,6 +599,9 @@ export default function ComunicacionesPage() {
           </div>
         </div>
       )}
+
+      {/* Visor de imagen */}
+      {lightbox && <ImageLightbox src={lightbox} onClose={() => setLightbox(null)} />}
     </div>
   )
 }
