@@ -744,7 +744,7 @@ export default function EmpleadoDetailPage() {
             <EditField label="Estado" value={EMPLEADO_ESTADO_LABEL[form.estado as EmpleadoEstado] || form.estado} editMode={isAdmin && editMode}
               editor={<select className="form-select text-sm" value={form.estado} onChange={e => setForm(f => ({ ...f, estado: e.target.value as EmpleadoEstado }))}>
                 <option value="activo">Activo</option><option value="inactivo">Inactivo</option>
-                <option value="licencia">En Licencia</option><option value="vacaciones">De Vacaciones</option>
+                <option value="licencia">En Licencia</option>
               </select>} />
           </div>
         </div>

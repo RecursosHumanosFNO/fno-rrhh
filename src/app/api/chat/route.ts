@@ -59,7 +59,8 @@ Reglas:
 - NUNCA inventes secciones, políticas o datos que no te fueron dados.
 - Sé conciso. Usá bullet points cuando sea útil.
 - Para dudas sobre el uso del portal, siempre referí al **Instructivo**.
-- PRIVACIDAD: Nunca compartas ni comentes datos de otros empleados (salarios, recibos, datos personales, situación contractual, etc.). Si alguien pregunta sobre información de un tercero, decile que esa información es confidencial y que no tenés acceso a ella.`
+- PRIVACIDAD: Nunca compartas ni comentes datos de otros empleados (salarios, recibos, datos personales, situación contractual, etc.). Si alguien pregunta sobre información de un tercero, decile que esa información es confidencial y que no tenés acceso a ella.
+- VACACIONES: El portal NO gestiona vacaciones. Si preguntan por vacaciones, respondé que ese tema se coordina directamente con el área de RRHH (no por el portal) y no des detalles de días, políticas ni procedimientos de vacaciones.`
 
     const genAI = new GoogleGenerativeAI(apiKey)
     const model = genAI.getGenerativeModel({

@@ -117,12 +117,12 @@ function GuiaEmpleados() {
         <ol className="list-decimal pl-6 space-y-1.5">
           <li>Entrá a <strong>Solicitudes y Pedidos</strong>.</li>
           <li>Tocá <strong>"Nueva solicitud"</strong>.</li>
-          <li>Elegí el tipo: ausencia, vacaciones, licencia médica, horas extra, etc.</li>
+          <li>Elegí el tipo: ausencia, licencia médica, horas extra, etc.</li>
           <li>Indicá fecha de inicio, fecha de fin si corresponde, y horario si es por horas.</li>
           <li>Escribí una descripción breve del motivo y enviá.</li>
         </ol>
         <p>Vas a poder ver el estado en todo momento (<strong>pendiente / aprobada / rechazada</strong>) con una línea de tiempo del recorrido del pedido. Mientras esté pendiente podés cancelarla.</p>
-        <Note type="info">Los tipos disponibles incluyen: ausencia, llegada tarde, salida anticipada, vacaciones, licencia médica, licencia por duelo, maternidad/paternidad, horas extra, cambio de turno, capacitación, certificado laboral y más.</Note>
+        <Note type="info">Los tipos disponibles incluyen: ausencia, llegada tarde, salida anticipada, licencia médica, licencia por duelo, maternidad/paternidad, horas extra, cambio de turno, capacitación, certificado laboral y más.</Note>
       </Section>
 
       <Section icon={Megaphone} number={6} title="Comunicaciones">
@@ -168,7 +168,7 @@ function GuiaEmpleados() {
         <p>El portal tiene un asistente virtual inteligente que podés usar para consultas rápidas. Lo encontrás en el <strong>botón brillante</strong> ✨ abajo a la derecha de la pantalla.</p>
         <p className="font-medium mt-1">¿Qué puede hacer?</p>
         <ul className="list-disc pl-6 space-y-1.5">
-          <li>Responderte dudas sobre <strong>vacaciones, licencias, contratos, políticas de RRHH</strong>.</li>
+          <li>Responderte dudas sobre <strong>licencias, contratos, políticas de RRHH</strong>.</li>
           <li>Decirte <strong>qué hay en el calendario</strong>: feriados, jornadas, eventos del mes.</li>
           <li>Decirte <strong>cuándo cumple años</strong> alguien del equipo 🎂.</li>
           <li>Explicarte <strong>cómo usar el portal</strong> paso a paso.</li>
@@ -354,7 +354,6 @@ function GuiaAdmin() {
         <ul className="list-disc pl-6 space-y-1.5">
           <li><strong>Activo</strong> → trabajando normalmente.</li>
           <li><strong>Licencia</strong> → de licencia médica u otra.</li>
-          <li><strong>Vacaciones</strong> → de vacaciones.</li>
           <li><strong>Inactivo</strong> → desvinculado (se gestiona con el proceso de desvinculación).</li>
         </ul>
       </Section>

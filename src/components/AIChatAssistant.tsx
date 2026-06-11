@@ -63,7 +63,6 @@ const SUGERENCIAS_POOL = [
   '¿Qué hay en el calendario este mes?',
   '¿Cuándo es el próximo feriado?',
   '¿Cuándo cumple años alguien del equipo?',
-  '¿Cómo pido vacaciones?',
   '¿Cómo descargo mi recibo de sueldo?',
   '¿Cómo actualizo mis datos de perfil?',
   '¿Qué jornadas institucionales hay próximamente?',
@@ -213,7 +212,7 @@ export default function AIChatAssistant() {
                 ¡Hola{empleado ? `, ${empleado.nombre}` : ''}! 👋
               </p>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                Soy tu asistente de RRHH. Podés preguntarme sobre vacaciones, licencias, contratos y más.
+                Soy tu asistente de RRHH. Podés preguntarme sobre licencias, solicitudes, contratos y más.
               </p>
               <div className="mt-4 space-y-2">
                 {suggestions.map(q => (

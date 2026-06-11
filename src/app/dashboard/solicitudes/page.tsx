@@ -24,7 +24,7 @@ const TICKET_TIPO_ICONS: Record<TicketTipo, React.ElementType> = {
 const TIPOS: SolicitudTipo[] = [
   'ausencia', 'llegada_tarde', 'salida_anticipada',
   'licencia_medica', 'licencia_estudio', 'licencia_maternidad_paternidad', 'licencia_duelo',
-  'vacaciones', 'permiso_personal',
+  'permiso_personal',
   'horas_extra', 'cambio_turno', 'guardia_turno_especial', 'tarea_fuera_area',
   'capacitacion',
   'accidente_laboral', 'suspension', 'observacion_comportamiento', 'conflicto_interpersonal',
@@ -34,7 +34,7 @@ const TIPOS: SolicitudTipo[] = [
 // Agrupados para el select del modal (más fácil de leer)
 const TIPO_GRUPOS = [
   { label: 'Asistencia', tipos: ['ausencia', 'llegada_tarde', 'salida_anticipada'] },
-  { label: 'Licencias y Permisos', tipos: ['licencia_medica', 'licencia_estudio', 'licencia_maternidad_paternidad', 'licencia_duelo', 'vacaciones', 'permiso_personal'] },
+  { label: 'Licencias y Permisos', tipos: ['licencia_medica', 'licencia_estudio', 'licencia_maternidad_paternidad', 'licencia_duelo', 'permiso_personal'] },
   { label: 'Jornada Laboral', tipos: ['horas_extra', 'cambio_turno', 'guardia_turno_especial', 'tarea_fuera_area'] },
   { label: 'Formación', tipos: ['capacitacion'] },
   { label: 'Incidentes / RRHH', tipos: ['accidente_laboral', 'suspension', 'observacion_comportamiento', 'conflicto_interpersonal'] },

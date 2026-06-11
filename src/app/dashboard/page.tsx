@@ -167,7 +167,7 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
         <StatCard icon={ClipboardList} label="Solicitudes pendientes" value={pendientes.length}
           sub="Requieren revisión" color="bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400" />
         <StatCard icon={CalendarCheck} label="Fuera de oficina" value={enLicencia}
-          sub="Licencia o vacaciones" color="bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400" />
+          sub="En licencia" color="bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400" />
         <StatCard icon={TrendingUp} label="Sectores activos" value={sectoresActivos}
           sub="Unidades de trabajo" color="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400" />
       </div>

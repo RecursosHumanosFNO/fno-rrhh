@@ -31,7 +31,6 @@ function exportarExcel(empleados: Empleado[]) {
     'Fecha Ingreso', 'Antigüedad', 'Estado', 'Supervisor',
     'Dirección', 'CBU', 'Banco',
     'Emergencia — Nombre', 'Emergencia — Teléfono', 'Emergencia — Relación',
-    'Días Vacaciones', 'Días Usados',
   ]
 
   const rows = [...empleados]
@@ -59,8 +58,6 @@ function exportarExcel(empleados: Empleado[]) {
       e.contactoEmergencia?.nombre || '',
       e.contactoEmergencia?.telefono || '',
       e.contactoEmergencia?.relacion || '',
-      e.diasVacaciones,
-      e.diasVacacionesUsados,
     ])
 
   const ws = XLSX.utils.aoa_to_sheet([headers, ...rows])
@@ -73,7 +70,6 @@ function exportarExcel(empleados: Empleado[]) {
     { wch: 14 }, { wch: 14 }, { wch: 13 }, { wch: 20 },
     { wch: 28 }, { wch: 24 }, { wch: 16 },
     { wch: 24 }, { wch: 18 }, { wch: 20 },
-    { wch: 9  }, { wch: 9  },
   ]
 
   // Fila de encabezado congelada (no se mueve al hacer scroll)
@@ -431,7 +427,6 @@ function EmpleadosContent() {
           <option value="">Todos los estados</option>
           <option value="activo">Activo</option>
           <option value="licencia">En Licencia</option>
-          <option value="vacaciones">De Vacaciones</option>
         </select>
         <button
           onClick={() => setShowAdvanced(v => !v)}
