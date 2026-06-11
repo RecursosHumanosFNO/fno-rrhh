@@ -445,8 +445,8 @@ export default function ComunicacionesPage() {
               <div>
                 <label className="form-label">Contenido *</label>
                 <textarea
-                  className="form-input resize-none"
-                  rows={4}
+                  className="form-input resize-y min-h-[160px]"
+                  rows={7}
                   placeholder="Escribí el contenido del comunicado..."
                   value={newForm.contenido}
                   onChange={e => setNewForm(f => ({ ...f, contenido: e.target.value }))}

@@ -664,7 +664,7 @@ export default function EventosPage() {
               {/* Descripción */}
               <div>
                 <label className="form-label">Descripción (opcional)</label>
-                <textarea className="form-input resize-none" rows={3} placeholder="Detalles adicionales..."
+                <textarea className="form-input resize-y min-h-[160px]" rows={7} placeholder="Detalles adicionales..."
                   value={form.descripcion} onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))} />
               </div>
 
