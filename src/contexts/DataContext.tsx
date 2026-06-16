@@ -5,7 +5,7 @@ import type {
   Empleado, Solicitud, Recibo, Novedad, Ticket, User, Evento,
   AppNotification, PendingRegistration, TicketEstado, UserRole, EmpleadoEstado,
   SolicitudEstado, SolicitudTipo, NovedadCategoria, TicketTipo, ReciboFirma,
-  DesvinculacionInfo,
+  DesvinculacionInfo, RegistroNovedad, RegistroNovedadCategoria,
 } from '@/types'
 import * as initial from '@/lib/mockData'
 import { uid, SOLICITUD_TIPO_LABEL } from '@/lib/utils'
@@ -21,6 +21,7 @@ interface DataContextType {
   users: User[]
   pendingRegistrations: PendingRegistration[]
   notifications: AppNotification[]
+  registrosNovedad: RegistroNovedad[]
   // Empleados
   addEmpleado: (e: Omit<Empleado, 'id'>) => string
   updateEmpleado: (id: string, data: Partial<Empleado>) => void
@@ -62,6 +63,10 @@ interface DataContextType {
   markNotificationRead: (id: string) => void
   markAllRead: () => void
   addNotification: (n: Omit<AppNotification, 'id' | 'fecha' | 'leida'>) => void
+  // Registros de novedad (solo admin)
+  addRegistroNovedad: (r: Omit<RegistroNovedad, 'id' | 'creadoEn'>) => Promise<string>
+  updateRegistroNovedad: (id: string, data: Partial<Omit<RegistroNovedad, 'id' | 'creadoEn'>>) => void
+  deleteRegistroNovedad: (id: string) => void
   // Estado de sync
   synced: boolean
 }
@@ -277,6 +282,44 @@ function mapEventoToSupabase(e: Evento, baseOnly = false) {
   }
 }
 
+// ── Mappers Supabase ↔ RegistroNovedad ───────────────────────────────────────
+function mapSupabaseToRegistroNovedad(row: Record<string, unknown>): RegistroNovedad {
+  return {
+    id: row.id as string,
+    empleadoId: (row.empleado_id as string) || undefined,
+    empleadoNombre: (row.empleado_nombre as string) ?? '',
+    sector: (row.sector as string) ?? '',
+    cargo: (row.cargo as string) ?? '',
+    fecha: (row.fecha as string) ?? '',
+    horaTipo: (row.hora_tipo as RegistroNovedad['horaTipo']) ?? 'sin_hora',
+    hora: (row.hora as string) || undefined,
+    horaDesde: (row.hora_desde as string) || undefined,
+    horaHasta: (row.hora_hasta as string) || undefined,
+    descripcion: (row.descripcion as string) ?? '',
+    categoria: (row.categoria as RegistroNovedadCategoria) ?? 'otro',
+    fotoUrl: (row.foto_url as string) || undefined,
+    creadoEn: (row.creado_en as string) ?? new Date().toISOString(),
+  }
+}
+function mapRegistroNovedadToSupabase(r: RegistroNovedad) {
+  return {
+    id: r.id,
+    empleado_id: r.empleadoId ?? null,
+    empleado_nombre: r.empleadoNombre,
+    sector: r.sector,
+    cargo: r.cargo,
+    fecha: r.fecha,
+    hora_tipo: r.horaTipo,
+    hora: r.hora ?? null,
+    hora_desde: r.horaDesde ?? null,
+    hora_hasta: r.horaHasta ?? null,
+    descripcion: r.descripcion,
+    categoria: r.categoria,
+    foto_url: r.fotoUrl ?? null,
+    creado_en: r.creadoEn,
+  }
+}
+
 // IDs de los eventos institucionales fijos (feriados, actos, jornadas) que viven
 // en el código (mockData) y NO en la base. Sirve para no duplicarlos al sincronizar.
 const EVENTOS_FIJOS_IDS = new Set(initial.eventos.map(e => e.id))
@@ -303,13 +346,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [users, setUsers] = useState<User[]>([])
   const [pendingRegistrations, setPending] = useState<PendingRegistration[]>([])
   const [notifications, setNotifications] = useState<AppNotification[]>([])
+  const [registrosNovedad, setRegistrosNovedad] = useState<RegistroNovedad[]>([])
   const [synced, setSynced] = useState(false) // true cuando el primer sync de Supabase terminó
 
   // ── Sync completo desde Supabase — todas las tablas ────────────────────────
   const syncFromSupabase = useCallback(async () => {
     if (!supabase) return
     try {
-      const [usersRes, pendingRes, empRes, solRes, recRes, novRes, tickRes, notifRes, evtRes, firmasRes] = await Promise.all([
+      const [usersRes, pendingRes, empRes, solRes, recRes, novRes, tickRes, notifRes, evtRes, firmasRes, regNovRes] = await Promise.all([
         supabase.from('fno_users').select('id, email, role, empleado_id'),
         supabase.from('fno_pending').select('*'),
         supabase.from('fno_empleados').select('id, nombre, apellido, dni, fecha_nacimiento, email, telefono, direccion, cuil, contacto_emergencia, sector, cargo, cargos_extra, fecha_ingreso, tipo_contrato, jornada, supervisor, estado, dias_vacaciones, dias_vacaciones_usados, cbu, banco, desvinculacion, historial_desvinculaciones'),
@@ -320,6 +364,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         supabase.from('fno_notifs').select('*').order('fecha', { ascending: false }).limit(200),
         supabase.from('fno_eventos').select('*'),
         supabase.from('fno_recibo_firmas').select('*'),
+        supabase.from('fno_registros_novedad').select('*').order('creado_en', { ascending: false }),
       ])
 
       // Supabase es siempre la fuente de verdad — actualizar aunque el array esté vacío
@@ -368,6 +413,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           id: r.id, reciboId: r.recibo_id, empleadoId: r.empleado_id,
           firmadoEn: r.firmado_en, userAgent: r.user_agent ?? undefined,
         })))
+
+      if (regNovRes.data)
+        setRegistrosNovedad(regNovRes.data.map((r: Record<string, unknown>) => mapSupabaseToRegistroNovedad(r)))
 
     } catch (e) {
       console.error('[sync] Supabase sync error:', e)
@@ -468,6 +516,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             const sinViejo = prev.filter(e => e.id !== ev.id)
             return [...sinViejo, ev].sort((a, b) => a.fecha.localeCompare(b.fecha))
           })
+        })
+        // Registros de novedad (solo admin)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'fno_registros_novedad' }, ({ eventType, new: n, old: o }) => {
+          if (eventType === 'DELETE') setRegistrosNovedad(prev => prev.filter(r => r.id !== (o as { id: string }).id))
+          else setRegistrosNovedad(prev => upsertHead(prev, mapSupabaseToRegistroNovedad(n as Record<string, unknown>)))
         })
         .subscribe()
     }
@@ -1008,6 +1061,35 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
   }, [pendingRegistrations, addNotification])
 
+  // ── Registros de Novedad (solo admin) ─────────────────────────────────────
+  const addRegistroNovedad = useCallback(async (r: Omit<RegistroNovedad, 'id' | 'creadoEn'>): Promise<string> => {
+    const nuevo: RegistroNovedad = { ...r, id: uid(), creadoEn: new Date().toISOString() }
+    setRegistrosNovedad(prev => [nuevo, ...prev])
+    if (supabase) {
+      const { error } = await supabase.from('fno_registros_novedad').insert(mapRegistroNovedadToSupabase(nuevo))
+      if (error) console.error('[supabase] insert fno_registros_novedad:', error.message)
+    }
+    return nuevo.id
+  }, [])
+
+  const updateRegistroNovedad = useCallback((id: string, data: Partial<Omit<RegistroNovedad, 'id' | 'creadoEn'>>) => {
+    setRegistrosNovedad(prev => {
+      const updated = prev.map(r => r.id === id ? { ...r, ...data } : r)
+      if (supabase) {
+        const full = updated.find(r => r.id === id)
+        if (full) supabase.from('fno_registros_novedad').upsert(mapRegistroNovedadToSupabase(full)).then()
+      }
+      return updated
+    })
+  }, [])
+
+  const deleteRegistroNovedad = useCallback((id: string) => {
+    setRegistrosNovedad(prev => prev.filter(r => r.id !== id))
+    if (supabase) supabase.from('fno_registros_novedad').delete().eq('id', id).then(({ error }) => {
+      if (error) console.error('[supabase] delete fno_registros_novedad:', error.message)
+    })
+  }, [])
+
   // ── Notificaciones ─────────────────────────────────────────────────────────
   const markNotificationRead = useCallback((id: string) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, leida: true } : n))
@@ -1022,7 +1104,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   return (
     <DataContext.Provider value={{
       empleados, solicitudes, recibos, novedades, eventos, tickets, users,
-      pendingRegistrations, notifications,
+      pendingRegistrations, notifications, registrosNovedad,
       addEmpleado, updateEmpleado, deleteEmpleado, desactivarEmpleado, reactivarEmpleado,
       addSolicitud, approveSolicitud, rejectSolicitud, editSolicitud, cancelSolicitud,
       addNovedad, updateNovedad, deleteNovedad,
@@ -1031,7 +1113,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       addTicket, respondTicket,
       setUserRole, getUserByEmail, getPendingByEmail,
       addPendingRegistration, approvePendingRegistration, rejectPendingRegistration, refreshPending,
-      markNotificationRead, markAllRead, addNotification, synced,
+      markNotificationRead, markAllRead, addNotification,
+      addRegistroNovedad, updateRegistroNovedad, deleteRegistroNovedad,
+      synced,
     }}>
       {children}
     </DataContext.Provider>

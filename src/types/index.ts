@@ -63,6 +63,39 @@ export type NovedadCategoria =
   | 'comunicado' | 'novedad' | 'alerta' | 'evento' | 'cumpleanos'
   | EventoTipo
 
+export type RegistroNovedadCategoria =
+  // Asistencia
+  | 'ausencia' | 'llegada_tarde' | 'salida_anticipada'
+  // Licencias
+  | 'licencia_medica' | 'licencia_estudio' | 'licencia_maternidad_paternidad' | 'licencia_duelo'
+  // Tiempo libre
+  | 'permiso_sin_goce' | 'vacaciones'
+  // Jornada
+  | 'horas_extra' | 'cambio_turno' | 'guardia_turno_especial' | 'tarea_fuera_area'
+  // Formación
+  | 'capacitacion'
+  // Incidentes / RRHH
+  | 'accidente_laboral' | 'suspension' | 'observacion_comportamiento' | 'conflicto_interpersonal'
+  // Administrativo
+  | 'entrega_documentacion' | 'reconocimiento' | 'otro'
+
+export interface RegistroNovedad {
+  id: string
+  empleadoId?: string
+  empleadoNombre: string
+  sector: string
+  cargo: string
+  fecha: string             // YYYY-MM-DD
+  horaTipo: 'sin_hora' | 'exacta' | 'rango'
+  hora?: string             // HH:MM (si exacta)
+  horaDesde?: string        // HH:MM (si rango)
+  horaHasta?: string        // HH:MM (si rango)
+  descripcion: string
+  categoria: RegistroNovedadCategoria
+  fotoUrl?: string
+  creadoEn: string          // ISO timestamp
+}
+
 export type TicketEstado = 'abierto' | 'en_proceso' | 'resuelto' | 'cerrado'
 
 export type TicketTipo =

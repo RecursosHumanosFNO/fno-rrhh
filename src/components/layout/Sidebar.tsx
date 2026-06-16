@@ -11,7 +11,7 @@ import {
   LayoutDashboard, Users, FileText, ClipboardList, Megaphone,
   BarChart3, User, HeadphonesIcon, ChevronLeft, ChevronRight,
   LogOut, ExternalLink, Info, UserCheck, CalendarDays, AlertTriangle,
-  BookOpen,
+  BookOpen, ClipboardCheck,
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -50,6 +50,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     { href: '/dashboard/solicitudes', label: 'Solicitudes y Pedidos', icon: ClipboardList, badge: solicitudes.filter(s => s.estado === 'pendiente').length },
     { href: '/dashboard/comunicaciones', label: 'Comunicaciones', icon: Megaphone },
     { href: '/dashboard/eventos', label: 'Calendario', icon: CalendarDays },
+    { href: '/dashboard/novedades-internas', label: 'Novedades Internas', icon: ClipboardCheck },
     { href: '/dashboard/estadisticas', label: 'Estadísticas', icon: BarChart3 },
     { href: '/dashboard/fundacion', label: 'La Fundación', icon: Info },
     { href: '/dashboard/perfil', label: 'Mi Perfil', icon: User, warn: perfilIncompleto },

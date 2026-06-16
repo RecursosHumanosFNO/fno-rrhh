@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
-import type { SolicitudTipo, SolicitudEstado, NovedadCategoria, TicketEstado, TicketTipo, EmpleadoEstado, EventoTipo } from '@/types'
+import type { SolicitudTipo, SolicitudEstado, NovedadCategoria, TicketEstado, TicketTipo, EmpleadoEstado, EventoTipo, RegistroNovedadCategoria } from '@/types'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -226,6 +226,64 @@ export const NOVEDAD_CATEGORIAS: NovedadCategoria[] = [
   'feriado', 'jornada', 'acto', 'capacitacion', 'reunion',
   'receso', 'institucional', 'otro',
 ]
+
+export const REGISTRO_NOVEDAD_CATEGORIA_LABEL: Record<RegistroNovedadCategoria, string> = {
+  ausencia:                       'Ausencia',
+  llegada_tarde:                  'Llegada Tarde',
+  salida_anticipada:              'Salida Anticipada',
+  licencia_medica:                'Licencia Médica',
+  licencia_estudio:               'Licencia por Estudio',
+  licencia_maternidad_paternidad: 'Licencia Maternidad/Paternidad',
+  licencia_duelo:                 'Licencia por Duelo',
+  permiso_sin_goce:               'Permiso sin Goce de Sueldo',
+  vacaciones:                     'Vacaciones',
+  horas_extra:                    'Horas Extra',
+  cambio_turno:                   'Cambio de Turno / Cobertura',
+  guardia_turno_especial:         'Guardia / Turno Especial',
+  tarea_fuera_area:               'Tarea Fuera del Área',
+  capacitacion:                   'Capacitación / Formación',
+  accidente_laboral:              'Accidente Laboral',
+  suspension:                     'Suspensión',
+  observacion_comportamiento:     'Observación de Comportamiento',
+  conflicto_interpersonal:        'Conflicto Interpersonal',
+  entrega_documentacion:          'Entrega de Documentación',
+  reconocimiento:                 'Reconocimiento / Felicitación',
+  otro:                           'Otro',
+}
+
+export const REGISTRO_NOVEDAD_CATEGORIAS: RegistroNovedadCategoria[] = [
+  'ausencia', 'llegada_tarde', 'salida_anticipada',
+  'licencia_medica', 'licencia_estudio', 'licencia_maternidad_paternidad', 'licencia_duelo',
+  'permiso_sin_goce', 'vacaciones',
+  'horas_extra', 'cambio_turno', 'guardia_turno_especial', 'tarea_fuera_area',
+  'capacitacion',
+  'accidente_laboral', 'suspension', 'observacion_comportamiento', 'conflicto_interpersonal',
+  'entrega_documentacion', 'reconocimiento', 'otro',
+]
+
+export const REGISTRO_NOVEDAD_CATEGORIA_COLOR: Record<RegistroNovedadCategoria, string> = {
+  ausencia:                       'bg-red-100 text-red-800',
+  llegada_tarde:                  'bg-amber-100 text-amber-800',
+  salida_anticipada:              'bg-orange-100 text-orange-800',
+  licencia_medica:                'bg-blue-100 text-blue-800',
+  licencia_estudio:               'bg-indigo-100 text-indigo-800',
+  licencia_maternidad_paternidad: 'bg-pink-100 text-pink-800',
+  licencia_duelo:                 'bg-slate-100 text-slate-700',
+  permiso_sin_goce:               'bg-yellow-100 text-yellow-800',
+  vacaciones:                     'bg-cyan-100 text-cyan-800',
+  horas_extra:                    'bg-emerald-100 text-emerald-800',
+  cambio_turno:                   'bg-teal-100 text-teal-800',
+  guardia_turno_especial:         'bg-green-100 text-green-800',
+  tarea_fuera_area:               'bg-lime-100 text-lime-800',
+  capacitacion:                   'bg-purple-100 text-purple-800',
+  accidente_laboral:              'bg-red-100 text-red-900',
+  suspension:                     'bg-red-200 text-red-900',
+  observacion_comportamiento:     'bg-orange-100 text-orange-900',
+  conflicto_interpersonal:        'bg-rose-100 text-rose-800',
+  entrega_documentacion:          'bg-sky-100 text-sky-800',
+  reconocimiento:                 'bg-violet-100 text-violet-800',
+  otro:                           'bg-gray-100 text-gray-700',
+}
 
 export function getInitials(nombre: string, apellido: string): string {
   return `${nombre.charAt(0)}${apellido.charAt(0)}`.toUpperCase()

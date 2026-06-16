@@ -277,6 +277,32 @@ export async function POST(req: NextRequest) {
       })
     }
 
+    /* ── Nuevo registro de novedad interna → admin ────────────────────────── */
+    else if (type === 'nuevo_registro_novedad') {
+      const horario = data.horaTipo === 'exacta'
+        ? `A las ${data.hora} hs`
+        : data.horaTipo === 'rango'
+          ? `Desde ${data.horaDesde} hasta ${data.horaHasta} hs`
+          : 'Sin hora especificada'
+      await transporter.sendMail({
+        from, to: ADMIN_EMAIL,
+        subject: `📋 Registro de novedad — ${data.categoria} · ${data.empleadoNombre}`,
+        html: base(`
+          <h3 style="color:${BRAND};margin-top:0;">Nuevo registro de novedad cargado</h3>
+          <table style="width:100%;border-collapse:collapse;margin:20px 0;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
+            ${row('Empleado', data.empleadoNombre)}
+            ${row('Cargo / Sector', `${data.cargo}${data.sector ? ' · ' + data.sector : ''}`, true)}
+            ${row('Categoría', `<strong>${data.categoria}</strong>`)}
+            ${row('Fecha', data.fecha, true)}
+            ${row('Horario', horario)}
+            ${data.descripcion ? row('Descripción', data.descripcion, true) : ''}
+          </table>
+          ${data.fotoUrl ? `<img src="${data.fotoUrl}" alt="Foto adjunta" style="max-width:100%;border-radius:8px;display:block;margin:0 0 20px 0;" />` : ''}
+          ${btn('Ver en el portal', `${PORTAL_URL}/dashboard/novedades-internas`)}
+        `),
+      })
+    }
+
     /* ── Mensaje directo de RRHH al empleado ──────────────────────────────── */
     else if (type === 'mensaje_rrhh') {
       await transporter.sendMail({
