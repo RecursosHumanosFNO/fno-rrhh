@@ -142,7 +142,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   collapsed ? 'absolute top-1 right-1 w-3.5 h-3.5' : 'w-4 h-4',
                 )} />
               )}
-              {badge && badge > 0 && (
+              {badge !== undefined && badge > 0 && (
                 <span className={cn(
                   'bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center',
                   collapsed ? 'absolute top-1 right-1 w-4 h-4 text-[10px]' : 'w-5 h-5 shrink-0',
