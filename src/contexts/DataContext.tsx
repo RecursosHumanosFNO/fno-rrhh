@@ -648,7 +648,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const tipoLabel = SOLICITUD_TIPO_LABEL[s.tipo] ?? s.tipo
     setSolicitudes(prev => [nueva, ...prev])
     // Confirmación al empleado
-    addNotification({ texto: `Tu solicitud de ${tipoLabel} fue enviada y está pendiente de revisión`, tipo: 'solicitud', empleadoId: s.empleadoId })
+    addNotification({ texto: `Tu solicitud de ${tipoLabel} fue enviada y está pendiente de revisión`, tipo: 'solicitud', empleadoId: s.empleadoId, soloEmpleado: true })
     // Alerta al admin + email
     setEmpleados(prev => {
       const emp = prev.find(e => e.id === s.empleadoId)
@@ -682,7 +682,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const sol = solicitudes.find(s => s.id === id)
     if (sol) {
       // Notificación al empleado
-      addNotification({ texto: 'Tu solicitud fue aprobada ✓', tipo: 'solicitud', empleadoId: sol.empleadoId })
+      addNotification({ texto: 'Tu solicitud fue aprobada ✓', tipo: 'solicitud', empleadoId: sol.empleadoId, soloEmpleado: true })
       setEmpleados(prev => {
         const emp = prev.find(e => e.id === sol.empleadoId)
         const nombreEmp = emp ? `${emp.nombre} ${emp.apellido}` : 'el empleado'
@@ -704,7 +704,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const sol = solicitudes.find(s => s.id === id)
     if (sol) {
       const textoEmp = estado === 'aprobado' ? 'Tu solicitud fue actualizada: aprobada ✓' : 'Tu solicitud fue actualizada: rechazada'
-      addNotification({ texto: textoEmp, tipo: 'solicitud', empleadoId: sol.empleadoId })
+      addNotification({ texto: textoEmp, tipo: 'solicitud', empleadoId: sol.empleadoId, soloEmpleado: true })
       setEmpleados(prev => {
         const emp = prev.find(e => e.id === sol.empleadoId)
         const nombreEmp = emp ? `${emp.nombre} ${emp.apellido}` : 'el empleado'
@@ -729,7 +729,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const sol = solicitudes.find(s => s.id === id)
     if (sol) {
       // Notificación al empleado
-      addNotification({ texto: 'Tu solicitud fue rechazada', tipo: 'solicitud', empleadoId: sol.empleadoId })
+      addNotification({ texto: 'Tu solicitud fue rechazada', tipo: 'solicitud', empleadoId: sol.empleadoId, soloEmpleado: true })
       setEmpleados(prev => {
         const emp = prev.find(e => e.id === sol.empleadoId)
         const nombreEmp = emp ? `${emp.nombre} ${emp.apellido}` : 'el empleado'
@@ -879,7 +879,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const addRecibo = useCallback((r: Omit<Recibo, 'id'>) => {
     const nuevo = { ...r, id: uid() }
     setRecibos(prev => [nuevo, ...prev])
-    addNotification({ texto: `Nuevo recibo de sueldo disponible — verificá tu sección de recibos`, tipo: 'recibo', empleadoId: r.empleadoId, soloEmpleado: true })
+    addNotification({ texto: 'Nuevo recibo de sueldo disponible — verificá tu sección de recibos', tipo: 'recibo', empleadoId: r.empleadoId, soloEmpleado: true })
     if (supabase) supabase.from('fno_recibos').insert(mapReciboToSupabase(nuevo)).then(({ error }) => {
       if (error) console.error('[supabase] insert fno_recibos:', error)
     })
@@ -959,7 +959,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           }
           return emps
         })
-        addNotification({ texto: `Tu pedido "${ticket.asunto}" recibió una respuesta de RRHH`, tipo: 'ticket', empleadoId: ticket.empleadoId })
+        addNotification({ texto: `Tu pedido "${ticket.asunto}" recibió una respuesta de RRHH`, tipo: 'ticket', empleadoId: ticket.empleadoId, soloEmpleado: true })
       }
       return prev.map(t => t.id === id ? { ...t, respuesta, estado, fechaActualizacion: hoy } : t)
     })
