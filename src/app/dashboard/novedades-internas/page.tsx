@@ -162,7 +162,7 @@ function NovedadesInternasContent() {
       )
     }
     return true
-  })
+  }).sort((a, b) => b.fecha.localeCompare(a.fecha) || (b.hora ?? '').localeCompare(a.hora ?? ''))
 
   // ── Etiqueta del período para el export ───────────────────────────────────
   function periodoLabel(): string {
