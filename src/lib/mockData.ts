@@ -14,6 +14,7 @@ export const SECTORES = [
   'Área de Deportes',
   'Buffet',
   'Hidroponía',
+  'Mantenimiento',
   'Auxiliares',
 ]
 
@@ -138,6 +139,13 @@ export const CARGOS_POR_SECTOR: Record<string, string[]> = {
     'Técnico/a en Hidroponía',
     'Operario/a',
     'Coordinador/a de Huerta',
+  ],
+  'Mantenimiento': [
+    'Personal de Mantenimiento',
+    'Encargado/a de Mantenimiento',
+    'Electricista',
+    'Plomero/a',
+    'Jardinero/a',
   ],
   'Auxiliares': [
     'Coordinador/a Auxiliares',
