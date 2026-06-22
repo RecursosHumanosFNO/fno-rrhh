@@ -196,6 +196,16 @@ export async function GET(req: NextRequest) {
     alertas.push(alerta(`⚠️ Hay <strong>${ticketsVencidos.length} ticket${ticketsVencidos.length > 1 ? 's' : ''}</strong> abierto${ticketsVencidos.length > 1 ? 's' : ''} sin movimiento hace 2+ días.`, '#f59e0b'))
   }
 
+  // Empleados con vacaciones próximas a vencer (días restantes ≤ 5)
+  const vacProxVencer = (empleados ?? []).filter((e: { estado: string; dias_vacaciones: number; dias_vacaciones_usados: number }) => {
+    if (e.estado !== 'activo') return false
+    const restantes = (e.dias_vacaciones ?? 0) - (e.dias_vacaciones_usados ?? 0)
+    return restantes > 0 && restantes <= 5
+  })
+  if (vacProxVencer.length > 0) {
+    alertas.push(alerta(`📅 ${vacProxVencer.length} empleado${vacProxVencer.length > 1 ? 's tienen' : ' tiene'} 5 días o menos de vacaciones disponibles.`, '#3b82f6'))
+  }
+
   // Registros pendientes de acceso
   if ((pendingRegs ?? []).length > 0) {
     alertas.push(alerta(`🟡 Hay <strong>${(pendingRegs ?? []).length} solicitud${(pendingRegs ?? []).length > 1 ? 'es' : ''} de acceso</strong> pendiente${(pendingRegs ?? []).length > 1 ? 's' : ''} de aprobación.`, '#8b5cf6'))
@@ -268,7 +278,7 @@ export async function GET(req: NextRequest) {
   )
 
   // 4. Actividad de ayer: recibos subidos
-  const filasRecibos = (recibosAyer ?? []).map((r: { id: string; empleado_id: string; mes: number; anio: number; concepto?: string; monto?: number }, i: number) => {
+  const filasRecibos = (recibosAyer ?? []).map((r: { empleado_id: string; mes: number; anio: number; concepto?: string; monto?: number }, i: number) => {
     const firmado = (firmasAyer ?? []).some((f: { recibo_id: string }) => f.recibo_id === r.id)
     const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
     return fila([
