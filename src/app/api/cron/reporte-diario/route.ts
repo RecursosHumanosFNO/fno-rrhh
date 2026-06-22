@@ -267,7 +267,7 @@ export async function GET(req: NextRequest) {
   )
 
   // 4. Actividad de ayer: recibos subidos
-  const filasRecibos = (recibosAyer ?? []).map((r: { empleado_id: string; mes: number; anio: number; concepto?: string; monto?: number }, i: number) => {
+  const filasRecibos = (recibosAyer ?? []).map((r: { id: string; empleado_id: string; mes: number; anio: number; concepto?: string; monto?: number }
     const firmado = (firmasAyer ?? []).some((f: { recibo_id: string }) => f.recibo_id === r.id)
     const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
     return fila([
