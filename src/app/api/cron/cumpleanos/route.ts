@@ -38,13 +38,14 @@ function hoyAR(): string {
 
 // GET /api/cron/cumpleanos — lo invoca Vercel Cron todos los días a las 7am (ARG)
 export async function GET(req: NextRequest) {
-  // Vercel envía Authorization: Bearer {CRON_SECRET} — verificar si está configurado
+  // Vercel envía Authorization: Bearer {CRON_SECRET} — requerido siempre
   const cronSecret = process.env.CRON_SECRET
-  if (cronSecret) {
-    const auth = req.headers.get('authorization')
-    if (auth !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  if (!cronSecret) {
+    return NextResponse.json({ error: 'CRON_SECRET no configurado' }, { status: 401 })
+  }
+  const auth = req.headers.get('authorization')
+  if (auth !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
