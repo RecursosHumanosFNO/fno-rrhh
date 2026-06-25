@@ -97,11 +97,22 @@ export default function RecibosPage() {
     if (!firmaModal || !firmaAcepto || !user?.empleadoId) return
     setFirmando(true)
     const ok = await firmarRecibo(firmaModal.id, user.empleadoId)
-    setFirmando(false)
     if (ok) {
+      // Superponer firma visual en el PDF (no bloquea — si falla el audit trail ya quedó)
+      if (supabase) {
+        const { data: { user: authUser } } = await supabase.auth.getUser()
+        if (authUser) {
+          fetch('/api/recibo-firmar-pdf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reciboId: firmaModal.id, empleadoId: user.empleadoId, authId: authUser.id }),
+          }).catch(() => {})
+        }
+      }
       setFirmaModal(null)
       setFirmaAcepto(false)
     }
+    setFirmando(false)
   }
 
   async function handleDeleteRecibo() {
