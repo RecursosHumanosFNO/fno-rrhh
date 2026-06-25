@@ -21,7 +21,7 @@ El sistema **corre solo en internet** — no hay ningún servidor físico en la 
 | **GitHub** — github.com/RecursosHumanosFNO | Código fuente del sistema | Cuenta RecursosHumanosFNO |
 | **Sentry** — fundacion-neuquen-oeste.sentry.io | Alertas de errores en producción | Cuenta vinculada al email admin |
 | **Gmail RRHH** — rrhhfundacionnqnoeste@gmail.com | Envío de emails automáticos del sistema | Contraseña + app password |
-| **Dominio** — portalfno.com | Dirección web del portal | Registrador de dominio (verificar quién) |
+| **Dominio** — portalfno.com | Dirección web del portal | **Donweb** (donweb.com) |
 
 > ⚠️ **Acción recomendada:** Guardar todas las contraseñas en un gestor de contraseñas institucional (ej: Bitwarden gratuito) al que tenga acceso más de una persona de confianza.
 
@@ -124,10 +124,10 @@ Estas tareas las gestiona Vercel Cron. Si dejan de funcionar, verificar en Verce
 
 | Situación | A quién contactar |
 |---|---|
-| Error técnico en el código | Desarrollador con acceso a GitHub |
+| Error técnico en el código | **Juan Antonio Lozano** — +54 9 2994 58-5240 — juanantoniofsx@gmail.com |
 | Problema con Vercel | soporte en vercel.com/support |
 | Problema con Supabase | soporte en supabase.com/support |
-| Problema con el dominio | Registrador del dominio |
+| Problema con el dominio | **Donweb** — donweb.com — cuenta asociada al email admin de la fundación |
 
 ---
 
