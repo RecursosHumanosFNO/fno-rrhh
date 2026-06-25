@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import WeatherBadge from '@/components/WeatherBadge'
+import { WelcomeModal } from '@/components/WelcomeModal'
 
 interface LoginRecord {
   id: string
@@ -476,6 +477,7 @@ function EmployeeDashboard({ saludo, fechaStr, empleadoId }: { saludo: string, f
 
   return (
     <div className="page-container">
+      {empleado && <WelcomeModal nombre={empleado.nombre} empleadoId={empleado.id} />}
 
       {/* ── Welcome banner ─────────────────────────────────────────────────── */}
       <div
