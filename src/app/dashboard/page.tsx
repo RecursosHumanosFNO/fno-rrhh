@@ -27,14 +27,6 @@ interface LoginRecord {
   creado_en: string
 }
 
-interface LoginRecord {
-  id: string
-  nombre: string
-  email: string
-  empleado_id: string
-  creado_en: string
-}
-
 export default function DashboardPage() {
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
