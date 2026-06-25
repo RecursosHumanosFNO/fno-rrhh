@@ -17,6 +17,7 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
 
   componentDidCatch(error: unknown, info: React.ErrorInfo) {
     console.error('[ErrorBoundary]', error, info.componentStack)
+    import('@sentry/nextjs').then(Sentry => Sentry.captureException(error))
   }
 
   render() {
