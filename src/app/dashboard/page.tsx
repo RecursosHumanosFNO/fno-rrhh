@@ -2,6 +2,8 @@
 
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
 import {
   SOLICITUD_ESTADO_COLOR, SOLICITUD_ESTADO_LABEL, SOLICITUD_TIPO_LABEL,
   NOVEDAD_CATEGORIA_COLOR, NOVEDAD_CATEGORIA_LABEL, formatFecha, formatMes,
@@ -11,10 +13,18 @@ import {
   Users, ClipboardList, CalendarCheck, TrendingUp, AlertTriangle,
   CheckCircle2, XCircle, Clock, Download, PartyPopper, Bell,
   ArrowRight, FileText, HeadphonesIcon, Plus, UserPlus, Calendar,
-  ExternalLink,
+  ExternalLink, LogIn,
 } from 'lucide-react'
 import Link from 'next/link'
 import WeatherBadge from '@/components/WeatherBadge'
+
+interface LoginRecord {
+  id: string
+  nombre: string
+  email: string
+  empleado_id: string
+  creado_en: string
+}
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -49,6 +59,17 @@ function StatCard({ icon: Icon, label, value, sub, color }: {
 function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string }) {
   const { empleado } = useAuth()
   const { empleados, solicitudes, novedades, eventos, pendingRegistrations, approvePendingRegistration, rejectPendingRegistration } = useData()
+
+  const [logins, setLogins] = useState<LoginRecord[]>([])
+  useEffect(() => {
+    if (!supabase) return
+    supabase
+      .from('fno_logins')
+      .select('id, nombre, email, empleado_id, creado_en')
+      .order('creado_en', { ascending: false })
+      .limit(20)
+      .then(({ data }) => { if (data) setLogins(data as LoginRecord[]) })
+  }, [])
 
   const pendientes = solicitudes.filter(s => s.estado === 'pendiente')
   const activos = empleados.filter(e => e.estado === 'activo').length
@@ -354,6 +375,45 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
               ))}
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Accesos recientes */}
+      <div className="card overflow-hidden">
+        <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
+          <LogIn className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+          <p className="section-title">Accesos recientes</p>
+        </div>
+        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+          {logins.length === 0 ? (
+            <div className="p-8 text-center">
+              <LogIn className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+              <p className="text-slate-400 text-sm">Sin registros de acceso aún</p>
+            </div>
+          ) : logins.map(l => {
+            const emp = empleados.find(e => e.id === l.empleado_id)
+            const fecha = new Date(l.creado_en)
+            const fechaStr = fecha.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Argentina/Buenos_Aires' })
+            const horaStr = fecha.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' })
+            return (
+              <div key={l.id} className="p-4 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                <div className="w-9 h-9 rounded-full bg-brand-700 flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden">
+                  {emp?.foto
+                    ? <img src={emp.foto} alt="" className="w-9 h-9 object-cover" />
+                    : l.nombre.split(' ').slice(0, 2).map(n => n[0]).join('')
+                  }
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">{l.nombre}</p>
+                  <p className="text-xs text-slate-400 truncate">{emp?.sector ?? l.email}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-xs font-medium text-slate-600 dark:text-slate-300">{horaStr}</p>
+                  <p className="text-xs text-slate-400">{fechaStr}</p>
+                </div>
+              </div>
+            )
+          })}
         </div>
       </div>
 

@@ -142,6 +142,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         const emp = empleados.find(e => e.id === profile.empleadoId) ?? null
         setAuth({ user: profile, empleado: emp, isAuthenticated: true })
+        // Registrar login en fno_logins (no bloquea el flujo)
+        supabase!.from('fno_logins').insert({
+          empleado_id: profile.empleadoId,
+          nombre: emp ? `${emp.nombre} ${emp.apellido}` : normalEmail,
+          email: normalEmail,
+        }).then()
         return 'ok'
       })().catch(() => 'error' as const)
       return await Promise.race([attempt, timeout])
