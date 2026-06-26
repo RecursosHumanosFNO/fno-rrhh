@@ -96,6 +96,9 @@ export default function PerfilPage() {
       jornada: form.jornada,
       supervisor: form.supervisor,
       fecha_ingreso: form.fechaIngreso,
+      // Preservar fotos actuales para que el upsert no las pise
+      foto: empleado!.foto ?? '',
+      foto_cover: empleado!.fotoCover ?? '',
     }
 
     try {
