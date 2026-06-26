@@ -190,6 +190,26 @@ export default function PerfilPage() {
     reader.readAsDataURL(file)
   }
 
+  // Elimina una foto: limpia el estado local y persiste el vacío vía API.
+  // (el mapper de DataContext omite fotos vacías para no pisarlas en upserts
+  //  normales, así que el borrado debe ir explícito por /api/perfil)
+  async function handlePhotoDelete(field: 'foto' | 'fotoCover') {
+    const dbField = field === 'fotoCover' ? 'foto_cover' : 'foto'
+    updateEmpleado({ [field]: '' })
+    try {
+      const { data: { user: authUser } } = await supabase!.auth.getUser()
+      fetch('/api/perfil', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          authId: authUser?.id,
+          empleadoId: empleado!.id,
+          data: { [dbField]: '' },
+        }),
+      }).catch(() => {})
+    } catch { /* no crítico */ }
+  }
+
   async function handlePasswordChange() {
     if (passForm.nueva.length < 6) {
       setPassMsg({ type: 'err', msg: 'La nueva contraseña debe tener al menos 6 caracteres.' })
@@ -293,7 +313,7 @@ export default function PerfilPage() {
                       </label>
                       {empleado.foto && (
                         <button
-                          onClick={() => updateEmpleado({ foto: '', fotoCover: '' })}
+                          onClick={() => handlePhotoDelete('foto')}
                           title="Eliminar foto"
                           className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center shadow-md z-10"
                         >
@@ -334,7 +354,7 @@ export default function PerfilPage() {
                   </label>
                   {empleado.fotoCover && (
                     <button
-                      onClick={() => updateEmpleado({ fotoCover: '' })}
+                      onClick={() => handlePhotoDelete('fotoCover')}
                       title="Eliminar portada"
                       className="w-8 h-8 bg-red-500/80 hover:bg-red-600 rounded-lg flex items-center justify-center transition-colors"
                     >
