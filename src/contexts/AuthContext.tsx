@@ -135,17 +135,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!profile) return 'error'
         // Verificar directamente en Supabase para evitar race condition con el sync
         const { data: empRow } = await supabase!
-          .from('fno_empleados').select('estado').eq('id', profile.empleadoId).maybeSingle()
+          .from('fno_empleados').select('estado, nombre, apellido').eq('id', profile.empleadoId).maybeSingle()
         if (empRow?.estado === 'inactivo') {
           await supabase!.auth.signOut()
           return 'desactivada'
         }
         const emp = empleados.find(e => e.id === profile.empleadoId) ?? null
         setAuth({ user: profile, empleado: emp, isAuthenticated: true })
-        // Registrar login en fno_logins (no bloquea el flujo)
+        // Registrar login en fno_logins (no bloquea el flujo).
+        // Nombre tomado de la query directa (no del sync) para no caer al email
+        // cuando el listado de empleados aún no terminó de cargar.
+        const nombreLogin = empRow?.nombre
+          ? `${empRow.nombre} ${empRow.apellido ?? ''}`.trim()
+          : emp ? `${emp.nombre} ${emp.apellido}` : normalEmail
         supabase!.from('fno_logins').insert({
           empleado_id: profile.empleadoId,
-          nombre: emp ? `${emp.nombre} ${emp.apellido}` : normalEmail,
+          nombre: nombreLogin,
           email: normalEmail,
         }).then()
         return 'ok'
