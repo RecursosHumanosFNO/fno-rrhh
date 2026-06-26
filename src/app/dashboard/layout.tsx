@@ -10,7 +10,7 @@ import AIChatAssistant from '@/components/AIChatAssistant'
 import { cn } from '@/lib/utils'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth()
+  const { isAuthenticated, isLoading, user, empleado } = useAuth()
   const { synced } = useData()
   const router = useRouter()
   const [collapsed, setCollapsed] = useState(false)
@@ -20,8 +20,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!isLoading && !isAuthenticated) router.replace('/login')
   }, [isAuthenticated, isLoading, router])
 
-  // Spinner mientras se autentica o se sincroniza con Supabase
-  if (isLoading || !isAuthenticated || !synced) {
+  // Esperar: autenticación, datos sincronizados, y empleado cargado (excepto para admin que puede no tener empleado_id)
+  const esperandoEmpleado = isAuthenticated && user?.role !== 'admin' && !empleado
+  if (isLoading || !isAuthenticated || !synced || esperandoEmpleado) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-brand-700 gap-4">
         <div className="w-10 h-10 border-4 border-white/30 border-t-white rounded-full animate-spin" />
