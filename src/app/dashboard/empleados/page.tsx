@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useRouter } from 'next/navigation'
@@ -14,6 +14,7 @@ import {
   SlidersHorizontal, ArrowUpDown, History,
 } from 'lucide-react'
 import Link from 'next/link'
+import { supabase } from '@/lib/supabase'
 import type { EmpleadoEstado, Empleado, DesvinculacionMotivo } from '@/types'
 import * as XLSX from 'xlsx'
 
@@ -82,13 +83,14 @@ function exportarExcel(empleados: Empleado[]) {
   XLSX.writeFile(wb, `empleados_fno_${hoy}.xlsx`)
 }
 
-function EmpleadoCard({ emp }: { emp: Empleado }) {
+function EmpleadoCard({ emp, foto }: { emp: Empleado; foto?: string }) {
+  const fotoSrc = foto || emp.foto
   return (
     <Link href={`/dashboard/empleados/${emp.id}`} className="card-hover p-5 flex flex-col gap-3">
       <div className="flex items-start justify-between">
         <div className="w-12 h-12 rounded-xl bg-brand-700 flex items-center justify-center text-white font-bold text-base overflow-hidden">
-          {emp.foto
-            ? <img src={emp.foto} alt="" className="w-12 h-12 object-cover" />
+          {fotoSrc
+            ? <img src={fotoSrc} alt="" className="w-12 h-12 object-cover" />
             : `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}`
           }
         </div>
@@ -141,6 +143,20 @@ function EmpleadosContent() {
     addEmpleado, deleteEmpleado,
     approvePendingRegistration, rejectPendingRegistration,
   } = useData()
+
+  // Mapa id → foto: cargado una vez al montar (el sync masivo no incluye fotos)
+  const [fotoMap, setFotoMap] = useState<Record<string, string>>({})
+  const fotosFetched = useRef(false)
+  useEffect(() => {
+    if (fotosFetched.current || !supabase) return
+    fotosFetched.current = true
+    supabase.from('fno_empleados').select('id, foto').then(({ data }) => {
+      if (!data) return
+      const map: Record<string, string> = {}
+      for (const row of data) if (row.foto) map[row.id as string] = row.foto as string
+      setFotoMap(map)
+    })
+  }, [])
 
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState('')
@@ -548,7 +564,7 @@ function EmpleadosContent() {
           if (!agrupar) {
             return (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {filtered.map(emp => <EmpleadoCard key={emp.id} emp={emp} />)}
+                {filtered.map(emp => <EmpleadoCard key={emp.id} emp={emp} foto={fotoMap[emp.id]} />)}
               </div>
             )
           }
@@ -570,7 +586,7 @@ function EmpleadosContent() {
                     <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {grupos[sector].map(emp => <EmpleadoCard key={emp.id} emp={emp} />)}
+                    {grupos[sector].map(emp => <EmpleadoCard key={emp.id} emp={emp} foto={fotoMap[emp.id]} />)}
                   </div>
                 </div>
               ))}
