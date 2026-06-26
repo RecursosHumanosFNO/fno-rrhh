@@ -7,12 +7,12 @@ import {
   SOLICITUD_TIPO_LABEL, SOLICITUD_ESTADO_COLOR, SOLICITUD_ESTADO_LABEL,
   TICKET_ESTADO_LABEL, TICKET_ESTADO_COLOR, TICKET_TIPO_LABEL, formatFecha,
 } from '@/lib/utils'
-import type { SolicitudTipo, TicketTipo, TicketEstado } from '@/types'
+import type { SolicitudTipo, TicketTipo, TicketEstado, Solicitud, Empleado } from '@/types'
 import {
   ClipboardList, Plus, Search, X, CheckCircle2, XCircle, Clock,
   ChevronDown, ChevronUp, Send, Hourglass, Save, Edit2, Loader2,
   HeadphonesIcon, MessageSquare, Circle, FileCheck, HelpCircle,
-  RefreshCw, AlertCircle, MoreHorizontal, Bell,
+  RefreshCw, AlertCircle, MoreHorizontal, Bell, Download,
 } from 'lucide-react'
 
 const TICKET_TIPOS: TicketTipo[] = ['certificado_laboral', 'consulta', 'actualizacion_datos', 'reclamo', 'otro']
@@ -40,6 +40,52 @@ const TIPO_GRUPOS = [
   { label: 'Incidentes / RRHH', tipos: ['accidente_laboral', 'suspension', 'observacion_comportamiento', 'conflicto_interpersonal'] },
   { label: 'Administrativo', tipos: ['entrega_documentacion', 'reconocimiento', 'pedido_administrativo', 'otro'] },
 ] as const
+
+// ── Excel export — solicitudes ────────────────────────────────────────────────
+async function exportarSolicitudesExcel(solicitudes: Solicitud[], empleados: Empleado[]) {
+  const { utils, writeFile } = await import('xlsx')
+
+  const headers = [
+    'Empleado', 'Sector', 'Tipo', 'Estado',
+    'Fecha inicio', 'Fecha fin', 'Horario',
+    'Descripción', 'Creada', 'Resuelta', 'Comentario RRHH',
+  ]
+
+  const rows = [...solicitudes]
+    .sort((a, b) => b.fechaCreacion.localeCompare(a.fechaCreacion))
+    .map(s => {
+      const emp = empleados.find(e => e.id === s.empleadoId)
+      const horario = s.horarioDesde || s.horarioHasta
+        ? `${s.horarioDesde ?? ''}${s.horarioHasta ? ` - ${s.horarioHasta}` : ''}`
+        : ''
+      return [
+        emp ? `${emp.apellido}, ${emp.nombre}` : '—',
+        emp?.sector ?? '',
+        SOLICITUD_TIPO_LABEL[s.tipo] ?? s.tipo,
+        SOLICITUD_ESTADO_LABEL[s.estado] ?? s.estado,
+        s.fechaInicio ? formatFecha(s.fechaInicio) : '',
+        s.fechaFin ? formatFecha(s.fechaFin) : '',
+        horario,
+        s.descripcion || '',
+        s.fechaCreacion ? formatFecha(s.fechaCreacion) : '',
+        s.fechaResolucion ? formatFecha(s.fechaResolucion) : '',
+        s.comentarioAdmin || '',
+      ]
+    })
+
+  const ws = utils.aoa_to_sheet([headers, ...rows])
+  ws['!cols'] = [
+    { wch: 24 }, { wch: 18 }, { wch: 22 }, { wch: 13 },
+    { wch: 13 }, { wch: 13 }, { wch: 16 },
+    { wch: 40 }, { wch: 13 }, { wch: 13 }, { wch: 36 },
+  ]
+  ws['!views'] = [{ state: 'frozen', ySplit: 1 }]
+
+  const wb = utils.book_new()
+  utils.book_append_sheet(wb, ws, 'Solicitudes')
+  const hoy = new Date().toISOString().slice(0, 10)
+  writeFile(wb, `solicitudes_fno_${hoy}.xlsx`)
+}
 
 export default function SolicitudesPage() {
   const { user } = useAuth()
@@ -196,9 +242,18 @@ export default function SolicitudesPage() {
           </p>
         </div>
         {isAdmin && activeTab === 'solicitudes' && (
-          <button onClick={() => setShowMensaje(true)} className="btn-secondary">
-            <Bell className="w-4 h-4" /> Enviar mensaje a empleado
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => exportarSolicitudesExcel(filtered, empleados)}
+              disabled={filtered.length === 0}
+              className="btn-secondary disabled:opacity-50"
+            >
+              <Download className="w-4 h-4" /> Exportar Excel
+            </button>
+            <button onClick={() => setShowMensaje(true)} className="btn-secondary">
+              <Bell className="w-4 h-4" /> Enviar mensaje a empleado
+            </button>
+          </div>
         )}
         {!isAdmin && activeTab === 'solicitudes' && (
           <button onClick={() => setShowNueva(true)} className="btn-primary">
