@@ -7,6 +7,7 @@ import { useData } from '@/contexts/DataContext'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 import AIChatAssistant from '@/components/AIChatAssistant'
+import PullToRefresh from '@/components/PullToRefresh'
 import { cn } from '@/lib/utils'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -63,6 +64,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Asistente IA flotante */}
       <AIChatAssistant />
+
+      {/* Pull-to-refresh para PWA/mobile */}
+      <PullToRefresh />
     </div>
   )
 }
