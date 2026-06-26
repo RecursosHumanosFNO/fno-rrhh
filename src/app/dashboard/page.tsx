@@ -13,7 +13,7 @@ import {
   Users, ClipboardList, CalendarCheck, TrendingUp, AlertTriangle,
   CheckCircle2, XCircle, Clock, Download, PartyPopper, Bell,
   ArrowRight, FileText, HeadphonesIcon, Plus, UserPlus, Calendar,
-  ExternalLink, LogIn,
+  ExternalLink, LogIn, Loader2,
 } from 'lucide-react'
 import Link from 'next/link'
 import WeatherBadge from '@/components/WeatherBadge'
@@ -71,6 +71,42 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
       .limit(20)
       .then(({ data }) => { if (data) setLogins(data as LoginRecord[]) })
   }, [])
+
+  // Exporta el historial completo de accesos a Excel (no solo los 20 mostrados)
+  const [exportandoLogins, setExportandoLogins] = useState(false)
+  async function exportarLoginsExcel() {
+    if (!supabase) return
+    setExportandoLogins(true)
+    try {
+      const { data } = await supabase
+        .from('fno_logins')
+        .select('nombre, email, empleado_id, creado_en')
+        .order('creado_en', { ascending: false })
+        .limit(5000)
+      const { utils, writeFile } = await import('xlsx')
+      const headers = ['Nombre', 'Email', 'Sector', 'Fecha', 'Hora']
+      const rows = (data ?? []).map(l => {
+        const emp = empleados.find(e => e.id === l.empleado_id)
+        const fecha = new Date(l.creado_en as string)
+        return [
+          l.nombre as string,
+          l.email as string,
+          emp?.sector ?? '',
+          fecha.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Argentina/Buenos_Aires' }),
+          fecha.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' }),
+        ]
+      })
+      const ws = utils.aoa_to_sheet([headers, ...rows])
+      ws['!cols'] = [{ wch: 26 }, { wch: 32 }, { wch: 18 }, { wch: 13 }, { wch: 9 }]
+      ws['!views'] = [{ state: 'frozen', ySplit: 1 }]
+      const wb = utils.book_new()
+      utils.book_append_sheet(wb, ws, 'Accesos')
+      const hoy = new Date().toISOString().slice(0, 10)
+      writeFile(wb, `accesos_fno_${hoy}.xlsx`)
+    } finally {
+      setExportandoLogins(false)
+    }
+  }
 
   const pendientes = solicitudes.filter(s => s.estado === 'pendiente')
   const activos = empleados.filter(e => e.estado === 'activo').length
@@ -384,6 +420,15 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
         <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
           <LogIn className="w-4 h-4 text-brand-600 dark:text-brand-400" />
           <p className="section-title">Accesos recientes</p>
+          <button
+            onClick={exportarLoginsExcel}
+            disabled={exportandoLogins || logins.length === 0}
+            className="btn-secondary text-xs py-1.5 ml-auto disabled:opacity-50"
+          >
+            {exportandoLogins
+              ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Exportando...</>
+              : <><Download className="w-3.5 h-3.5" /> Exportar</>}
+          </button>
         </div>
         <div className="divide-y divide-slate-100 dark:divide-slate-800">
           {logins.length === 0 ? (
