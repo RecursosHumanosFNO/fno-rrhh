@@ -9,7 +9,7 @@ import { SECTORES, CARGOS_POR_SECTOR } from '@/lib/mockData'
 import {
   User, Edit2, Save, X, Lock, Building2, Phone, Mail,
   Clock, CheckCircle2, Eye, EyeOff, Camera, Image as ImageIcon,
-  Shield, AlertCircle,
+  Shield, AlertCircle, Loader2,
 } from 'lucide-react'
 
 export default function PerfilPage() {
@@ -41,6 +41,8 @@ export default function PerfilPage() {
   })
 
   const [passForm, setPassForm] = useState({ nueva: '', confirm: '' })
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   if (!empleado || !user) return null
 
@@ -71,16 +73,18 @@ export default function PerfilPage() {
     setEditMode(true)
   }
 
-  function handleSave() {
-    updateEmpleado({
+  async function handleSave() {
+    setSaving(true)
+    setSaveError(null)
+    const payload = {
       nombre: form.nombre,
       apellido: form.apellido,
       dni: form.dni,
       cuil: form.cuil,
-      fechaNacimiento: form.fechaNacimiento,
+      fecha_nacimiento: form.fechaNacimiento,
       telefono: form.telefono,
       direccion: form.direccion,
-      contactoEmergencia: {
+      contacto_emergencia: {
         nombre: form.contactoNombre,
         telefono: form.contactoTelefono,
         relacion: form.contactoRelacion,
@@ -89,11 +93,37 @@ export default function PerfilPage() {
       banco: form.banco,
       sector: form.sector,
       cargo: form.cargo,
-      jornada: form.jornada as Empleado['jornada'],
+      jornada: form.jornada,
       supervisor: form.supervisor,
-      fechaIngreso: form.fechaIngreso,
-    })
-    setEditMode(false)
+      fecha_ingreso: form.fechaIngreso,
+    }
+
+    try {
+      const { data: { user: authUser } } = await supabase!.auth.getUser()
+      const res = await fetch('/api/perfil', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ authId: authUser?.id, empleadoId: empleado!.id, data: payload }),
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        setSaveError(json.error ?? 'No se pudieron guardar los cambios')
+        setSaving(false)
+        return
+      }
+      // Actualizar estado local inmediatamente
+      updateEmpleado({
+        nombre: form.nombre, apellido: form.apellido, dni: form.dni, cuil: form.cuil,
+        fechaNacimiento: form.fechaNacimiento, telefono: form.telefono, direccion: form.direccion,
+        contactoEmergencia: { nombre: form.contactoNombre, telefono: form.contactoTelefono, relacion: form.contactoRelacion },
+        cbu: form.cbu, banco: form.banco, sector: form.sector, cargo: form.cargo,
+        jornada: form.jornada as Empleado['jornada'], supervisor: form.supervisor, fechaIngreso: form.fechaIngreso,
+      })
+      setEditMode(false)
+    } catch {
+      setSaveError('Error de conexión. Intentá de nuevo.')
+    }
+    setSaving(false)
   }
 
   function handleCancel() {
@@ -264,6 +294,11 @@ export default function PerfilPage() {
                 </div>
               </div>
 
+              {saveError && (
+                <div className="w-full bg-red-500/20 border border-red-400/40 rounded-lg px-3 py-2 text-sm text-red-200 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" /> {saveError}
+                </div>
+              )}
               {!editMode ? (
                 <button onClick={handleEditStart} className="btn-secondary shrink-0 bg-white/15 border-white/25 text-white hover:bg-white/25">
                   <Edit2 className="w-4 h-4" /> Editar datos
@@ -289,11 +324,13 @@ export default function PerfilPage() {
                       <X className="w-3.5 h-3.5 text-white" />
                     </button>
                   )}
-                  <button onClick={handleCancel} className="btn-secondary bg-white/15 border-white/25 text-white hover:bg-white/25">
+                  <button onClick={handleCancel} disabled={saving} className="btn-secondary bg-white/15 border-white/25 text-white hover:bg-white/25 disabled:opacity-50">
                     <X className="w-4 h-4" /> Cancelar
                   </button>
-                  <button onClick={handleSave} className="btn-primary">
-                    <Save className="w-4 h-4" /> Guardar
+                  <button onClick={handleSave} disabled={saving} className="btn-primary disabled:opacity-70">
+                    {saving
+                      ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Guardando...</>
+                      : <><Save className="w-4 h-4" /> Guardar</>}
                   </button>
                 </div>
               )}
