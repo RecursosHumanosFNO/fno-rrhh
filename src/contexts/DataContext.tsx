@@ -330,6 +330,21 @@ function mapRegistroNovedadToSupabase(r: RegistroNovedad) {
 // en el código (mockData) y NO en la base. Sirve para no duplicarlos al sincronizar.
 const EVENTOS_FIJOS_IDS = new Set(initial.eventos.map(e => e.id))
 
+// Persiste cambios de un empleado vía service role (/api/perfil), bypaseando RLS.
+// Los upserts client-side con anon key se bloquean silenciosamente, así que las
+// escrituras importantes (estado, desvinculación) deben ir por el endpoint.
+async function persistEmpleadoViaApi(empleadoId: string, data: Record<string, unknown>) {
+  if (!supabase) return
+  try {
+    const { data: { user: authUser } } = await supabase.auth.getUser()
+    await fetch('/api/perfil', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ authId: authUser?.id, empleadoId, data }),
+    })
+  } catch { /* el estado local ya se actualizó; reintenta al recargar */ }
+}
+
 // ── Realtime upsert helpers ────────────────────────────────────────────────────
 function upsert<T extends { id: string }>(prev: T[], item: T): T[] {
   const i = prev.findIndex(x => x.id === item.id)
@@ -601,10 +616,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         ? { ...e, estado: 'inactivo' as EmpleadoEstado, desvinculacion: info }
         : e
       )
-      if (supabase) {
-        const full = updated.find(e => e.id === id)
-        if (full) supabase.from('fno_empleados').upsert(mapEmpleadoToSupabase(full)).then()
-      }
+      // Persistir vía service role (RLS bloquea upserts client-side)
+      persistEmpleadoViaApi(id, { estado: 'inactivo', desvinculacion: info })
       return updated
     })
   }, [])
@@ -625,18 +638,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           historialDesvinculaciones: historial.length > 0 ? historial : undefined,
         }
       })
-      if (supabase) {
-        const full = updated.find(e => e.id === id)
-        if (full) {
-          supabase.from('fno_empleados')
-            .upsert({
-              ...mapEmpleadoToSupabase(full),
-              desvinculacion: null,                          // limpiar baja activa
-              historial_desvinculaciones: full.historialDesvinculaciones ?? null,
-            })
-            .then()
-        }
-      }
+      const full = updated.find(e => e.id === id)
+      // Persistir vía service role (RLS bloquea upserts client-side)
+      persistEmpleadoViaApi(id, {
+        estado: 'activo',
+        desvinculacion: null,                              // limpiar baja activa
+        historial_desvinculaciones: full?.historialDesvinculaciones ?? null,
+      })
       return updated
     })
   }, [])
