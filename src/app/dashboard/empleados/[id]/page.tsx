@@ -111,6 +111,23 @@ export default function EmpleadoDetailPage() {
   const [savingEmail, setSavingEmail] = useState(false)
   const [saveError, setSaveError] = useState('')
 
+  // Persiste cambios en fno_empleados vía service role (bypasea RLS).
+  // Los upserts client-side con anon key se bloquean silenciosamente por RLS,
+  // así que toda escritura va por /api/perfil (igual que el perfil propio).
+  async function persistEmpleado(data: Record<string, unknown>): Promise<boolean> {
+    try {
+      const { data: { user: authUser } } = await supabase!.auth.getUser()
+      const res = await fetch('/api/perfil', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ authId: authUser?.id, empleadoId: emp!.id, data }),
+      })
+      return res.ok
+    } catch {
+      return false
+    }
+  }
+
   if (!emp) {
     return (
       <div className="page-container text-center py-20">
@@ -173,6 +190,7 @@ export default function EmpleadoDetailPage() {
       }
     }
 
+    // Estado local inmediato (UI responde al instante)
     updateEmpleado(emp!.id, {
       nombre: form.nombre, apellido: form.apellido, dni: form.dni, cuil: form.cuil,
       email: nuevoEmail,
@@ -187,14 +205,35 @@ export default function EmpleadoDetailPage() {
       },
       cbu: form.cbu, banco: form.banco,
     })
+
+    // Persistencia garantizada vía service role (el email ya se guardó arriba)
+    setSavingEmail(true)
+    const ok = await persistEmpleado({
+      nombre: form.nombre, apellido: form.apellido, dni: form.dni, cuil: form.cuil,
+      fecha_nacimiento: form.fechaNacimiento, telefono: form.telefono, direccion: form.direccion,
+      sector: form.sector, cargo: form.cargo, cargos_extra: form.cargosExtra,
+      jornada: form.jornada, supervisor: form.supervisor,
+      estado: form.estado, fecha_ingreso: form.fechaIngreso,
+      contacto_emergencia: {
+        nombre: form.contactoNombre,
+        telefono: form.contactoTelefono,
+        relacion: form.contactoRelacion,
+      },
+      cbu: form.cbu, banco: form.banco,
+    })
+    setSavingEmail(false)
+    if (!ok) {
+      setSaveError('No se pudieron guardar los cambios. Intentá de nuevo.')
+      return
+    }
     setEditMode(false)
   }
 
-  // Elimina la foto del empleado
+  // Elimina la foto del empleado (solo la de perfil; persiste vía service role)
   function handleDeletePhoto() {
-    updateEmpleado(emp!.id, { foto: '', fotoCover: '' })
+    updateEmpleado(emp!.id, { foto: '' })
     setProfileFoto('')
-    setProfileFotoCover('')
+    persistEmpleado({ foto: '' })
   }
 
   // Comprime/redimensiona a 400px max antes de guardar (evita fotos enormes en base64)
@@ -215,7 +254,10 @@ export default function EmpleadoDetailPage() {
         ctx.imageSmoothingQuality = 'high'
         ctx.drawImage(img, 0, 0, w, h)
         // Calidad 0.80 — buen equilibrio calidad/peso para foto de perfil
-        updateEmpleado(emp!.id, { foto: canvas.toDataURL('image/jpeg', 0.80) })
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.80)
+        updateEmpleado(emp!.id, { foto: dataUrl })
+        setProfileFoto(dataUrl)
+        persistEmpleado({ foto: dataUrl })
       }
       img.src = e.target?.result as string
     }
