@@ -1,0 +1,24 @@
+{
+  "name": "Portal RRHH — Fundación Neuquén Oeste",
+  "short_name": "Portal FNO",
+  "description": "Portal de Recursos Humanos de la Fundación Neuquén Oeste",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#23597e",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

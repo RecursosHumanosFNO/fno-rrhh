@@ -8,6 +8,13 @@ import { ErrorBoundary } from '@/components/ErrorBoundary'
 export const metadata: Metadata = {
   title: 'Portal RRHH | Fundación Neuquén Oeste',
   description: 'Sistema de Gestión de Recursos Humanos — Fundación Neuquén Oeste',
+  manifest: '/manifest.json',
+  themeColor: '#23597e',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Portal FNO',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
