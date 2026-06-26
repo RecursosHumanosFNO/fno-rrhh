@@ -96,9 +96,8 @@ export default function PerfilPage() {
       jornada: form.jornada,
       supervisor: form.supervisor,
       fecha_ingreso: form.fechaIngreso,
-      // Preservar fotos actuales para que el upsert no las pise
-      foto: empleado!.foto ?? '',
-      foto_cover: empleado!.fotoCover ?? '',
+      // Las fotos se guardan al subirlas (handlePhotoUpload) — no incluirlas
+      // acá para evitar que un upsert con valor vacío/stale las pise.
     }
 
     try {
