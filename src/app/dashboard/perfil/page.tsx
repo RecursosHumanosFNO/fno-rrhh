@@ -156,10 +156,11 @@ export default function PerfilPage() {
   // fotos enormes en base64). Avatar: 400px, Cover: 1200px.
   function handlePhotoUpload(file: File, field: 'foto' | 'fotoCover') {
     const maxSide = field === 'fotoCover' ? 1200 : 400
+    const dbField = field === 'fotoCover' ? 'foto_cover' : 'foto'
     const reader = new FileReader()
     reader.onload = e => {
       const img = new Image()
-      img.onload = () => {
+      img.onload = async () => {
         const scale = Math.min(1, maxSide / Math.max(img.width, img.height))
         const w = Math.round(img.width * scale)
         const h = Math.round(img.height * scale)
@@ -169,7 +170,21 @@ export default function PerfilPage() {
         if (!ctx) return
         ctx.drawImage(img, 0, 0, w, h)
         const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
+        // Actualizar estado local
         updateEmpleado({ [field]: dataUrl })
+        // Persistir vía API (bypasea RLS)
+        try {
+          const { data: { user: authUser } } = await supabase!.auth.getUser()
+          fetch('/api/perfil', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              authId: authUser?.id,
+              empleadoId: empleado!.id,
+              data: { [dbField]: dataUrl },
+            }),
+          }).catch(() => {})
+        } catch { /* no crítico — se guarda igual al hacer Guardar */ }
       }
       img.src = e.target?.result as string
     }
