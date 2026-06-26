@@ -117,7 +117,7 @@ function mapEmpleadoToSupabase(e: Empleado) {
   const row: Record<string, unknown> = {
     id: e.id, nombre: e.nombre, apellido: e.apellido, dni: e.dni,
     fecha_nacimiento: e.fechaNacimiento, email: e.email, telefono: e.telefono,
-    direccion: e.direccion, foto: e.foto, foto_cover: e.fotoCover, cuil: e.cuil,
+    direccion: e.direccion, cuil: e.cuil,
     contacto_emergencia: e.contactoEmergencia,
     sector: e.sector, cargo: e.cargo, cargos_extra: e.cargosExtra ?? [], fecha_ingreso: e.fechaIngreso,
     tipo_contrato: e.tipoContrato, jornada: e.jornada, supervisor: e.supervisor,
@@ -125,6 +125,10 @@ function mapEmpleadoToSupabase(e: Empleado) {
     dias_vacaciones_usados: e.diasVacacionesUsados,
     cbu: e.cbu ?? '', banco: e.banco ?? '',
   }
+  // Solo incluir foto/fotoCover si tienen valor — el sync masivo no las carga,
+  // así un upsert sin fotos no pisa las existentes en la DB.
+  if (e.foto) row.foto = e.foto
+  if (e.fotoCover) row.foto_cover = e.fotoCover
   // Solo incluir desvinculacion si tiene valor para no romper inserts
   // cuando la columna aún no existe en la tabla de Supabase
   if (e.desvinculacion !== undefined) row.desvinculacion = e.desvinculacion
