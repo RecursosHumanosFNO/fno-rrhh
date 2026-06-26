@@ -82,6 +82,46 @@ function exportarExcel(empleados: Empleado[]) {
   XLSX.writeFile(wb, `empleados_fno_${hoy}.xlsx`)
 }
 
+function EmpleadoCard({ emp }: { emp: Empleado }) {
+  return (
+    <Link href={`/dashboard/empleados/${emp.id}`} className="card-hover p-5 flex flex-col gap-3">
+      <div className="flex items-start justify-between">
+        <div className="w-12 h-12 rounded-xl bg-brand-700 flex items-center justify-center text-white font-bold text-base overflow-hidden">
+          {emp.foto
+            ? <img src={emp.foto} alt="" className="w-12 h-12 object-cover" />
+            : `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}`
+          }
+        </div>
+        <span className={`badge ${EMPLEADO_ESTADO_COLOR[emp.estado]}`}>
+          {EMPLEADO_ESTADO_LABEL[emp.estado]}
+        </span>
+      </div>
+      <div>
+        <p className="font-semibold text-slate-800 dark:text-slate-100">{emp.nombre} {emp.apellido}</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">{emp.cargo}</p>
+      </div>
+      <div className="space-y-1.5 text-xs text-slate-500 dark:text-slate-400">
+        <div className="flex items-center gap-1.5">
+          <Building2 className="w-3.5 h-3.5 shrink-0" />
+          <span className="truncate">{emp.sector}</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Mail className="w-3.5 h-3.5 shrink-0" />
+          <span className="truncate">{emp.email}</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Calendar className="w-3.5 h-3.5 shrink-0" />
+          <span>{calcularAntiguedad(emp.fechaIngreso)} de antigüedad</span>
+        </div>
+      </div>
+      <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800">
+        <span className="text-xs text-slate-400">{emp.jornada}</span>
+        <ChevronRight className="w-4 h-4 text-slate-400" />
+      </div>
+    </Link>
+  )
+}
+
 export default function EmpleadosPage() {
   const { user } = useAuth()
   const router = useRouter()
@@ -502,45 +542,41 @@ function EmpleadosContent() {
           <p className="text-slate-400 text-sm mt-1">Probá con otros filtros de búsqueda</p>
         </div>
       ) : view === 'grid' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filtered.map(emp => (
-            <Link key={emp.id} href={`/dashboard/empleados/${emp.id}`} className="card-hover p-5 flex flex-col gap-3">
-              <div className="flex items-start justify-between">
-                <div className="w-12 h-12 rounded-xl bg-brand-700 flex items-center justify-center text-white font-bold text-base overflow-hidden">
-                  {emp.foto
-                    ? <img src={emp.foto} alt="" className="w-12 h-12 object-cover" />
-                    : `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}`
-                  }
-                </div>
-                <span className={`badge ${EMPLEADO_ESTADO_COLOR[emp.estado]}`}>
-                  {EMPLEADO_ESTADO_LABEL[emp.estado]}
-                </span>
+        // Agrupar por sector cuando no hay filtro activo
+        (() => {
+          const agrupar = !sectorFilter && !query && !estadoFilter && !cargoFilter && sortBy === 'apellido'
+          if (!agrupar) {
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {filtered.map(emp => <EmpleadoCard key={emp.id} emp={emp} />)}
               </div>
-              <div>
-                <p className="font-semibold text-slate-800 dark:text-slate-100">{emp.nombre} {emp.apellido}</p>
-                <p className="text-sm text-slate-500 dark:text-slate-400">{emp.cargo}</p>
-              </div>
-              <div className="space-y-1.5 text-xs text-slate-500 dark:text-slate-400">
-                <div className="flex items-center gap-1.5">
-                  <Building2 className="w-3.5 h-3.5 shrink-0" />
-                  <span className="truncate">{emp.sector}</span>
+            )
+          }
+          const grupos = filtered.reduce<Record<string, typeof filtered>>((acc, emp) => {
+            const s = emp.sector || 'Sin sector'
+            if (!acc[s]) acc[s] = []
+            acc[s].push(emp)
+            return acc
+          }, {})
+          const sectoresOrdenados = Object.keys(grupos).sort((a, b) => a.localeCompare(b, 'es'))
+          return (
+            <div className="space-y-8">
+              {sectoresOrdenados.map(sector => (
+                <div key={sector}>
+                  <div className="flex items-center gap-3 mb-4">
+                    <Building2 className="w-4 h-4 text-brand-500 shrink-0" />
+                    <h3 className="text-sm font-semibold text-brand-700 dark:text-brand-400 uppercase tracking-wide">{sector}</h3>
+                    <span className="text-xs text-slate-400 font-normal">({grupos[sector].length})</span>
+                    <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {grupos[sector].map(emp => <EmpleadoCard key={emp.id} emp={emp} />)}
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <Mail className="w-3.5 h-3.5 shrink-0" />
-                  <span className="truncate">{emp.email}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 shrink-0" />
-                  <span>{calcularAntiguedad(emp.fechaIngreso)} de antigüedad</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800">
-                <span className="text-xs text-slate-400">{emp.jornada}</span>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
-              </div>
-            </Link>
-          ))}
-        </div>
+              ))}
+            </div>
+          )
+        })()
       ) : (
         <div className="card overflow-x-auto">
           <table className="w-full min-w-[500px]">
