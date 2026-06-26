@@ -407,12 +407,12 @@ export default function EstadisticasPage() {
                   const mAprobadas = mSolicitudes.filter(s => s.estado === 'aprobado').length
                   return (
                     <tr key={emp.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                      <td className="table-cell">
+                      <td className="table-cell max-w-[180px]">
                         <div className="flex items-center gap-2.5">
                           <div className="w-8 h-8 rounded-full bg-brand-700 flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden">
                             {emp.foto ? <img src={emp.foto} alt="" className="w-8 h-8 object-cover" /> : `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}`}
                           </div>
-                          <span className="font-medium text-slate-700 dark:text-slate-200">{emp.nombre} {emp.apellido}</span>
+                          <span className="font-medium text-slate-700 dark:text-slate-200 truncate">{emp.apellido}, {emp.nombre}</span>
                         </div>
                       </td>
                       <td className="table-cell text-slate-600 dark:text-slate-400 text-sm max-w-[160px] truncate" title={emp.sector}>{emp.sector}</td>

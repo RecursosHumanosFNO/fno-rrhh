@@ -601,8 +601,8 @@ export default function RecibosPage() {
           </p>
         </div>
       ) : (
-        <div className="card overflow-hidden">
-          <table className="w-full">
+        <div className="card overflow-x-auto">
+          <table className="w-full min-w-[520px]">
             <thead>
               <tr>
                 {viewAsAdmin && <th className="table-header text-left">Empleado</th>}
@@ -621,27 +621,27 @@ export default function RecibosPage() {
                 return (
                   <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                     {viewAsAdmin && (
-                      <td className="table-cell">
+                      <td className="table-cell max-w-[180px]">
                         <div className="flex items-center gap-2.5">
                           <div className="w-8 h-8 rounded-full bg-brand-700 flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden">
                             {emp?.foto ? <img src={emp.foto} alt="" className="w-8 h-8 object-cover" /> : emp ? `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}` : '?'}
                           </div>
-                          <div>
-                            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{emp ? `${emp.nombre} ${emp.apellido}` : 'N/A'}</p>
-                            <p className="text-xs text-slate-400">{emp?.sector}</p>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{emp ? `${emp.apellido}, ${emp.nombre}` : 'N/A'}</p>
+                            <p className="text-xs text-slate-400 truncate">{emp?.sector}</p>
                           </div>
                         </div>
                       </td>
                     )}
                     <td className="table-cell">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-center shrink-0">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-center shrink-0">
                           <FileText className="w-4 h-4 text-brand-700 dark:text-brand-400" />
                         </div>
                         <div>
-                          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{formatMes(r.mes, r.anio)}</p>
+                          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">{formatMes(r.mes, r.anio)}</p>
                           {r.concepto && (
-                            <span className={`inline-block text-[10px] font-medium px-1.5 py-0.5 rounded mt-0.5 ${
+                            <span className={`inline-block text-[10px] font-medium px-1.5 py-0.5 rounded mt-0.5 whitespace-nowrap ${
                               r.concepto === 'Sueldo Anual Complementario'
                                 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
                                 : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
@@ -649,10 +649,10 @@ export default function RecibosPage() {
                               {r.concepto === 'Sueldo Anual Complementario' ? '🎁 Aguinaldo (SAC)' : '📅 Recibo mensual'}
                             </span>
                           )}
-                          <div className="flex items-center gap-1 mt-0.5">
+                          <div className="flex items-center gap-1 mt-0.5 whitespace-nowrap">
                             {tieneArchivo
-                              ? <><Cloud className="w-3 h-3 text-emerald-500" /><span className="text-xs text-emerald-600 dark:text-emerald-400">PDF en la nube</span></>
-                              : <><HardDrive className="w-3 h-3 text-slate-400" /><span className="text-xs text-slate-400">Sin archivo</span></>
+                              ? <><Cloud className="w-3 h-3 text-emerald-500 shrink-0" /><span className="text-xs text-emerald-600 dark:text-emerald-400">PDF en la nube</span></>
+                              : <><HardDrive className="w-3 h-3 text-slate-400 shrink-0" /><span className="text-xs text-slate-400">Sin archivo</span></>
                             }
                           </div>
                         </div>

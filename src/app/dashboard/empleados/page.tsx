@@ -337,8 +337,8 @@ function EmpleadosContent() {
               <p className="text-slate-400 text-sm mt-1">Cuando desactivés a un empleado, aparecerá aquí con sus datos de baja.</p>
             </div>
           ) : (
-            <div className="card overflow-hidden">
-              <table className="w-full text-sm">
+            <div className="card overflow-x-auto">
+              <table className="w-full min-w-[480px] text-sm">
                 <thead>
                   <tr className="bg-slate-50 dark:bg-slate-800/60">
                     <th className="table-header text-left">Empleado</th>
@@ -352,14 +352,14 @@ function EmpleadosContent() {
                 <tbody>
                   {inactivos.map(emp => (
                     <tr key={emp.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                      <td className="table-cell">
+                      <td className="table-cell max-w-[180px]">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-full bg-slate-300 dark:bg-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-300 text-xs font-bold shrink-0 overflow-hidden">
                             {emp.foto ? <img src={emp.foto} alt="" className="w-9 h-9 object-cover" /> : `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}`}
                           </div>
-                          <div>
-                            <p className="font-semibold text-slate-700 dark:text-slate-200">{emp.apellido}, {emp.nombre}</p>
-                            <p className="text-xs text-slate-400">{emp.cargo} · {emp.sector}</p>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-slate-700 dark:text-slate-200 truncate">{emp.apellido}, {emp.nombre}</p>
+                            <p className="text-xs text-slate-400 truncate">{emp.cargo} · {emp.sector}</p>
                           </div>
                         </div>
                       </td>
@@ -542,8 +542,8 @@ function EmpleadosContent() {
           ))}
         </div>
       ) : (
-        <div className="card overflow-hidden">
-          <table className="w-full">
+        <div className="card overflow-x-auto">
+          <table className="w-full min-w-[500px]">
             <thead>
               <tr>
                 <th className="table-header text-left">Empleado</th>
@@ -557,20 +557,20 @@ function EmpleadosContent() {
             <tbody>
               {filtered.map(emp => (
                 <tr key={emp.id} className="hover:bg-[#e2f2f9] dark:hover:bg-slate-800/50 transition-colors">
-                  <td className="table-cell">
+                  <td className="table-cell max-w-[180px]">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full bg-brand-700 flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden">
                         {emp.foto ? <img src={emp.foto} alt="" className="w-9 h-9 object-cover" /> : `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}`}
                       </div>
-                      <div>
-                        <p className="font-semibold text-slate-700 dark:text-slate-200">{emp.nombre} {emp.apellido}</p>
-                        <p className="text-xs text-slate-400">{emp.email}</p>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-slate-700 dark:text-slate-200 truncate">{emp.apellido}, {emp.nombre}</p>
+                        <p className="text-xs text-slate-400 truncate">{emp.email}</p>
                       </div>
                     </div>
                   </td>
                   <td className="table-cell hidden md:table-cell">
-                    <p className="text-slate-700 dark:text-slate-300">{emp.cargo}</p>
-                    <p className="text-xs text-slate-400">{emp.sector}</p>
+                    <p className="text-slate-700 dark:text-slate-300 truncate max-w-[140px]">{emp.cargo}</p>
+                    <p className="text-xs text-slate-400 truncate max-w-[140px]">{emp.sector}</p>
                   </td>
                   <td className="table-cell hidden lg:table-cell">
                     <p className="text-slate-700 dark:text-slate-300">{formatFecha(emp.fechaIngreso)}</p>
