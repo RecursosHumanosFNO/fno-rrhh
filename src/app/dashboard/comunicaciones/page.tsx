@@ -25,7 +25,7 @@ type DisplayItem =
 import {
   Megaphone, Plus, Pin, Calendar, PartyPopper, AlertTriangle,
   Bell, MessageSquare, X, ChevronRight, Trash2, Edit2, Save, Mail,
-  Image as ImageIcon, Loader2, Paperclip, Download, ExternalLink,
+  Image as ImageIcon, Loader2, Paperclip, Download, ExternalLink, ChevronDown,
 } from 'lucide-react'
 
 // Ícono por categoría (las que no estén usan Calendar por defecto)
@@ -222,31 +222,19 @@ export default function ComunicacionesPage() {
         )}
       </div>
 
-      {/* Categoría filters */}
-      <div className="flex flex-wrap gap-2">
-        <button
-          onClick={() => setCatFilter('')}
-          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-            !catFilter ? 'bg-brand-700 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-          }`}
+      {/* Categoría filter */}
+      <div className="relative w-48">
+        <select
+          value={catFilter}
+          onChange={e => setCatFilter(e.target.value as NovedadCategoria | '')}
+          className="w-full appearance-none bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg pl-3 pr-8 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer"
         >
-          Todas
-        </button>
-        {NOVEDAD_CATEGORIAS.map(cat => {
-          const Icon = catIcon(cat)
-          return (
-            <button
-              key={cat}
-              onClick={() => setCatFilter(catFilter === cat ? '' : cat)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                catFilter === cat ? 'bg-brand-700 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              {NOVEDAD_CATEGORIA_LABEL[cat]}
-            </button>
-          )
-        })}
+          <option value="">Todas las categorías</option>
+          {NOVEDAD_CATEGORIAS.map(cat => (
+            <option key={cat} value={cat}>{NOVEDAD_CATEGORIA_LABEL[cat]}</option>
+          ))}
+        </select>
+        <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
       </div>
 
       {/* Lista unificada: novedades + eventos del calendario */}
