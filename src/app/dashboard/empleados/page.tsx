@@ -252,7 +252,6 @@ function EmpleadosContent() {
         jornada: form.jornada,
         supervisor: form.supervisor,
         estado: 'activo' as EmpleadoEstado,
-        diasVacaciones: 14, diasVacacionesUsados: 0,
       })
 
       // Crear cuenta de login en Supabase Auth (contraseña encriptada) + fno_users
