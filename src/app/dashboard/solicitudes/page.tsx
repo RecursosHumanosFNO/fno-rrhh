@@ -12,7 +12,7 @@ import {
   ClipboardList, Plus, Search, X, CheckCircle2, XCircle, Clock,
   ChevronDown, ChevronUp, Send, Hourglass, Save, Edit2, Loader2,
   HeadphonesIcon, MessageSquare, Circle, FileCheck, HelpCircle,
-  RefreshCw, AlertCircle, MoreHorizontal, Bell, Download,
+  RefreshCw, AlertCircle, MoreHorizontal, Bell, Download, FileText,
 } from 'lucide-react'
 
 const TICKET_TIPOS: TicketTipo[] = ['certificado_laboral', 'consulta', 'actualizacion_datos', 'reclamo', 'otro']
@@ -87,6 +87,140 @@ async function exportarSolicitudesExcel(solicitudes: Solicitud[], empleados: Emp
   writeFile(wb, `solicitudes_fno_${hoy}.xlsx`)
 }
 
+// ── PDF helpers ───────────────────────────────────────────────────────────────
+const BRAND_C: [number, number, number] = [10, 110, 130]
+const DARK_C:  [number, number, number] = [30, 41, 59]
+const GRAY_C:  [number, number, number] = [100, 116, 139]
+const LIGHT_C: [number, number, number] = [241, 245, 249]
+
+type JsPDFDoc = import('jspdf').jsPDF
+
+function _pdfHeader(doc: JsPDFDoc, subtitle: string) {
+  doc.setFillColor(...BRAND_C); doc.rect(0, 0, 210, 36, 'F')
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(16); doc.setFont('helvetica', 'bold')
+  doc.text('Fundación Neuquén Oeste', 14, 16)
+  doc.setFontSize(9); doc.setFont('helvetica', 'normal')
+  doc.text(`Portal de Recursos Humanos · ${subtitle}`, 14, 26)
+}
+
+function _pdfFooter(doc: JsPDFDoc) {
+  doc.setFillColor(...LIGHT_C); doc.rect(0, 282, 210, 15, 'F')
+  const now = new Date().toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  doc.setTextColor(...GRAY_C); doc.setFontSize(7.5); doc.setFont('helvetica', 'normal')
+  doc.text(`Generado el ${now} · Portal RRHH · Fundación Neuquén Oeste · portalfno.com`, 14, 291)
+}
+
+function _pdfField(doc: JsPDFDoc, label: string, value: string, y: number, maxW = 182): number {
+  doc.setTextColor(...GRAY_C); doc.setFontSize(7.5); doc.setFont('helvetica', 'bold')
+  doc.text(label, 14, y); y += 4.5
+  doc.setTextColor(...DARK_C); doc.setFontSize(10.5); doc.setFont('helvetica', 'normal')
+  const lines = doc.splitTextToSize(value, maxW)
+  doc.text(lines, 14, y)
+  return y + lines.length * 5 + 5
+}
+
+function _pdfDivider(doc: JsPDFDoc, y: number): number {
+  doc.setDrawColor(226, 232, 240); doc.setLineWidth(0.25)
+  doc.line(14, y, 196, y); return y + 8
+}
+
+function _pdfEmpCard(doc: JsPDFDoc, emp: Empleado, label: string, y: number): number {
+  doc.setFillColor(...LIGHT_C); doc.roundedRect(14, y, 182, 21, 2.5, 2.5, 'F')
+  doc.setTextColor(...GRAY_C); doc.setFontSize(7.5); doc.setFont('helvetica', 'bold')
+  doc.text(label, 20, y + 7)
+  doc.setTextColor(...DARK_C); doc.setFontSize(11.5); doc.setFont('helvetica', 'bold')
+  doc.text(`${emp.apellido}, ${emp.nombre}`, 20, y + 13)
+  doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(...GRAY_C)
+  doc.text(`${emp.cargo} · ${emp.sector}`, 20, y + 18.5)
+  return y + 27
+}
+
+function _pdfBadge(doc: JsPDFDoc, text: string, color: [number,number,number], y: number): number {
+  doc.setFillColor(...color); doc.roundedRect(14, y, 36, 6.5, 1.5, 1.5, 'F')
+  doc.setTextColor(255, 255, 255); doc.setFontSize(8); doc.setFont('helvetica', 'bold')
+  doc.text(text.toUpperCase(), 16, y + 4.5); return y + 12
+}
+
+function _pdfRespuesta(doc: JsPDFDoc, texto: string, y: number): number {
+  const lines = doc.splitTextToSize(texto, 168)
+  const boxH = lines.length * 5 + 14
+  doc.setFillColor(239, 246, 255); doc.roundedRect(14, y, 182, boxH, 2.5, 2.5, 'F')
+  doc.setTextColor(...BRAND_C); doc.setFontSize(7.5); doc.setFont('helvetica', 'bold')
+  doc.text('RESPUESTA DE RRHH', 20, y + 7)
+  doc.setTextColor(...DARK_C); doc.setFontSize(10); doc.setFont('helvetica', 'normal')
+  doc.text(lines, 20, y + 13)
+  return y + boxH + 6
+}
+
+async function descargarSolicitudPDF(sol: Solicitud, emp: Empleado | undefined) {
+  const { jsPDF } = await import('jspdf')
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  _pdfHeader(doc, 'Constancia de Solicitud')
+  let y = 48
+  doc.setTextColor(...DARK_C); doc.setFontSize(15); doc.setFont('helvetica', 'bold')
+  doc.text('CONSTANCIA DE SOLICITUD', 14, y); y += 8
+  const estadoBg: Record<string, [number,number,number]> = {
+    aprobado: [16,185,129], rechazado: [239,68,68], pendiente: [245,158,11]
+  }
+  y = _pdfBadge(doc, SOLICITUD_ESTADO_LABEL[sol.estado] ?? sol.estado, estadoBg[sol.estado] ?? [100,116,139], y)
+  if (emp) y = _pdfEmpCard(doc, emp, 'EMPLEADO', y)
+  y = _pdfDivider(doc, y)
+  y = _pdfField(doc, 'TIPO DE SOLICITUD', SOLICITUD_TIPO_LABEL[sol.tipo] ?? sol.tipo, y)
+  y = _pdfField(doc, 'PERÍODO', sol.fechaFin ? `${formatFecha(sol.fechaInicio)} al ${formatFecha(sol.fechaFin)}` : formatFecha(sol.fechaInicio), y)
+  if (sol.horarioDesde) y = _pdfField(doc, 'HORARIO', `${sol.horarioDesde}${sol.horarioHasta ? ` — ${sol.horarioHasta} hs` : ' hs'}`, y)
+  y = _pdfField(doc, 'DESCRIPCIÓN / MOTIVO', sol.descripcion, y, 182)
+  y = _pdfDivider(doc, y)
+  y = _pdfField(doc, 'FECHA DE SOLICITUD', formatFecha(sol.fechaCreacion), y)
+  if (sol.fechaResolucion) y = _pdfField(doc, 'FECHA DE RESOLUCIÓN', formatFecha(sol.fechaResolucion), y)
+  if (sol.comentarioAdmin) y = _pdfRespuesta(doc, sol.comentarioAdmin, y)
+  _pdfFooter(doc)
+  doc.save(`solicitud_${emp?.apellido?.toLowerCase().replace(/\s/g,'_') ?? 'empleado'}_${sol.fechaInicio.replace(/-/g,'')}.pdf`)
+}
+
+async function descargarMensajePDF(emp: Empleado, asunto: string, mensaje: string) {
+  const { jsPDF } = await import('jspdf')
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  _pdfHeader(doc, 'Constancia de Comunicación Interna')
+  let y = 48
+  doc.setTextColor(...DARK_C); doc.setFontSize(15); doc.setFont('helvetica', 'bold')
+  doc.text('CONSTANCIA DE MENSAJE RRHH', 14, y); y += 12
+  y = _pdfEmpCard(doc, emp, 'DESTINATARIO', y)
+  y = _pdfDivider(doc, y)
+  y = _pdfField(doc, 'ASUNTO', asunto, y)
+  y = _pdfField(doc, 'MENSAJE', mensaje, y, 182)
+  y = _pdfDivider(doc, y)
+  const ahora = new Date().toLocaleString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })
+  y = _pdfField(doc, 'FECHA Y HORA DE ENVÍO', `${ahora} · Enviado por RRHH`, y)
+  _pdfFooter(doc)
+  doc.save(`mensaje_rrhh_${emp.apellido.toLowerCase().replace(/\s/g,'_')}_${new Date().toISOString().slice(0,10).replace(/-/g,'')}.pdf`)
+}
+
+async function descargarTicketPDF(ticket: import('@/types').Ticket, emp: Empleado | undefined) {
+  const { jsPDF } = await import('jspdf')
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  _pdfHeader(doc, 'Constancia de Pedido a RRHH')
+  let y = 48
+  doc.setTextColor(...DARK_C); doc.setFontSize(15); doc.setFont('helvetica', 'bold')
+  doc.text('CONSTANCIA DE PEDIDO A RRHH', 14, y); y += 8
+  const ticketBg: Record<string, [number,number,number]> = {
+    abierto: [245,158,11], en_proceso: [59,130,246], resuelto: [16,185,129], cerrado: [100,116,139]
+  }
+  y = _pdfBadge(doc, TICKET_ESTADO_LABEL[ticket.estado] ?? ticket.estado, ticketBg[ticket.estado] ?? [100,116,139], y)
+  if (emp) y = _pdfEmpCard(doc, emp, 'EMPLEADO', y)
+  y = _pdfDivider(doc, y)
+  y = _pdfField(doc, 'TIPO DE PEDIDO', TICKET_TIPO_LABEL[ticket.tipo] ?? ticket.tipo, y)
+  y = _pdfField(doc, 'ASUNTO', ticket.asunto, y)
+  y = _pdfField(doc, 'DESCRIPCIÓN', ticket.descripcion, y, 182)
+  y = _pdfDivider(doc, y)
+  y = _pdfField(doc, 'FECHA DE PEDIDO', formatFecha(ticket.fechaCreacion), y)
+  if (ticket.fechaActualizacion !== ticket.fechaCreacion)
+    y = _pdfField(doc, 'ÚLTIMA ACTUALIZACIÓN', formatFecha(ticket.fechaActualizacion), y)
+  if (ticket.respuesta) y = _pdfRespuesta(doc, ticket.respuesta, y)
+  _pdfFooter(doc)
+  doc.save(`pedido_rrhh_${emp?.apellido?.toLowerCase().replace(/\s/g,'_') ?? 'empleado'}_${ticket.fechaCreacion.slice(0,10).replace(/-/g,'')}.pdf`)
+}
+
 export default function SolicitudesPage() {
   const { user } = useAuth()
   const { empleados, solicitudes, addSolicitud, approveSolicitud, rejectSolicitud, editSolicitud, cancelSolicitud, tickets, addTicket, respondTicket, addNotification } = useData()
@@ -109,6 +243,7 @@ export default function SolicitudesPage() {
   const [mensajeForm, setMensajeForm] = useState({ empleadoId: '', asunto: '', mensaje: '' })
   const [enviandoMensaje, setEnviandoMensaje] = useState(false)
   const [mensajeOk, setMensajeOk] = useState(false)
+  const [lastMensajeSnap, setLastMensajeSnap] = useState<{ emp: Empleado; asunto: string; mensaje: string } | null>(null)
 
   // Estado para pedidos a RRHH (tickets)
   const [showNuevoTicket, setShowNuevoTicket] = useState(false)
@@ -199,8 +334,8 @@ export default function SolicitudesPage() {
       }).catch(() => {})
     }
     setEnviandoMensaje(false)
+    if (emp) setLastMensajeSnap({ emp, asunto: mensajeForm.asunto, mensaje: mensajeForm.mensaje })
     setMensajeOk(true)
-    setTimeout(() => { setMensajeOk(false); setShowMensaje(false); setMensajeForm({ empleadoId: '', asunto: '', mensaje: '' }) }, 2000)
   }
 
   function startEdit(sol: { id: string; estado: string; comentarioAdmin?: string }) {
@@ -553,6 +688,16 @@ export default function SolicitudesPage() {
                         </button>
                       </div>
                     )}
+
+                    {/* PDF download — siempre visible */}
+                    <div className="flex justify-start pt-1 border-t border-slate-100 dark:border-slate-800">
+                      <button
+                        onClick={() => descargarSolicitudPDF(sol, emp)}
+                        className="text-sm text-slate-500 hover:text-brand-600 dark:hover:text-brand-400 flex items-center gap-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 px-3 py-1.5 rounded-lg transition-colors"
+                      >
+                        <FileText className="w-3.5 h-3.5" /> Descargar constancia PDF
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -571,10 +716,28 @@ export default function SolicitudesPage() {
             </div>
             <div className="p-5 space-y-4">
               {mensajeOk ? (
-                <div className="py-8 text-center">
-                  <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
-                  <p className="font-semibold text-slate-800 dark:text-slate-100">¡Mensaje enviado!</p>
-                  <p className="text-sm text-slate-500 mt-1">El empleado recibió la notificación y el email.</p>
+                <div className="py-6 text-center space-y-4">
+                  <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
+                  <div>
+                    <p className="font-semibold text-slate-800 dark:text-slate-100">¡Mensaje enviado!</p>
+                    <p className="text-sm text-slate-500 mt-1">El empleado recibió la notificación y el email.</p>
+                  </div>
+                  <div className="flex gap-2 justify-center">
+                    {lastMensajeSnap && (
+                      <button
+                        onClick={() => descargarMensajePDF(lastMensajeSnap.emp, lastMensajeSnap.asunto, lastMensajeSnap.mensaje)}
+                        className="btn-secondary text-sm"
+                      >
+                        <FileText className="w-4 h-4" /> Descargar constancia PDF
+                      </button>
+                    )}
+                    <button
+                      onClick={() => { setMensajeOk(false); setShowMensaje(false); setMensajeForm({ empleadoId: '', asunto: '', mensaje: '' }) }}
+                      className="btn-primary text-sm"
+                    >
+                      Cerrar
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <>
@@ -884,6 +1047,16 @@ function PedidosRRHH({ isAdmin, user, filteredTickets, baseTickets, ticketsActiv
                         </div>
                       </div>
                     )}
+
+                    {/* PDF download */}
+                    <div className="flex justify-start pt-1 border-t border-slate-100 dark:border-slate-800">
+                      <button
+                        onClick={() => descargarTicketPDF(ticket, emp)}
+                        className="text-sm text-slate-500 hover:text-brand-600 dark:hover:text-brand-400 flex items-center gap-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 px-3 py-1.5 rounded-lg transition-colors"
+                      >
+                        <FileText className="w-3.5 h-3.5" /> Descargar constancia PDF
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
