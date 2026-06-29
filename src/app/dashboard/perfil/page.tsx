@@ -9,7 +9,7 @@ import { SECTORES, CARGOS_POR_SECTOR } from '@/lib/mockData'
 import {
   User, Edit2, Save, X, Lock, Building2, Phone, Mail,
   Clock, CheckCircle2, Eye, EyeOff, Camera, Image as ImageIcon,
-  Shield, AlertCircle, Loader2,
+  Shield, AlertCircle, Loader2, AlertTriangle,
 } from 'lucide-react'
 
 export default function PerfilPage() {
@@ -45,6 +45,19 @@ export default function PerfilPage() {
   const [saveError, setSaveError] = useState<string | null>(null)
 
   if (!empleado || !user) return null
+
+  const missingFields: string[] = [
+    ...(!empleado.fechaNacimiento ? ['Fecha de nacimiento'] : []),
+    ...(!empleado.cuil ? ['CUIL'] : []),
+    ...(!empleado.telefono ? ['Teléfono'] : []),
+    ...(!empleado.direccion ? ['Dirección'] : []),
+    ...(!empleado.cbu ? ['CBU'] : []),
+    ...(!empleado.banco ? ['Banco'] : []),
+    ...(!empleado.contactoEmergencia?.nombre ? ['Contacto emergencia — nombre'] : []),
+    ...(!empleado.contactoEmergencia?.telefono ? ['Contacto emergencia — teléfono'] : []),
+    ...(!empleado.contactoEmergencia?.relacion ? ['Contacto emergencia — relación'] : []),
+    ...(!empleado.foto ? ['Foto de perfil'] : []),
+  ]
 
   const edad = empleado.fechaNacimiento ? calcularEdad(empleado.fechaNacimiento) : null
   const antiguedad = calcularAntiguedad(empleado.fechaIngreso)
@@ -273,6 +286,28 @@ export default function PerfilPage() {
         <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Mi Perfil</h1>
         <p className="text-slate-500 dark:text-slate-400 text-sm mt-0.5">Tu información personal y laboral</p>
       </div>
+
+      {/* Banner datos faltantes */}
+      {missingFields.length > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50/80 dark:border-amber-700/30 dark:bg-amber-900/10 p-4 flex gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-500 dark:text-amber-400 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+              Perfil incompleto · {missingFields.length} dato{missingFields.length > 1 ? 's' : ''} faltante{missingFields.length > 1 ? 's' : ''}
+            </p>
+            <p className="text-xs text-amber-700/80 dark:text-amber-400/80 mt-0.5">
+              Completá tu perfil haciendo clic en <strong>Editar datos</strong>. Faltan los siguientes campos:
+            </p>
+            <div className="flex flex-wrap gap-1.5 mt-2.5">
+              {missingFields.map(f => (
+                <span key={f} className="inline-flex items-center gap-1 text-xs bg-amber-100 dark:bg-amber-800/25 text-amber-700 dark:text-amber-300 rounded-full px-2.5 py-0.5 border border-amber-200 dark:border-amber-700/30 font-medium">
+                  <AlertCircle className="w-3 h-3 shrink-0" />{f}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Profile card */}
       <div className="card overflow-hidden">
