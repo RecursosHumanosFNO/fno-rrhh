@@ -128,7 +128,7 @@ function GuiaEmpleados() {
       <Section icon={Megaphone} number={6} title="Comunicaciones">
         <p>Espacio donde RRHH publica novedades, comunicados, alertas y avisos importantes:</p>
         <ul className="list-disc pl-6 space-y-1.5">
-          <li>Usá los <strong>filtros de categoría</strong> (comunicado, novedad, alerta, feriado, jornada, etc.) para ver solo lo que te interesa.</li>
+          <li>Usá el <strong>desplegable de categoría</strong> (arriba a la izquierda) para filtrar por tipo: comunicado, novedad, alerta, feriado, jornada, etc.</li>
           <li>Hacé clic en una novedad para ver el contenido completo, imágenes y archivos adjuntos.</li>
           <li>Las novedades marcadas con 📌 <strong>Importante</strong> están destacadas en rojo.</li>
           <li>Cuando filtrás por <strong>Jornada Institucional</strong> o <strong>Feriado</strong>, también aparecen los eventos del calendario — todo sincronizado.</li>
@@ -418,6 +418,8 @@ function GuiaAdmin() {
           <li>Usá <strong>"Aprobar"</strong> o <strong>"Rechazar"</strong> — podés agregar un comentario con la resolución.</li>
           <li>El empleado recibe una notificación automática con el resultado y el comentario.</li>
         </ol>
+        <p className="font-medium mt-2">Exportar a Excel:</p>
+        <p>En la pestaña <strong>Solicitudes</strong>, el botón <strong>"Exportar Excel"</strong> (ícono de descarga) genera un archivo con todas las solicitudes — empleado, sector, tipo, estado, fechas, horarios, descripción y comentario de RRHH.</p>
         <Note type="info">Los tickets de soporte (certificados, consultas, reclamos) se gestionan desde la misma sección — respondé con el resultado y cambiá el estado a "resuelto".</Note>
       </Section>
 
@@ -448,7 +450,16 @@ function GuiaAdmin() {
         </ol>
       </Section>
 
-      <Section icon={BarChart2} number={7} title="Estadísticas" color="orange">
+      <Section icon={Eye} number={7} title="Accesos recientes" color="orange">
+        <p>El <strong>Dashboard</strong> muestra un registro de los últimos ingresos al portal en la tarjeta "Accesos recientes":</p>
+        <ul className="list-disc pl-6 space-y-1.5">
+          <li>Ves nombre, email, sector, fecha y hora de cada acceso.</li>
+          <li>El botón <strong>"Exportar Excel"</strong> (ícono de descarga) en el encabezado de esa tarjeta genera un archivo con hasta 5.000 registros de acceso.</li>
+          <li>Útil para auditorías o para verificar que un empleado accedió al portal correctamente.</li>
+        </ul>
+      </Section>
+
+      <Section icon={BarChart2} number={8} title="Estadísticas" color="orange">
         <p>La sección de Estadísticas muestra gráficos y datos del personal en tiempo real:</p>
         <ul className="list-disc pl-6 space-y-1.5">
           <li>Distribución por <strong>sector, cargo y tipo de contrato</strong>.</li>
@@ -459,7 +470,7 @@ function GuiaAdmin() {
         <p>Podés <strong>exportar</strong> los datos desde los botones de descarga en cada sección.</p>
       </Section>
 
-      <Section icon={Lock} number={8} title="Privacidad y seguridad" color="red">
+      <Section icon={Lock} number={9} title="Privacidad y seguridad" color="red">
         <ul className="list-disc pl-6 space-y-2">
           <li>Nunca compartas con empleados información de otros: salarios, recibos, estado contractual, datos personales.</li>
           <li>El asistente de IA está configurado para <strong>no revelar datos privados</strong> — pero si alguien te pregunta por datos sensibles, es tu responsabilidad no compartirlos.</li>
@@ -469,7 +480,7 @@ function GuiaAdmin() {
         </ul>
       </Section>
 
-      <Section icon={Settings} number={9} title="Referencia rápida: ¿dónde está cada cosa?" color="orange">
+      <Section icon={Settings} number={10} title="Referencia rápida: ¿dónde está cada cosa?" color="orange">
         <div className="space-y-1.5 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden text-sm">
           {[
             ['Agregar empleado nuevo', 'Empleados → + Nuevo empleado'],
@@ -477,6 +488,8 @@ function GuiaAdmin() {
             ['Cambiar rol', 'Empleados → clic en empleado → Rol/Acceso'],
             ['Cargar recibo individual', 'Recibos → Cargar recibo'],
             ['Aprobar/rechazar solicitud', 'Solicitudes y Pedidos → filtrar Pendientes'],
+            ['Exportar solicitudes a Excel', 'Solicitudes y Pedidos → botón Exportar Excel'],
+            ['Exportar accesos a Excel', 'Dashboard → Accesos recientes → botón Exportar Excel'],
             ['Desvincular empleado', 'Empleados → clic en empleado → Desvincular'],
             ['Reactivar empleado', 'Empleados → filtrar Inactivos → Reactivar'],
             ['Ver estadísticas', 'Estadísticas (menú lateral)'],
