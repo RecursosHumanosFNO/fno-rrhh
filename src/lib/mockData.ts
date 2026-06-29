@@ -8,7 +8,7 @@ export const SECTORES = [
   'Secundario',
   'Secundario Adultos',
   'Kinesiología',
-  'Radio',
+  'Estudio de Medios Vértice',
   'CPREM',
   'Espacio Cultural',
   'Área de Deportes',
@@ -104,12 +104,12 @@ export const CARGOS_POR_SECTOR: Record<string, string[]> = {
     'Asistente de Kinesiología',
     'Coordinador/a de Salud',
   ],
-  'Radio': [
+  'Estudio de Medios Vértice': [
     'Locutor/a',
     'Operador/a Técnico/a',
     'Productor/a',
     'Periodista',
-    'Coordinador/a de Radio',
+    'Coordinador/a de Medios',
   ],
   'CPREM': [
     'Coordinador/a',
