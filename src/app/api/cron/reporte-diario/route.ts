@@ -149,7 +149,7 @@ export async function GET(req: NextRequest) {
     { data: pendingRegs },
     { data: recibosEsteMes },
   ] = await Promise.all([
-    sb.from('fno_empleados').select('id, nombre, apellido, sector, cargo, estado, dias_vacaciones, dias_vacaciones_usados, fecha_ingreso'),
+    sb.from('fno_empleados').select('id, nombre, apellido, sector, cargo, estado, fecha_ingreso'),
     sb.from('fno_solicitudes').select('id, empleado_id, tipo, fecha_inicio, fecha_creacion, descripcion').eq('estado', 'pendiente'),
     sb.from('fno_solicitudes').select('id, empleado_id, tipo, estado, fecha_inicio, fecha_resolucion, comentario_admin').gte('fecha_resolucion', ayer).lt('fecha_resolucion', hoy),
     sb.from('fno_tickets').select('id, empleado_id, tipo, asunto, estado, fecha_creacion').in('estado', ['abierto', 'en_proceso']),

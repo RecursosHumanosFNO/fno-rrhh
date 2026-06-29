@@ -158,8 +158,6 @@ export interface Empleado {
   jornada: 'Full Time' | 'Part Time' | '6 horas diarias'
   supervisor: string
   estado: EmpleadoEstado
-  diasVacaciones: number
-  diasVacacionesUsados: number
   cbu?: string
   banco?: string
   desvinculacion?: DesvinculacionInfo           // Baja actual (solo si estado === 'inactivo')

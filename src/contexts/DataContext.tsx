@@ -105,8 +105,6 @@ function mapSupabaseToEmpleado(row: Record<string, unknown>): Empleado {
     jornada: (row.jornada as Empleado['jornada']) ?? 'Full Time',
     supervisor: (row.supervisor as string) ?? '',
     estado: ((row.estado as EmpleadoEstado) ?? 'activo'),
-    diasVacaciones: (row.dias_vacaciones as number) ?? 14,
-    diasVacacionesUsados: (row.dias_vacaciones_usados as number) ?? 0,
     cbu: (row.cbu as string) ?? '',
     banco: (row.banco as string) ?? '',
     desvinculacion: (row.desvinculacion as DesvinculacionInfo) ?? undefined,
@@ -121,8 +119,7 @@ function mapEmpleadoToSupabase(e: Empleado) {
     contacto_emergencia: e.contactoEmergencia,
     sector: e.sector, cargo: e.cargo, cargos_extra: e.cargosExtra ?? [], fecha_ingreso: e.fechaIngreso,
     tipo_contrato: e.tipoContrato, jornada: e.jornada, supervisor: e.supervisor,
-    estado: e.estado, dias_vacaciones: e.diasVacaciones,
-    dias_vacaciones_usados: e.diasVacacionesUsados,
+    estado: e.estado,
     cbu: e.cbu ?? '', banco: e.banco ?? '',
   }
   // Solo incluir foto/fotoCover si tienen valor — el sync masivo no las carga,
@@ -377,7 +374,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       const [usersRes, pendingRes, empRes, solRes, recRes, novRes, tickRes, notifRes, evtRes, firmasRes, regNovRes] = await Promise.all([
         supabase.from('fno_users').select('id, email, role, empleado_id'),
         supabase.from('fno_pending').select('*'),
-        supabase.from('fno_empleados').select('id, nombre, apellido, dni, fecha_nacimiento, email, telefono, direccion, cuil, contacto_emergencia, sector, cargo, cargos_extra, fecha_ingreso, tipo_contrato, jornada, supervisor, estado, dias_vacaciones, dias_vacaciones_usados, cbu, banco, desvinculacion, historial_desvinculaciones'),
+        supabase.from('fno_empleados').select('id, nombre, apellido, dni, fecha_nacimiento, email, telefono, direccion, cuil, contacto_emergencia, sector, cargo, cargos_extra, fecha_ingreso, tipo_contrato, jornada, supervisor, estado, cbu, banco, desvinculacion, historial_desvinculaciones'),
         supabase.from('fno_solicitudes').select('*'),
         supabase.from('fno_recibos').select('*'),
         supabase.from('fno_novedades').select('*'),
@@ -1020,7 +1017,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       contactoEmergencia: { nombre: '', telefono: '', relacion: '' },
       sector: reg.sector, cargo: reg.cargo, cargosExtra: [], fechaIngreso: hoy,
       tipoContrato: 'Contrato', jornada: 'Full Time', supervisor: '',
-      estado: 'activo', diasVacaciones: 14, diasVacacionesUsados: 0,
+      estado: 'activo',
     }
     const userId = uid()
     const nuevoUser: User = { id: userId, email: reg.email, role: 'employee', empleadoId }
