@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import type { User, Empleado, AuthState, UserRole } from '@/types'
 import { useData } from './DataContext'
 import { supabase } from '@/lib/supabase'
@@ -23,6 +23,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAuthenticated: false,
   })
   const [isLoading, setIsLoading] = useState(true)
+  // Cache foto/fotoCover fetched async so they survive the empleado sync race
+  const fotoCache = useRef<{ foto: string; fotoCover: string } | null>(null)
 
   // Obtiene el perfil del usuario desde fno_users usando su Supabase Auth ID
   const loadProfile = useCallback(async (authUserId: string): Promise<User | null> => {
@@ -75,7 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [loadProfile]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sincroniza el objeto empleado cuando DataContext termina de cargar.
-  // Preserva foto/fotoCover cacheadas — el bulk fetch no las incluye para ahorrar bandwidth.
+  // Preserva foto/fotoCover del cache ref — el bulk fetch no las incluye para ahorrar bandwidth.
   useEffect(() => {
     if (!auth.user) return
     const emp = empleados.find(e => e.id === auth.user!.empleadoId)
@@ -84,16 +86,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ...prev,
         empleado: {
           ...emp,
-          foto: emp.foto || prev.empleado?.foto || '',
-          fotoCover: emp.fotoCover || prev.empleado?.fotoCover || '',
+          foto: emp.foto || fotoCache.current?.foto || prev.empleado?.foto || '',
+          fotoCover: emp.fotoCover || fotoCache.current?.fotoCover || prev.empleado?.fotoCover || '',
         },
       }))
     }
   }, [empleados]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Carga foto/fotoCover del usuario logueado (no se incluyen en el fetch masivo para ahorrar bandwidth)
+  // Carga foto/fotoCover del usuario logueado (no se incluyen en el fetch masivo para ahorrar bandwidth).
+  // Guarda el resultado en fotoCache.current para que el sync de empleados pueda aplicarlo
+  // aunque llegue antes de que DataContext haya poblado auth.empleado.
   useEffect(() => {
     if (!auth.user?.empleadoId || !supabase) return
+    fotoCache.current = null
     supabase
       .from('fno_empleados')
       .select('foto, foto_cover')
@@ -101,8 +106,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .maybeSingle()
       .then(({ data }) => {
         if (data) {
+          const foto = (data.foto as string) ?? ''
+          const fotoCover = (data.foto_cover as string) ?? ''
+          fotoCache.current = { foto, fotoCover }
           setAuth(prev => prev.empleado
-            ? { ...prev, empleado: { ...prev.empleado, foto: (data.foto as string) ?? '', fotoCover: (data.foto_cover as string) ?? '' } }
+            ? { ...prev, empleado: { ...prev.empleado, foto, fotoCover } }
             : prev
           )
         }
