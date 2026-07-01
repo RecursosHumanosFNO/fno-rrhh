@@ -162,6 +162,7 @@ function EmpleadosContent() {
   const [createError, setCreateError] = useState('')
 
   const [query, setQuery] = useState('')
+  const [historialQuery, setHistorialQuery] = useState('')
   const [sectorFilter, setSectorFilter] = useState('')
   const [estadoFilter, setEstadoFilter] = useState('')
   const [cargoFilter, setCargoFilter] = useState('')
@@ -203,10 +204,18 @@ function EmpleadosContent() {
     supervisor: '', password: 'cambiar123',
   })
 
+  function norm(s: string) { return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase() }
+
+  const inactivosFiltrados = useMemo(() =>
+    historialQuery
+      ? inactivos.filter(e => norm(`${e.nombre} ${e.apellido} ${e.cargo} ${e.sector}`).includes(norm(historialQuery)))
+      : inactivos,
+  [inactivos, historialQuery])
+
   const filtered = useMemo(() => {
     const list = allEmpleados.filter(e => {
       if (e.estado === 'inactivo') return false  // Inactivos van al tab Historial
-      const matchQuery = `${e.nombre} ${e.apellido} ${e.cargo} ${e.email} ${e.dni}`.toLowerCase().includes(query.toLowerCase())
+      const matchQuery = norm(`${e.nombre} ${e.apellido} ${e.cargo} ${e.email} ${e.dni}`).includes(norm(query))
       const matchSector = !sectorFilter || e.sector === sectorFilter
       const matchEstado = !estadoFilter || e.estado === estadoFilter
       const matchCargo = !cargoFilter || e.cargo === cargoFilter
@@ -392,6 +401,19 @@ function EmpleadosContent() {
               <p className="text-slate-400 text-sm mt-1">Cuando desactivés a un empleado, aparecerá aquí con sus datos de baja.</p>
             </div>
           ) : (
+            <>
+            {/* Búsqueda en historial */}
+            <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2">
+              <Search className="w-4 h-4 text-slate-400 shrink-0" />
+              <input
+                type="text"
+                placeholder="Buscar en historial de bajas..."
+                className="bg-transparent text-sm text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none w-full"
+                value={historialQuery}
+                onChange={e => setHistorialQuery(e.target.value)}
+              />
+              {historialQuery && <button onClick={() => setHistorialQuery('')}><X className="w-3.5 h-3.5 text-slate-400" /></button>}
+            </div>
             <div className="card overflow-x-auto">
               <table className="w-full min-w-[480px] text-sm">
                 <thead>
@@ -405,7 +427,7 @@ function EmpleadosContent() {
                   </tr>
                 </thead>
                 <tbody>
-                  {inactivos.map(emp => (
+                  {inactivosFiltrados.map(emp => (
                     <tr key={emp.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                       <td className="table-cell max-w-[180px]">
                         <div className="flex items-center gap-3">
@@ -451,6 +473,7 @@ function EmpleadosContent() {
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </div>
       )}

@@ -43,6 +43,7 @@ export default function PerfilPage() {
   const [passForm, setPassForm] = useState({ nueva: '', confirm: '' })
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [saveOk, setSaveOk] = useState(false)
 
   if (!empleado || !user) return null
 
@@ -135,6 +136,8 @@ export default function PerfilPage() {
         jornada: form.jornada as Empleado['jornada'], supervisor: form.supervisor, fechaIngreso: form.fechaIngreso,
       })
       setEditMode(false)
+      setSaveOk(true)
+      setTimeout(() => setSaveOk(false), 3500)
     } catch {
       setSaveError('Error de conexión. Intentá de nuevo.')
     }
@@ -301,6 +304,12 @@ export default function PerfilPage() {
 
   return (
     <div className="page-container">
+      {saveOk && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-2.5 animate-scale-in">
+          <CheckCircle2 className="w-5 h-5 shrink-0" />
+          <p className="text-sm font-semibold">✓ Cambios guardados correctamente</p>
+        </div>
+      )}
       <div>
         <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Mi Perfil</h1>
         <p className="text-slate-500 dark:text-slate-400 text-sm mt-0.5">Tu información personal y laboral</p>

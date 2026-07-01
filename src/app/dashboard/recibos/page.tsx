@@ -61,6 +61,7 @@ export default function RecibosPage() {
   const [auditQuery, setAuditQuery] = useState('')
 
   function exportarAuditoria() {
+    const hoy = new Date().toISOString().slice(0, 10)
     const rows = firmas
       .map(f => {
         const emp = empleados.find(e => e.id === f.empleadoId)
@@ -87,10 +88,90 @@ export default function RecibosPage() {
       { wch: 20 }, { wch: 16 }, { wch: 6 }, { wch: 6 },
       { wch: 26 }, { wch: 36 },
     ]
+    ws['!views'] = [{ state: 'frozen', ySplit: 1 }]
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Firmas de Recibos')
-    const hoy = new Date().toISOString().slice(0, 10)
     XLSX.writeFile(wb, `auditoria_firmas_${hoy}.xlsx`)
+  }
+
+  async function exportarAuditoriaPDF() {
+    const { jsPDF } = await import('jspdf')
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+    const BRAND: [number,number,number] = [10,110,130]
+    const DARK: [number,number,number] = [30,41,59]
+    const GRAY: [number,number,number] = [100,116,139]
+    const LIGHT: [number,number,number] = [241,245,249]
+
+    // Header
+    doc.setFillColor(...BRAND); doc.rect(0, 0, 210, 36, 'F')
+    doc.setTextColor(255,255,255)
+    doc.setFontSize(16); doc.setFont('helvetica', 'bold')
+    doc.text('Fundación Neuquén Oeste', 14, 16)
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal')
+    doc.text('Portal de Recursos Humanos · Auditoría de Firmas Electrónicas', 14, 26)
+
+    let y = 46
+    doc.setTextColor(...DARK); doc.setFontSize(14); doc.setFont('helvetica', 'bold')
+    doc.text('AUDITORÍA DE FIRMAS DE RECIBOS', 14, y); y += 7
+    const now = new Date().toLocaleString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(...GRAY)
+    doc.text(`Generado el ${now} · Total de firmas: ${firmas.length}`, 14, y); y += 10
+
+    // Legal notice box
+    doc.setFillColor(...LIGHT); doc.roundedRect(14, y, 182, 18, 2, 2, 'F')
+    doc.setTextColor(...GRAY); doc.setFontSize(8); doc.setFont('helvetica', 'italic')
+    doc.text('Las firmas electrónicas registradas en este documento tienen validez legal conforme a la Ley 25.506 de Firma Digital de la República Argentina.', 20, y + 6, { maxWidth: 170 })
+    doc.text('Cada firma incluye identificación del firmante, fecha y hora exacta (zona horaria Argentina/Buenos_Aires) y un identificador único de trazabilidad.', 20, y + 12, { maxWidth: 170 })
+    y += 25
+
+    // Table headers
+    const COL = [14, 52, 76, 96, 122, 148]
+    const HEADERS = ['Empleado', 'DNI', 'Sector', 'Período', 'Firmado (Argentina)', 'ID Firma']
+    const WIDTHS = [38, 24, 20, 26, 26, 42]
+    doc.setFillColor(...BRAND); doc.rect(14, y, 182, 7, 'F')
+    doc.setTextColor(255,255,255); doc.setFontSize(7.5); doc.setFont('helvetica', 'bold')
+    HEADERS.forEach((h, i) => doc.text(h, COL[i] + 1, y + 4.8))
+    y += 7
+
+    const sorted = [...firmas].sort((a,b) => {
+      const ea = empleados.find(e => e.id === a.empleadoId)
+      const eb = empleados.find(e => e.id === b.empleadoId)
+      return (ea?.apellido ?? '').localeCompare(eb?.apellido ?? '', 'es')
+    })
+
+    let rowBg = false
+    for (const f of sorted) {
+      if (y > 270) {
+        doc.addPage()
+        y = 20
+      }
+      const emp = empleados.find(e => e.id === f.empleadoId)
+      const rec = recibos.find(r => r.id === f.reciboId)
+      const fecha = new Date(f.firmadoEn).toLocaleString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit', timeZone: 'America/Argentina/Buenos_Aires' })
+      const vals = [
+        emp ? `${emp.apellido}, ${emp.nombre}` : '—',
+        emp?.dni ?? '—',
+        emp?.sector ?? '—',
+        rec ? formatMes(rec.mes, rec.anio) : '—',
+        fecha,
+        f.id.slice(0, 8) + '...',
+      ]
+      if (rowBg) { doc.setFillColor(248,250,252); doc.rect(14, y, 182, 7, 'F') }
+      doc.setTextColor(...DARK); doc.setFontSize(7.5); doc.setFont('helvetica', 'normal')
+      vals.forEach((v, i) => {
+        const txt = doc.splitTextToSize(v, WIDTHS[i] - 2)
+        doc.text(txt[0], COL[i] + 1, y + 4.8)
+      })
+      y += 7; rowBg = !rowBg
+    }
+
+    // Footer
+    doc.setFillColor(...LIGHT); doc.rect(0, 282, 210, 15, 'F')
+    doc.setTextColor(...GRAY); doc.setFontSize(7.5); doc.setFont('helvetica', 'normal')
+    doc.text(`Generado el ${now} · Portal RRHH · Fundación Neuquén Oeste · Documento de auditoría interna`, 14, 291)
+
+    const hoy = new Date().toISOString().slice(0, 10)
+    doc.save(`auditoria_firmas_${hoy}.pdf`)
   }
 
   async function handleFirmar() {
@@ -527,7 +608,10 @@ export default function RecibosPage() {
                   {auditQuery && <button onClick={() => setAuditQuery('')}><X className="w-3.5 h-3.5 text-slate-400" /></button>}
                 </div>
                 <button onClick={exportarAuditoria} className="btn-secondary text-sm" title="Exportar a Excel">
-                  <Download className="w-4 h-4" /> Exportar
+                  <Download className="w-4 h-4" /> Excel
+                </button>
+                <button onClick={exportarAuditoriaPDF} className="btn-secondary text-sm" title="Exportar PDF legal">
+                  <FileText className="w-4 h-4" /> PDF Legal
                 </button>
               </div>
             </div>
@@ -619,7 +703,7 @@ export default function RecibosPage() {
                 const firma = firmas.find(f => f.reciboId === r.id)
                 const esMio = r.empleadoId === user?.empleadoId
                 return (
-                  <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                  <tr key={r.id} className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${firma ? 'bg-emerald-50/40 dark:bg-emerald-900/10' : ''}`}>
                     {viewAsAdmin && (
                       <td className="table-cell max-w-[180px]">
                         <div className="flex items-center gap-2.5">
@@ -771,7 +855,9 @@ export default function RecibosPage() {
       )}
 
       {/* Modal confirmar eliminación de recibo */}
-      {confirmDelete && (
+      {confirmDelete && (() => {
+        const hasFirma = firmas.some(f => f.reciboId === confirmDelete.id)
+        return (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { if (!deleting) setConfirmDelete(null) }}>
           <div className="card w-full max-w-sm animate-scale-in" onClick={e => e.stopPropagation()}>
             <div className="p-6 text-center">
@@ -779,9 +865,17 @@ export default function RecibosPage() {
                 <Trash2 className="w-7 h-7 text-red-500" />
               </div>
               <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">¿Eliminar recibo?</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
                 {confirmDelete.label}. Se borrará el registro y el PDF. No se puede deshacer.
               </p>
+              {hasFirma && (
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 mb-4 flex items-start gap-2 text-left">
+                  <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                    <strong>Atención:</strong> Este recibo ya fue firmado electrónicamente por el empleado. Eliminarlo borrará también el registro de firma del audito.
+                  </p>
+                </div>
+              )}
               <div className="flex gap-3">
                 <button onClick={() => setConfirmDelete(null)} disabled={deleting} className="btn-secondary flex-1 justify-center disabled:opacity-50">Cancelar</button>
                 <button onClick={handleDeleteRecibo} disabled={deleting}
@@ -792,7 +886,8 @@ export default function RecibosPage() {
             </div>
           </div>
         </div>
-      )}
+        )
+      })()}
 
       {/* Cards resumen empleado */}
       {!viewAsAdmin && (
@@ -862,10 +957,20 @@ export default function RecibosPage() {
               </div>
               <div>
                 <label className="form-label">Concepto *</label>
-                <select className="form-select" value={uploadForm.concepto} onChange={e => setUploadForm(f => ({ ...f, concepto: e.target.value }))} disabled={uploadStatus === 'uploading'}>
-                  <option>Recibo mensual</option>
-                  <option>Sueldo Anual Complementario</option>
-                </select>
+                <input
+                  className="form-input"
+                  placeholder="Ej: Recibo mensual, SAC, Liquidación..."
+                  value={uploadForm.concepto}
+                  onChange={e => setUploadForm(f => ({ ...f, concepto: e.target.value }))}
+                  disabled={uploadStatus === 'uploading'}
+                  list="concepto-options"
+                />
+                <datalist id="concepto-options">
+                  <option value="Recibo mensual" />
+                  <option value="Sueldo Anual Complementario" />
+                  <option value="Liquidación final" />
+                  <option value="Adelanto de sueldo" />
+                </datalist>
               </div>
               <div>
                 <label className="form-label">Archivo PDF <span className="text-slate-400 font-normal ml-1">(guardado cifrado en la nube)</span></label>

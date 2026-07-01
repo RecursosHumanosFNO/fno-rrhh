@@ -209,6 +209,7 @@ export const NOVEDAD_CATEGORIA_LABEL: Record<NovedadCategoria, string> = {
   evento:     '📅 Evento',
   cumpleanos: '🎂 Cumpleaños',
   streaming:  '🔴 Streaming / En vivo',
+  vacaciones: '🏖️ Vacaciones',
   ...EVENTO_TIPO_LABEL,
 }
 
@@ -219,12 +220,13 @@ export const NOVEDAD_CATEGORIA_COLOR: Record<NovedadCategoria, string> = {
   evento:     'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
   cumpleanos: 'bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300',
   streaming:  'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+  vacaciones: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300',
   ...EVENTO_TIPO_COLOR,
 }
 
 // Lista ordenada para selects/filtros de novedades (curada)
 export const NOVEDAD_CATEGORIAS: NovedadCategoria[] = [
-  'comunicado', 'novedad', 'alerta', 'streaming', 'evento', 'cumpleanos',
+  'comunicado', 'novedad', 'alerta', 'streaming', 'evento', 'cumpleanos', 'vacaciones',
   'feriado', 'jornada', 'acto', 'capacitacion', 'reunion',
   'receso', 'institucional', 'otro',
 ]
