@@ -94,11 +94,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [empleados]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Carga foto/fotoCover del usuario logueado (no se incluyen en el fetch masivo para ahorrar bandwidth).
-  // Guarda el resultado en fotoCache.current para que el sync de empleados pueda aplicarlo
-  // aunque llegue antes de que DataContext haya poblado auth.empleado.
+  // Aplica el cache de localStorage inmediatamente para evitar el delay visible,
+  // luego actualiza desde Supabase en segundo plano y refresca el cache.
   useEffect(() => {
     if (!auth.user?.empleadoId || !supabase) return
-    fotoCache.current = null
+    const cacheKey = `foto_cache_${auth.user.empleadoId}`
+
+    // Aplicar cache local inmediatamente (aparece sin esperar a Supabase)
+    try {
+      const cached = localStorage.getItem(cacheKey)
+      if (cached) {
+        const { foto, fotoCover } = JSON.parse(cached) as { foto: string; fotoCover: string }
+        fotoCache.current = { foto, fotoCover }
+        setAuth(prev => prev.empleado
+          ? { ...prev, empleado: { ...prev.empleado, foto, fotoCover } }
+          : prev
+        )
+      }
+    } catch { /* localStorage no disponible */ }
+
+    // Fetch desde Supabase en segundo plano para tener la versión más reciente
     supabase
       .from('fno_empleados')
       .select('foto, foto_cover')
@@ -109,6 +124,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const foto = (data.foto as string) ?? ''
           const fotoCover = (data.foto_cover as string) ?? ''
           fotoCache.current = { foto, fotoCover }
+          // Guardar en cache local para la próxima carga
+          try { localStorage.setItem(cacheKey, JSON.stringify({ foto, fotoCover })) } catch { /* ignorar */ }
           setAuth(prev => prev.empleado
             ? { ...prev, empleado: { ...prev.empleado, foto, fotoCover } }
             : prev
@@ -177,10 +194,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const updateEmpleado = useCallback((data: Partial<Empleado>) => {
     if (!auth.empleado) return
     updateEmpData(auth.empleado.id, data)
-    setAuth(prev => prev.empleado
-      ? { ...prev, empleado: { ...prev.empleado, ...data } }
-      : prev
-    )
+    setAuth(prev => {
+      if (!prev.empleado) return prev
+      const updated = { ...prev.empleado, ...data }
+      // Actualizar cache local si cambia la foto
+      if ('foto' in data || 'fotoCover' in data) {
+        try {
+          const cacheKey = `foto_cache_${prev.empleado.id}`
+          localStorage.setItem(cacheKey, JSON.stringify({ foto: updated.foto ?? '', fotoCover: updated.fotoCover ?? '' }))
+        } catch { /* ignorar */ }
+      }
+      return { ...prev, empleado: updated }
+    })
   }, [auth.empleado, updateEmpData])
 
   return (
