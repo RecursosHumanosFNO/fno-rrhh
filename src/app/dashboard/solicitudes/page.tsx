@@ -221,6 +221,58 @@ async function descargarTicketPDF(ticket: import('@/types').Ticket, emp: Emplead
   doc.save(`pedido_rrhh_${emp?.apellido?.toLowerCase().replace(/\s/g,'_') ?? 'empleado'}_${ticket.fechaCreacion.slice(0,10).replace(/-/g,'')}.pdf`)
 }
 
+async function generarCertificadoLaboralPDF(ticket: import('@/types').Ticket, emp: Empleado) {
+  const { jsPDF } = await import('jspdf')
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  _pdfHeader(doc, 'Certificado Laboral')
+  let y = 48
+
+  // Título formal
+  doc.setTextColor(...DARK_C); doc.setFontSize(16); doc.setFont('helvetica', 'bold')
+  doc.text('CERTIFICADO DE TRABAJO', 105, y, { align: 'center' }); y += 14
+
+  // Cuerpo del certificado
+  doc.setFontSize(11); doc.setFont('helvetica', 'normal')
+  const hoy = new Date().toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' })
+  const antiguedadTexto = (() => {
+    const [anio, mes, dia] = emp.fechaIngreso.split('-').map(Number)
+    const ingreso = new Date(anio, mes - 1, dia)
+    const ahora = new Date()
+    const anios = ahora.getFullYear() - ingreso.getFullYear() - (ahora < new Date(ahora.getFullYear(), mes - 1, dia) ? 1 : 0)
+    if (anios === 0) return 'menos de un año'
+    return `${anios} año${anios !== 1 ? 's' : ''}`
+  })()
+
+  const parrafo1 = `La Fundación Neuquén Oeste, con domicilio en la ciudad de Neuquén, certifica por medio del presente documento que ${emp.nombre} ${emp.apellido}, con DNI N.° ${emp.dni}${emp.cuil ? ` y CUIL N.° ${emp.cuil}` : ''}, se desempeña en relación de dependencia con esta institución.`
+  const lines1 = doc.splitTextToSize(parrafo1, 182)
+  doc.text(lines1, 14, y); y += lines1.length * 5.5 + 6
+
+  const parrafo2 = `El/La mencionado/a reviste el cargo de ${emp.cargo} en el sector ${emp.sector}, bajo la modalidad de contratación ${emp.tipoContrato} y jornada ${emp.jornada}, con fecha de ingreso el ${new Date(emp.fechaIngreso + 'T00:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' })}, acumulando una antigüedad de ${antiguedadTexto}.`
+  const lines2 = doc.splitTextToSize(parrafo2, 182)
+  doc.text(lines2, 14, y); y += lines2.length * 5.5 + 6
+
+  const parrafo3 = `El presente certificado se emite a solicitud del/la interesado/a para ser presentado ante quien corresponda, en ${hoy}.`
+  const lines3 = doc.splitTextToSize(parrafo3, 182)
+  doc.text(lines3, 14, y); y += lines3.length * 5.5 + 16
+
+  // Firma
+  doc.setDrawColor(...BRAND_C); doc.setLineWidth(0.5)
+  doc.line(105, y, 196, y); y += 5
+  doc.setTextColor(...GRAY_C); doc.setFontSize(9); doc.setFont('helvetica', 'bold')
+  doc.text('Recursos Humanos', 150, y, { align: 'center' }); y += 4.5
+  doc.setFont('helvetica', 'normal')
+  doc.text('Fundación Neuquén Oeste', 150, y, { align: 'center' })
+
+  // Referencia al ticket
+  y += 16
+  doc.setFillColor(...LIGHT_C); doc.roundedRect(14, y, 182, 12, 2, 2, 'F')
+  doc.setTextColor(...GRAY_C); doc.setFontSize(8); doc.setFont('helvetica', 'normal')
+  doc.text(`Emitido en respuesta al ticket #${ticket.id.slice(0,8).toUpperCase()} · ${ticket.asunto}`, 105, y + 7.5, { align: 'center' })
+
+  _pdfFooter(doc)
+  doc.save(`certificado_laboral_${emp.apellido.toLowerCase().replace(/\s/g,'_')}_${new Date().toISOString().slice(0,10).replace(/-/g,'')}.pdf`)
+}
+
 export default function SolicitudesPage() {
   const { user } = useAuth()
   const { empleados, solicitudes, addSolicitud, approveSolicitud, rejectSolicitud, editSolicitud, cancelSolicitud, tickets, addTicket, respondTicket, addNotification, addRegistroNovedad } = useData()
@@ -1143,13 +1195,21 @@ function PedidosRRHH({ isAdmin, user, filteredTickets, baseTickets, ticketsActiv
                     )}
 
                     {/* PDF download */}
-                    <div className="flex justify-start pt-1 border-t border-slate-100 dark:border-slate-800">
+                    <div className="flex flex-wrap gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
                       <button
                         onClick={() => descargarTicketPDF(ticket, emp)}
                         className="text-sm text-slate-500 hover:text-brand-600 dark:hover:text-brand-400 flex items-center gap-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 px-3 py-1.5 rounded-lg transition-colors"
                       >
                         <FileText className="w-3.5 h-3.5" /> Descargar constancia PDF
                       </button>
+                      {isAdmin && ticket.tipo === 'certificado_laboral' && emp && (
+                        <button
+                          onClick={() => generarCertificadoLaboralPDF(ticket, emp)}
+                          className="text-sm text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 flex items-center gap-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 px-3 py-1.5 rounded-lg transition-colors font-medium"
+                        >
+                          <FileText className="w-3.5 h-3.5" /> Generar certificado laboral PDF
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}

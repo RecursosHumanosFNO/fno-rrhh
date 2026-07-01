@@ -345,6 +345,10 @@ export default function EmpleadoDetailPage() {
 
   async function handleDelete() {
     if (!user?.empleadoId) return
+    if (misRecibos.length > 0) {
+      setDeleteErr(`No se puede eliminar: este empleado tiene ${misRecibos.length} recibo${misRecibos.length !== 1 ? 's' : ''} registrado${misRecibos.length !== 1 ? 's' : ''}. Desactivar en su lugar.`)
+      return
+    }
     setDeleting(true)
     setDeleteErr('')
     try {
