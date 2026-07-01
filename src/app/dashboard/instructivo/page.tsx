@@ -69,39 +69,17 @@ function GuiaEmpleados() {
         </p>
       </section>
 
-      <Section icon={UserPlus} number={1} title="Primer ingreso y registro">
-        <p>Si todavía no tenés cuenta:</p>
-        <ol className="list-decimal pl-6 space-y-1.5">
-          <li>Entrá a <strong>portalfno.com</strong> desde cualquier dispositivo.</li>
-          <li>Hacé clic en <strong>"Crear cuenta"</strong> debajo del formulario de login.</li>
-          <li>Completá tus datos personales y laborales.</li>
-          <li>Elegí una contraseña que recuerdes.</li>
-          <li>Tu solicitud queda <strong>pendiente de aprobación</strong> por RRHH.</li>
-          <li>Cuando RRHH apruebe tu acceso recibirás un email de confirmación.</li>
-        </ol>
-        <Note type="warn">
-          El <strong>email</strong> que uses al registrarte es tu usuario para siempre. Usá uno que tengas acceso permanente.
-        </Note>
-      </Section>
-
-      <Section icon={LogIn} number={2} title="Iniciar sesión">
-        <ol className="list-decimal pl-6 space-y-1.5">
-          <li>Ingresá tu <strong>email</strong> y <strong>contraseña</strong> en la pantalla de inicio.</li>
-          <li>Hacé clic en <strong>"Ingresar al Portal"</strong>.</li>
-          <li>Si olvidaste la contraseña, usá <strong>"¿Olvidaste tu contraseña?"</strong> — te llegará un email con un enlace para crear una nueva.</li>
-        </ol>
-      </Section>
-
-      <Section icon={KeyRound} number={3} title="Cambiar tu contraseña">
+      <Section icon={KeyRound} number={1} title="Cambiar tu contraseña">
         <ol className="list-decimal pl-6 space-y-1.5">
           <li>Entrá a <strong>Mi Perfil</strong> desde el menú lateral.</li>
           <li>Bajá hasta la sección <strong>"Cambiar Contraseña"</strong> y hacé clic en <strong>"Cambiar"</strong>.</li>
           <li>Escribí la nueva contraseña dos veces y guardá.</li>
           <li>El sistema cerrará la sesión automáticamente — ingresá con la nueva contraseña.</li>
         </ol>
+        <Note type="info">Si olvidaste tu contraseña, cerrá sesión y usá <strong>"¿Olvidaste tu contraseña?"</strong> en la pantalla de ingreso — te llegará un email con un enlace para crear una nueva.</Note>
       </Section>
 
-      <Section icon={FileText} number={4} title="Mis Recibos de Sueldo">
+      <Section icon={FileText} number={2} title="Mis Recibos de Sueldo">
         <p>Encontrás todos tus recibos publicados por RRHH:</p>
         <ul className="list-disc pl-6 space-y-1.5">
           <li>Filtrá por <strong>mes</strong> o <strong>año</strong> para encontrar uno puntual.</li>
@@ -112,7 +90,7 @@ function GuiaEmpleados() {
         </ul>
       </Section>
 
-      <Section icon={ClipboardList} number={5} title="Mis Solicitudes">
+      <Section icon={ClipboardList} number={3} title="Mis Solicitudes">
         <p>Para pedir un permiso, licencia, capacitación u otra gestión:</p>
         <ol className="list-decimal pl-6 space-y-1.5">
           <li>Entrá a <strong>Solicitudes y Pedidos</strong>.</li>
@@ -123,19 +101,31 @@ function GuiaEmpleados() {
         </ol>
         <p>Vas a poder ver el estado en todo momento (<strong>pendiente / aprobada / rechazada</strong>) con una línea de tiempo del recorrido del pedido. Mientras esté pendiente podés cancelarla.</p>
         <Note type="info">Los tipos disponibles incluyen: ausencia, llegada tarde, salida anticipada, licencia médica, licencia por duelo, maternidad/paternidad, horas extra, cambio de turno, capacitación, certificado laboral y más.</Note>
+        <p className="mt-1">Una vez enviada, podés <strong>descargar una constancia en PDF</strong> desde el detalle de la solicitud — útil para tener un comprobante.</p>
       </Section>
 
-      <Section icon={Megaphone} number={6} title="Comunicaciones">
-        <p>Espacio donde RRHH publica novedades, comunicados, alertas y avisos importantes:</p>
+      <Section icon={HeadphonesIcon} number={4} title="Pedidos a RRHH (tickets)">
+        <p>Si necesitás un certificado laboral, hacer una consulta, actualizar tus datos o presentar un reclamo:</p>
+        <ol className="list-decimal pl-6 space-y-1.5">
+          <li>Entrá a <strong>Solicitudes y Pedidos</strong> → pestaña <strong>"Pedidos a RRHH"</strong>.</li>
+          <li>Describí tu consulta o pedido con el mayor detalle posible.</li>
+          <li>RRHH responde directamente en el portal — vas a recibir un aviso cuando haya respuesta.</li>
+        </ol>
+        <p className="mt-1">También podés <strong>enviar un mensaje directo a RRHH</strong> desde la misma sección y descargar la constancia en PDF.</p>
+      </Section>
+
+      <Section icon={Megaphone} number={5} title="Comunicaciones">
+        <p>Espacio donde RRHH y el equipo de Comunicaciones publican novedades, comunicados, alertas y avisos importantes:</p>
         <ul className="list-disc pl-6 space-y-1.5">
-          <li>Usá el <strong>desplegable de categoría</strong> (arriba a la izquierda) para filtrar por tipo: comunicado, novedad, alerta, feriado, jornada, etc.</li>
+          <li>Usá el <strong>desplegable de categoría</strong> (arriba a la izquierda) para filtrar: comunicado, novedad, alerta, feriado, jornada, streaming, etc.</li>
           <li>Hacé clic en una novedad para ver el contenido completo, imágenes y archivos adjuntos.</li>
-          <li>Las novedades marcadas con 📌 <strong>Importante</strong> están destacadas en rojo.</li>
+          <li>Las novedades marcadas con 📌 <strong>Importante</strong> aparecen destacadas.</li>
           <li>Cuando filtrás por <strong>Jornada Institucional</strong> o <strong>Feriado</strong>, también aparecen los eventos del calendario — todo sincronizado.</li>
+          <li>Las publicaciones de <strong>🔴 Streaming / En vivo</strong> anuncian transmisiones en tiempo real del equipo de Medios.</li>
         </ul>
       </Section>
 
-      <Section icon={Calendar} number={7} title="Calendario">
+      <Section icon={Calendar} number={6} title="Calendario">
         <p>El calendario institucional con feriados nacionales, jornadas, actos escolares, capacitaciones, recesos y proyectos:</p>
         <ul className="list-disc pl-6 space-y-1.5">
           <li>Los <strong>cumpleaños del equipo</strong> aparecen marcados en rosa 🎂.</li>
@@ -145,26 +135,17 @@ function GuiaEmpleados() {
         </ul>
       </Section>
 
-      <Section icon={HeadphonesIcon} number={8} title="Soporte RRHH (tickets)">
-        <p>Si necesitás un certificado laboral, hacer una consulta, actualizar tus datos o presentar un reclamo:</p>
-        <ol className="list-decimal pl-6 space-y-1.5">
-          <li>Entrá a la sección <strong>Solicitudes y Pedidos</strong> o buscá la opción de <strong>soporte / ticket</strong>.</li>
-          <li>Describí tu consulta o pedido.</li>
-          <li>RRHH responde directamente en el portal — vas a recibir un aviso cuando haya respuesta.</li>
-        </ol>
-      </Section>
-
-      <Section icon={User} number={9} title="Mi Perfil">
+      <Section icon={User} number={7} title="Mi Perfil">
         <ul className="list-disc pl-6 space-y-1.5">
           <li>Podés editar tus <strong>datos personales</strong>: dirección, teléfono, fecha de nacimiento, contacto de emergencia.</li>
-          <li>Podés subir o cambiar tu <strong>foto de perfil</strong> y foto de portada.</li>
+          <li>Podés subir o cambiar tu <strong>foto de perfil</strong> y foto de portada haciendo clic sobre la imagen.</li>
           <li>Podés cargar tus <strong>datos bancarios</strong> (CBU, banco) para que RRHH los tenga disponibles.</li>
           <li>El <strong>email</strong> no se puede cambiar desde el portal — si necesitás actualizarlo, comunicate con RRHH.</li>
         </ul>
-        <Note type="warn">Si en el menú lateral aparece un triángulo ⚠️ naranja al lado de "Mi Perfil", significa que faltan datos por completar.</Note>
+        <Note type="warn">Si en el menú lateral aparece un triángulo ⚠️ naranja al lado de "Mi Perfil", significa que faltan datos por completar. El banner en la parte superior del perfil te indica exactamente qué campos faltan.</Note>
       </Section>
 
-      <Section icon={Sparkles} number={10} title="Asistente de IA ✨" color="purple">
+      <Section icon={Sparkles} number={8} title="Asistente de IA ✨" color="purple">
         <p>El portal tiene un asistente virtual inteligente que podés usar para consultas rápidas. Lo encontrás en el <strong>botón brillante</strong> ✨ abajo a la derecha de la pantalla.</p>
         <p className="font-medium mt-1">¿Qué puede hacer?</p>
         <ul className="list-disc pl-6 space-y-1.5">
@@ -182,7 +163,7 @@ function GuiaEmpleados() {
         <Note type="tip">Podés usar los botones de sugerencia rápida o escribir cualquier pregunta en el chat. La IA conoce el contexto del portal y responde en español.</Note>
       </Section>
 
-      <Section icon={Bell} number={11} title="Notificaciones">
+      <Section icon={Bell} number={9} title="Notificaciones">
         <p>La campana 🔔 arriba a la derecha muestra avisos en tiempo real:</p>
         <ul className="list-disc pl-6 space-y-1.5">
           <li>Nueva novedad o comunicado publicado.</li>
@@ -202,6 +183,7 @@ function GuiaEmpleados() {
           <li><strong>Mobile:</strong> el portal funciona en el celular — tocá el ícono ☰ para el menú.</li>
           <li><strong>Privacidad:</strong> cada empleado ve solo sus propios datos. Recibos y solicitudes son privados.</li>
           <li><strong>Sesión activa:</strong> si vas a usar una PC compartida, cerrá sesión cuando termines.</li>
+          <li><strong>Constancias en PDF:</strong> podés descargar comprobantes de tus solicitudes y pedidos desde el detalle de cada uno.</li>
         </ul>
       </section>
 
@@ -251,6 +233,7 @@ function GuiaComunicaciones() {
             ['📣 Comunicado', 'Avisos formales e institucionales de RRHH.'],
             ['📰 Novedad', 'Noticias generales del equipo o la fundación.'],
             ['🚨 Alerta', 'Urgente o requiere acción inmediata.'],
+            ['🔴 Streaming / En vivo', 'Transmisiones en vivo del Estudio de Medios Vértice.'],
             ['📅 Evento', 'Evento puntual sin fecha fija en el calendario.'],
             ['🎂 Cumpleaños', 'Saludos y festejos del equipo.'],
             ['🇦🇷 Feriado', 'Feriado nacional — aparece en Eventos y en el filtro.'],
@@ -418,6 +401,8 @@ function GuiaAdmin() {
           <li>Usá <strong>"Aprobar"</strong> o <strong>"Rechazar"</strong> — podés agregar un comentario con la resolución.</li>
           <li>El empleado recibe una notificación automática con el resultado y el comentario.</li>
         </ol>
+        <p className="font-medium mt-2">Constancia PDF:</p>
+        <p>Cada solicitud tiene un botón <strong>"Descargar constancia PDF"</strong> al pie del detalle. El PDF incluye los datos del empleado, el tipo de solicitud, fechas, descripción y la respuesta de RRHH. Lo mismo aplica para los mensajes a empleados y los tickets de soporte.</p>
         <p className="font-medium mt-2">Exportar a Excel:</p>
         <p>En la pestaña <strong>Solicitudes</strong>, el botón <strong>"Exportar Excel"</strong> (ícono de descarga) genera un archivo con todas las solicitudes — empleado, sector, tipo, estado, fechas, horarios, descripción y comentario de RRHH.</p>
         <Note type="info">Los tickets de soporte (certificados, consultas, reclamos) se gestionan desde la misma sección — respondé con el resultado y cambiá el estado a "resuelto".</Note>
@@ -488,6 +473,8 @@ function GuiaAdmin() {
             ['Cambiar rol', 'Empleados → clic en empleado → Rol/Acceso'],
             ['Cargar recibo individual', 'Recibos → Cargar recibo'],
             ['Aprobar/rechazar solicitud', 'Solicitudes y Pedidos → filtrar Pendientes'],
+            ['Descargar constancia PDF', 'Solicitudes y Pedidos → expandir solicitud → pie del detalle'],
+            ['Enviar mensaje a empleado', 'Solicitudes y Pedidos → pestaña Mensajes'],
             ['Exportar solicitudes a Excel', 'Solicitudes y Pedidos → botón Exportar Excel'],
             ['Exportar accesos a Excel', 'Dashboard → Accesos recientes → botón Exportar Excel'],
             ['Desvincular empleado', 'Empleados → clic en empleado → Desvincular'],

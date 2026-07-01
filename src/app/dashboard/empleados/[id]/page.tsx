@@ -229,20 +229,24 @@ export default function EmpleadoDetailPage() {
     setEditMode(false)
   }
 
-  // Elimina la foto del empleado (solo la de perfil; persiste vía service role)
+  // Elimina la foto del empleado — también borra de Storage si aplica
   function handleDeletePhoto() {
+    const current = profileFoto
+    if (current?.includes('fno-media')) {
+      supabase?.storage.from('fno-media').remove([`fotos/${emp!.id}/perfil.jpg`]).catch(() => {})
+    }
     updateEmpleado(emp!.id, { foto: '' })
     setProfileFoto('')
     persistEmpleado({ foto: '' })
   }
 
-  // Comprime/redimensiona a 400px max antes de guardar (evita fotos enormes en base64)
+  // Comprime/redimensiona y sube a Supabase Storage (fno-media/fotos/).
+  // Fallback a base64 si Storage falla.
   function handlePhotoUpload(file: File) {
     const reader = new FileReader()
     reader.onload = e => {
       const img = new Image()
-      img.onload = () => {
-        // 400px máximo — suficiente para foto de perfil, reduce peso ~10x vs 800px/0.95
+      img.onload = async () => {
         const scale = Math.min(1, 400 / Math.max(img.width, img.height))
         const w = Math.round(img.width * scale)
         const h = Math.round(img.height * scale)
@@ -253,11 +257,25 @@ export default function EmpleadoDetailPage() {
         ctx.imageSmoothingEnabled = true
         ctx.imageSmoothingQuality = 'high'
         ctx.drawImage(img, 0, 0, w, h)
-        // Calidad 0.80 — buen equilibrio calidad/peso para foto de perfil
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.80)
-        updateEmpleado(emp!.id, { foto: dataUrl })
-        setProfileFoto(dataUrl)
-        persistEmpleado({ foto: dataUrl })
+
+        let fotoValue: string
+        try {
+          const blob = await new Promise<Blob>((res, rej) => {
+            canvas.toBlob(b => b ? res(b) : rej(new Error('toBlob')), 'image/jpeg', 0.80)
+          })
+          const storagePath = `fotos/${emp!.id}/perfil.jpg`
+          const { error } = await supabase!.storage
+            .from('fno-media').upload(storagePath, blob, { contentType: 'image/jpeg', upsert: true })
+          if (error) throw error
+          const { data: urlData } = supabase!.storage.from('fno-media').getPublicUrl(storagePath)
+          fotoValue = `${urlData.publicUrl}?v=${Date.now()}`
+        } catch {
+          fotoValue = canvas.toDataURL('image/jpeg', 0.80)
+        }
+
+        updateEmpleado(emp!.id, { foto: fotoValue })
+        setProfileFoto(fotoValue)
+        persistEmpleado({ foto: fotoValue })
       }
       img.src = e.target?.result as string
     }

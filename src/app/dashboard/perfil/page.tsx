@@ -164,11 +164,12 @@ export default function PerfilPage() {
     setEditMode(false)
   }
 
-  // Comprime/redimensiona la imagen antes de guardarla (evita guardar
-  // fotos enormes en base64). Avatar: 400px, Cover: 1200px.
+  // Comprime/redimensiona y sube a Supabase Storage (fno-media/fotos/).
+  // Fallback a base64 si Storage falla. Avatar: 400px, Cover: 1200px.
   function handlePhotoUpload(file: File, field: 'foto' | 'fotoCover') {
     const maxSide = field === 'fotoCover' ? 1200 : 400
     const dbField = field === 'fotoCover' ? 'foto_cover' : 'foto'
+    const storageName = field === 'fotoCover' ? 'cover.jpg' : 'perfil.jpg'
     const reader = new FileReader()
     reader.onload = e => {
       const img = new Image()
@@ -181,10 +182,25 @@ export default function PerfilPage() {
         const ctx = canvas.getContext('2d')
         if (!ctx) return
         ctx.drawImage(img, 0, 0, w, h)
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
-        // Actualizar estado local
-        updateEmpleado({ [field]: dataUrl })
-        // Persistir vía API (bypasea RLS)
+
+        let fotoValue: string
+        try {
+          const blob = await new Promise<Blob>((res, rej) => {
+            canvas.toBlob(b => b ? res(b) : rej(new Error('toBlob')), 'image/jpeg', 0.85)
+          })
+          const storagePath = `fotos/${empleado!.id}/${storageName}`
+          const { error } = await supabase!.storage
+            .from('fno-media').upload(storagePath, blob, { contentType: 'image/jpeg', upsert: true })
+          if (error) throw error
+          const { data: urlData } = supabase!.storage.from('fno-media').getPublicUrl(storagePath)
+          // Parámetro de versión para invalidar caché CDN en cada cambio
+          fotoValue = `${urlData.publicUrl}?v=${Date.now()}`
+        } catch {
+          // Si Storage falla, guardamos base64 como respaldo
+          fotoValue = canvas.toDataURL('image/jpeg', 0.85)
+        }
+
+        updateEmpleado({ [field]: fotoValue })
         try {
           const { data: { user: authUser } } = await supabase!.auth.getUser()
           fetch('/api/perfil', {
@@ -193,7 +209,7 @@ export default function PerfilPage() {
             body: JSON.stringify({
               authId: authUser?.id,
               empleadoId: empleado!.id,
-              data: { [dbField]: dataUrl },
+              data: { [dbField]: fotoValue },
             }),
           }).catch(() => {})
         } catch { /* no crítico — se guarda igual al hacer Guardar */ }
@@ -203,11 +219,14 @@ export default function PerfilPage() {
     reader.readAsDataURL(file)
   }
 
-  // Elimina una foto: limpia el estado local y persiste el vacío vía API.
-  // (el mapper de DataContext omite fotos vacías para no pisarlas en upserts
-  //  normales, así que el borrado debe ir explícito por /api/perfil)
+  // Elimina una foto: borra de Storage si aplica y persiste el vacío vía API.
   async function handlePhotoDelete(field: 'foto' | 'fotoCover') {
     const dbField = field === 'fotoCover' ? 'foto_cover' : 'foto'
+    const current = field === 'fotoCover' ? empleado!.fotoCover : empleado!.foto
+    if (current?.includes('fno-media')) {
+      const storageName = field === 'fotoCover' ? 'cover.jpg' : 'perfil.jpg'
+      supabase?.storage.from('fno-media').remove([`fotos/${empleado!.id}/${storageName}`]).catch(() => {})
+    }
     updateEmpleado({ [field]: '' })
     try {
       const { data: { user: authUser } } = await supabase!.auth.getUser()
