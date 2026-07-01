@@ -500,7 +500,7 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
 
 function EmployeeDashboard({ saludo, fechaStr, empleadoId }: { saludo: string, fechaStr: string, empleadoId: string }) {
   const { empleado } = useAuth()
-  const { solicitudes, recibos, novedades, eventos } = useData()
+  const { solicitudes, recibos, novedades, eventos, empleados } = useData()
 
   const misSolicitudes = solicitudes
     .filter(s => s.empleadoId === empleadoId)
@@ -514,6 +514,18 @@ function EmployeeDashboard({ saludo, fechaStr, empleadoId }: { saludo: string, f
   const hoy = new Date()
   const hoyMidnight = new Date(hoy); hoyMidnight.setHours(0, 0, 0, 0)
   const en30 = new Date(hoyMidnight); en30.setDate(hoyMidnight.getDate() + 30)
+
+  // Cumpleaños próximos 7 días
+  const en7 = new Date(hoyMidnight); en7.setDate(hoyMidnight.getDate() + 7)
+  const proxCumples = empleados
+    .filter(e => e.estado !== 'inactivo' && e.fechaNacimiento && e.id !== empleadoId)
+    .map(e => {
+      const bd = getBirthdayThisYear(e.fechaNacimiento!)
+      const diff = Math.round((bd.getTime() - hoyMidnight.getTime()) / 86400000)
+      return { e, diff }
+    })
+    .filter(({ diff }) => diff >= 0 && diff <= 7)
+    .sort((a, b) => a.diff - b.diff)
   const hoyStr = hoyMidnight.toISOString().slice(0, 10)
   const en30Str = en30.toISOString().slice(0, 10)
   const proximosEventos = eventos
@@ -696,6 +708,7 @@ function EmployeeDashboard({ saludo, fechaStr, empleadoId }: { saludo: string, f
               Ver todas <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
+
           <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {novedades.length === 0 ? (
               <div className="p-6 text-center">
@@ -716,6 +729,32 @@ function EmployeeDashboard({ saludo, fechaStr, empleadoId }: { saludo: string, f
           </div>
         </div>
       </div>
+
+      {/* ── Cumpleaños próximos ────────────────────────────────────────── */}
+      {proxCumples.length > 0 && (
+        <div className="card overflow-hidden">
+          <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
+            <PartyPopper className="w-4 h-4 text-pink-500" />
+            <p className="font-semibold text-slate-700 dark:text-slate-200">🎂 Cumpleaños esta semana</p>
+          </div>
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            {proxCumples.map(({ e, diff }) => (
+              <div key={e.id} className="px-4 py-3 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center text-pink-600 text-sm font-bold overflow-hidden shrink-0">
+                  {e.foto ? <img src={e.foto} alt="" className="w-8 h-8 object-cover" /> : `${e.nombre[0]}${e.apellido[0]}`}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{e.nombre} {e.apellido}</p>
+                  <p className="text-xs text-slate-400">{e.cargo}</p>
+                </div>
+                <span className={`text-xs font-semibold px-2 py-1 rounded-lg ${diff === 0 ? 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'}`}>
+                  {diff === 0 ? '🎉 ¡Hoy!' : diff === 1 ? 'Mañana' : `en ${diff} días`}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

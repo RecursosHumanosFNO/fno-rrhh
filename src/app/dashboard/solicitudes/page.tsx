@@ -223,7 +223,7 @@ async function descargarTicketPDF(ticket: import('@/types').Ticket, emp: Emplead
 
 export default function SolicitudesPage() {
   const { user } = useAuth()
-  const { empleados, solicitudes, addSolicitud, approveSolicitud, rejectSolicitud, editSolicitud, cancelSolicitud, tickets, addTicket, respondTicket, addNotification } = useData()
+  const { empleados, solicitudes, addSolicitud, approveSolicitud, rejectSolicitud, editSolicitud, cancelSolicitud, tickets, addTicket, respondTicket, addNotification, addRegistroNovedad } = useData()
   const isAdmin = user?.role === 'admin'
   const [activeTab, setActiveTab] = useState<'solicitudes' | 'pedidos'>('solicitudes')
 
@@ -284,6 +284,11 @@ export default function SolicitudesPage() {
     descripcion: '',
   })
   const [newError, setNewError] = useState('')
+  const [submitToast, setSubmitToast] = useState(false)
+
+  // Autocomplete combobox state for mensajeForm employee
+  const [mensajeQuery, setMensajeQuery] = useState('')
+  const [mensajeDropOpen, setMensajeDropOpen] = useState(false)
 
   const base = isAdmin
     ? solicitudes
@@ -301,10 +306,49 @@ export default function SolicitudesPage() {
 
   const pendientes = base.filter(s => s.estado === 'pendiente').length
 
+  const AUSENCIA_TIPOS: SolicitudTipo[] = [
+    'ausencia', 'llegada_tarde', 'salida_anticipada',
+    'licencia_medica', 'licencia_estudio', 'licencia_maternidad_paternidad', 'licencia_duelo',
+    'permiso_personal',
+  ]
+  const SOLICITUD_TO_REGISTRO: Partial<Record<SolicitudTipo, import('@/types').RegistroNovedadCategoria>> = {
+    ausencia: 'ausencia', llegada_tarde: 'llegada_tarde', salida_anticipada: 'salida_anticipada',
+    licencia_medica: 'licencia_medica', licencia_estudio: 'licencia_estudio',
+    licencia_maternidad_paternidad: 'licencia_maternidad_paternidad', licencia_duelo: 'licencia_duelo',
+    permiso_personal: 'permiso_sin_goce',
+    horas_extra: 'horas_extra', cambio_turno: 'cambio_turno',
+    guardia_turno_especial: 'guardia_turno_especial', tarea_fuera_area: 'tarea_fuera_area',
+    capacitacion: 'capacitacion', accidente_laboral: 'accidente_laboral',
+    suspension: 'suspension', observacion_comportamiento: 'observacion_comportamiento',
+    conflicto_interpersonal: 'conflicto_interpersonal', entrega_documentacion: 'entrega_documentacion',
+    reconocimiento: 'reconocimiento',
+  }
+
   function handleApprove(id: string) {
+    const sol = solicitudes.find(s => s.id === id)
+    const emp = sol ? empleados.find(e => e.id === sol.empleadoId) : undefined
+    if (emp?.estado === 'inactivo') {
+      alert('No se puede aprobar: el empleado está dado de baja.')
+      return
+    }
     approveSolicitud(id, comments[id] ?? '')
     setComments(prev => { const n = { ...prev }; delete n[id]; return n })
     setExpandedId(null)
+    // Auto-crear registro de novedad para ausencias y licencias
+    if (sol && emp && AUSENCIA_TIPOS.includes(sol.tipo)) {
+      const cat = SOLICITUD_TO_REGISTRO[sol.tipo] ?? 'otro'
+      addRegistroNovedad({
+        empleadoId: emp.id,
+        empleadoNombre: `${emp.nombre} ${emp.apellido}`,
+        sector: emp.sector,
+        cargo: emp.cargo,
+        fecha: sol.fechaInicio,
+        horaTipo: sol.horarioDesde ? 'exacta' : 'sin_hora',
+        hora: sol.horarioDesde || undefined,
+        descripcion: `${SOLICITUD_TIPO_LABEL[sol.tipo]}${sol.descripcion ? ` — ${sol.descripcion}` : ''}`,
+        categoria: cat,
+      })
+    }
   }
 
   function handleReject(id: string) {
@@ -360,10 +404,20 @@ export default function SolicitudesPage() {
     })
     setShowNueva(false)
     setNewForm({ tipo: 'permiso_personal', fechaInicio: '', fechaFin: '', horarioDesde: '', horarioHasta: '', descripcion: '' })
+    setSubmitToast(true)
+    setTimeout(() => setSubmitToast(false), 3500)
   }
 
   return (
     <div className="page-container">
+      {/* Toast confirmación nueva solicitud */}
+      {submitToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-2.5 animate-scale-in">
+          <CheckCircle2 className="w-5 h-5 shrink-0" />
+          <p className="text-sm font-semibold">Solicitud enviada correctamente. RRHH la revisará pronto.</p>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -741,14 +795,54 @@ export default function SolicitudesPage() {
                 </div>
               ) : (
                 <>
-                  <div>
+                  <div className="relative">
                     <label className="form-label">Empleado *</label>
-                    <select className="form-select" value={mensajeForm.empleadoId} onChange={e => setMensajeForm(f => ({ ...f, empleadoId: e.target.value }))}>
-                      <option value="">Seleccionar empleado...</option>
-                      {empleados.filter(e => e.estado === 'activo').sort((a, b) => a.apellido.localeCompare(b.apellido)).map(e => (
-                        <option key={e.id} value={e.id}>{e.apellido}, {e.nombre} — {e.cargo}</option>
-                      ))}
-                    </select>
+                    {mensajeForm.empleadoId ? (
+                      <div className="form-input flex items-center justify-between">
+                        <span className="text-sm text-slate-700 dark:text-slate-200">
+                          {(() => { const e = empleados.find(x => x.id === mensajeForm.empleadoId); return e ? `${e.apellido}, ${e.nombre} — ${e.cargo}` : '' })()}
+                        </span>
+                        <button type="button" onClick={() => { setMensajeForm(f => ({ ...f, empleadoId: '' })); setMensajeQuery('') }} className="ml-2 text-slate-400 hover:text-slate-600">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                          <input
+                            className="form-input pl-9"
+                            placeholder="Buscar por nombre o cargo..."
+                            value={mensajeQuery}
+                            onChange={e => { setMensajeQuery(e.target.value); setMensajeDropOpen(true) }}
+                            onFocus={() => setMensajeDropOpen(true)}
+                            onBlur={() => setTimeout(() => setMensajeDropOpen(false), 150)}
+                          />
+                        </div>
+                        {mensajeDropOpen && (
+                          <div className="absolute z-20 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg mt-1 max-h-52 overflow-y-auto">
+                            {empleados
+                              .filter(e => e.estado === 'activo' && (!mensajeQuery || `${e.nombre} ${e.apellido} ${e.cargo}`.toLowerCase().includes(mensajeQuery.toLowerCase())))
+                              .sort((a, b) => a.apellido.localeCompare(b.apellido))
+                              .slice(0, 20)
+                              .map(e => (
+                                <button
+                                  key={e.id}
+                                  type="button"
+                                  className="w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 text-sm"
+                                  onMouseDown={() => { setMensajeForm(f => ({ ...f, empleadoId: e.id })); setMensajeQuery(''); setMensajeDropOpen(false) }}
+                                >
+                                  <span className="font-medium text-slate-700 dark:text-slate-200">{e.apellido}, {e.nombre}</span>
+                                  <span className="text-slate-400 ml-1.5">— {e.cargo}</span>
+                                </button>
+                              ))}
+                            {empleados.filter(e => e.estado === 'activo' && (!mensajeQuery || `${e.nombre} ${e.apellido} ${e.cargo}`.toLowerCase().includes(mensajeQuery.toLowerCase()))).length === 0 && (
+                              <p className="px-4 py-3 text-sm text-slate-400">Sin resultados</p>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
                   <div>
                     <label className="form-label">Asunto *</label>

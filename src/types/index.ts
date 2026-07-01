@@ -60,7 +60,7 @@ export type SolicitudTipo =
 
 // Las novedades comparten las categorías de eventos + sus propias (comunicado, alerta, etc.)
 export type NovedadCategoria =
-  | 'comunicado' | 'novedad' | 'alerta' | 'evento' | 'cumpleanos' | 'streaming'
+  | 'comunicado' | 'novedad' | 'alerta' | 'evento' | 'cumpleanos' | 'streaming' | 'vacaciones'
   | EventoTipo
 
 export type RegistroNovedadCategoria =
