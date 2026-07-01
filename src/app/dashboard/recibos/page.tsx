@@ -262,6 +262,7 @@ export default function RecibosPage() {
 
   async function handleSubir() {
     if (!uploadForm.empleadoId) return
+    if (!selectedFile) { setUploadError('El PDF es obligatorio para registrar un recibo.'); return }
     setUploadStatus('uploading')
     setUploadError('')
     const emp = empleados.find(e => e.id === uploadForm.empleadoId)
