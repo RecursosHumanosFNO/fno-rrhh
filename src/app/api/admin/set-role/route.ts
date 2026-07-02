@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     if (!empleadoId || !role || !requesterId) {
       return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 })
     }
-    if (role !== 'admin' && role !== 'employee' && role !== 'comunicaciones') {
+    if (role !== 'admin' && role !== 'employee' && role !== 'comunicaciones' && role !== 'rrhh') {
       return NextResponse.json({ error: 'Rol inválido' }, { status: 400 })
     }
 

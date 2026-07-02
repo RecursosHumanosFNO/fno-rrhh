@@ -28,10 +28,10 @@ export default function RegistrosPendientesPage() {
   }
 
   useEffect(() => {
-    if (user && user.role !== 'admin') router.replace('/dashboard')
+    if (user && user.role !== 'admin' && user.role !== 'rrhh') router.replace('/dashboard')
   }, [user, router])
 
-  if (user?.role !== 'admin') return null
+  if (user?.role !== 'admin' && user?.role !== 'rrhh') return null
 
   const handleConfirm = () => {
     if (!confirmAction) return
