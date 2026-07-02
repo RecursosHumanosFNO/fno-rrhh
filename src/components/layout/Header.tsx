@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useTheme } from '@/components/ThemeProvider'
-import { Bell, Sun, Moon, Menu, Search, ChevronDown, X, CheckCheck, Users, Megaphone, CalendarDays, Cake } from 'lucide-react'
+import { Bell, Sun, Moon, Menu, Search, ChevronDown, X, CheckCheck, Users, Megaphone, CalendarDays, Cake, RefreshCw } from 'lucide-react'
 import Link from 'next/link'
 
 interface HeaderProps {
@@ -24,11 +24,18 @@ function fmtDiaMes(f: string) {
 
 export default function Header({ onMenuToggle }: HeaderProps) {
   const { empleado, user, logout } = useAuth()
-  const { notifications, markNotificationRead, markAllRead, empleados, novedades, eventos } = useData()
+  const { notifications, markNotificationRead, markAllRead, empleados, novedades, eventos, forceSync } = useData()
   const { theme, toggleTheme } = useTheme()
 
   const [showDropdown, setShowDropdown] = useState(false)
   const [showNotifs, setShowNotifs] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+
+  async function handleForceSync() {
+    setSyncing(true)
+    await forceSync()
+    setSyncing(false)
+  }
   const [query, setQuery] = useState('')
   const [showSearch, setShowSearch] = useState(false)
   const searchRef = useRef<HTMLDivElement>(null)
@@ -202,6 +209,17 @@ export default function Header({ onMenuToggle }: HeaderProps) {
 
       {/* Actions */}
       <div className="flex items-center gap-1">
+        {/* Refresh / Actualizar datos */}
+        <button
+          onClick={handleForceSync}
+          disabled={syncing}
+          aria-label="Actualizar datos"
+          title="Actualizar datos"
+          className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-white/30 dark:hover:bg-teal-900/30 text-teal-800 dark:text-teal-400 transition-colors disabled:opacity-50"
+        >
+          <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+        </button>
+
         {/* Dark mode toggle */}
         <button
           onClick={toggleTheme}

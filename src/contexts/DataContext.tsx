@@ -69,6 +69,7 @@ interface DataContextType {
   deleteRegistroNovedad: (id: string) => void
   // Estado de sync
   synced: boolean
+  forceSync: () => Promise<void>
 }
 
 const DataContext = createContext<DataContextType | null>(null)
@@ -1128,7 +1129,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       addPendingRegistration, approvePendingRegistration, rejectPendingRegistration, refreshPending,
       markNotificationRead, markAllRead, addNotification,
       addRegistroNovedad, updateRegistroNovedad, deleteRegistroNovedad,
-      synced,
+      synced, forceSync: syncFromSupabase,
     }}>
       {children}
     </DataContext.Provider>
