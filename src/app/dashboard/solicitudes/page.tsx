@@ -276,7 +276,7 @@ async function generarCertificadoLaboralPDF(ticket: import('@/types').Ticket, em
 export default function SolicitudesPage() {
   const { user } = useAuth()
   const { empleados, solicitudes, addSolicitud, approveSolicitud, rejectSolicitud, editSolicitud, cancelSolicitud, tickets, addTicket, respondTicket, addNotification, addRegistroNovedad } = useData()
-  const isAdmin = user?.role === 'admin'
+  const isAdmin = user?.role === 'admin' || user?.role === 'rrhh'
   const [activeTab, setActiveTab] = useState<'solicitudes' | 'pedidos'>('solicitudes')
 
   const [estadoFilter, setEstadoFilter] = useState('')

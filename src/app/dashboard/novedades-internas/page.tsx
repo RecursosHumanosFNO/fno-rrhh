@@ -98,7 +98,7 @@ export default function NovedadesInternasPage() {
   const { user } = useAuth()
   const router = useRouter()
 
-  if (user && user.role !== 'admin') {
+  if (user && user.role !== 'admin' && user.role !== 'rrhh') {
     router.replace('/dashboard')
     return null
   }

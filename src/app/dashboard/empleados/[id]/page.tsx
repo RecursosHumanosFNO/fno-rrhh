@@ -34,7 +34,7 @@ export default function EmpleadoDetailPage() {
   const [pdfViewer, setPdfViewer] = useState<{ url: string; label: string } | null>(null)
   const [resetStatus, setResetStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
   const [roleStatus, setRoleStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
-  const [confirmRole, setConfirmRole] = useState<'admin' | 'employee' | 'comunicaciones' | null>(null)
+  const [confirmRole, setConfirmRole] = useState<'admin' | 'employee' | 'comunicaciones' | 'rrhh' | null>(null)
   const [showDelete, setShowDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteErr, setDeleteErr] = useState('')
@@ -82,7 +82,7 @@ export default function EmpleadoDetailPage() {
       })
   }, [id])
 
-  const isAdmin = user?.role === 'admin'
+  const isAdmin = user?.role === 'admin' || user?.role === 'rrhh'
   const emp = empleados.find(e => e.id === id)
   // Foto: prioridad a cambios locales (handlePhotoUpload), luego la cargada on-demand
   const fotoDisplay = emp?.foto || profileFoto || ''
@@ -318,7 +318,7 @@ export default function EmpleadoDetailPage() {
     setTimeout(() => setResetStatus('idle'), 5000)
   }
 
-  async function handleSetRole(newRole: 'admin' | 'employee' | 'comunicaciones') {
+  async function handleSetRole(newRole: 'admin' | 'employee' | 'comunicaciones' | 'rrhh') {
     if (!user?.empleadoId) return
     setConfirmRole(null)
     setRoleStatus('loading')
@@ -466,10 +466,12 @@ export default function EmpleadoDetailPage() {
                         <UserX className="w-4 h-4" /> Desactivar
                       </button>
                     )}
-                    <button onClick={() => { setShowDelete(true); setDeleteErr('') }} title="Eliminar empleado"
-                      className="btn-secondary bg-red-500/20 border-red-300/40 text-white hover:bg-red-500/40">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {user?.role === 'admin' && (
+                      <button onClick={() => { setShowDelete(true); setDeleteErr('') }} title="Eliminar empleado"
+                        className="btn-secondary bg-red-500/20 border-red-300/40 text-white hover:bg-red-500/40">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </>
                 )}
                 {isAdmin && editMode && (
@@ -656,14 +658,17 @@ export default function EmpleadoDetailPage() {
                             ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
                             : empUser.role === 'comunicaciones'
                               ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
-                              : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                              : empUser.role === 'rrhh'
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
+                                : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
                         }`}>
                           {empUser.role === 'admin' ? '⭐ Administrador'
                             : empUser.role === 'comunicaciones' ? '📢 Comunicaciones'
+                            : empUser.role === 'rrhh' ? '👥 Gestión de Personal'
                             : '👤 Empleado'}
                         </span>
 
-                        {id !== user?.empleadoId ? (
+                        {id !== user?.empleadoId && user?.role === 'admin' ? (
                           roleStatus === 'loading' ? (
                             <span className="text-xs text-slate-400 flex items-center gap-1">
                               <Loader2 className="w-3 h-3 animate-spin" /> Guardando...
@@ -672,12 +677,13 @@ export default function EmpleadoDetailPage() {
                             <select
                               value={empUser.role}
                               onChange={e => {
-                                const nuevo = e.target.value as 'admin' | 'employee' | 'comunicaciones'
+                                const nuevo = e.target.value as 'admin' | 'employee' | 'comunicaciones' | 'rrhh'
                                 if (nuevo !== empUser.role) setConfirmRole(nuevo)
                               }}
                               className="form-select text-xs py-1 w-auto"
                             >
                               <option value="employee">👤 Empleado</option>
+                              <option value="rrhh">👥 Gestión de Personal</option>
                               <option value="comunicaciones">📢 Comunicaciones</option>
                               <option value="admin">⭐ Administrador</option>
                             </select>
@@ -1224,17 +1230,20 @@ export default function EmpleadoDetailPage() {
               <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 ${
                 confirmRole === 'admin' ? 'bg-amber-100 dark:bg-amber-900/30'
                 : confirmRole === 'comunicaciones' ? 'bg-blue-100 dark:bg-blue-900/30'
+                : confirmRole === 'rrhh' ? 'bg-emerald-100 dark:bg-emerald-900/30'
                 : 'bg-slate-100 dark:bg-slate-800'
               }`}>
                 <Shield className={`w-7 h-7 ${
                   confirmRole === 'admin' ? 'text-amber-500'
                   : confirmRole === 'comunicaciones' ? 'text-blue-500'
+                  : confirmRole === 'rrhh' ? 'text-emerald-500'
                   : 'text-slate-400'
                 }`} />
               </div>
               <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">
                 {confirmRole === 'admin' ? '¿Hacer administrador?'
                   : confirmRole === 'comunicaciones' ? '¿Asignar rol Comunicaciones?'
+                  : confirmRole === 'rrhh' ? '¿Asignar rol Gestión de Personal?'
                   : '¿Volver a empleado?'}
               </h3>
               <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
@@ -1242,6 +1251,8 @@ export default function EmpleadoDetailPage() {
                   ? `${emp.nombre} tendrá acceso completo al portal: empleados, recibos, estadísticas y configuración.`
                   : confirmRole === 'comunicaciones'
                   ? `${emp.nombre} podrá crear y editar comunicados y eventos, pero no verá empleados, recibos ni datos administrativos.`
+                  : confirmRole === 'rrhh'
+                  ? `${emp.nombre} tendrá acceso a empleados, solicitudes, novedades internas y estadísticas, pero no a recibos de sueldo.`
                   : `${emp.nombre} pasará a ser empleado regular y solo verá sus propios datos.`}
               </p>
               <div className="flex gap-3">
@@ -1253,6 +1264,7 @@ export default function EmpleadoDetailPage() {
                   className={`flex-1 justify-center px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors ${
                     confirmRole === 'admin' ? 'bg-amber-500 hover:bg-amber-600'
                     : confirmRole === 'comunicaciones' ? 'bg-blue-600 hover:bg-blue-700'
+                    : confirmRole === 'rrhh' ? 'bg-emerald-600 hover:bg-emerald-700'
                     : 'bg-slate-500 hover:bg-slate-600'
                   }`}
                 >

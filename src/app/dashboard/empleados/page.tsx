@@ -129,10 +129,10 @@ export default function EmpleadosPage() {
   const router = useRouter()
 
   useEffect(() => {
-    if (user?.role !== 'admin') router.replace('/dashboard')
+    if (user?.role !== 'admin' && user?.role !== 'rrhh') router.replace('/dashboard')
   }, [user, router])
 
-  if (user?.role !== 'admin') return null
+  if (user?.role !== 'admin' && user?.role !== 'rrhh') return null
 
   return <EmpleadosContent />
 }

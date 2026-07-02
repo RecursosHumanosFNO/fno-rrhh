@@ -24,10 +24,10 @@ export default function EstadisticasPage() {
   const router = useRouter()
 
   useEffect(() => {
-    if (user && user.role !== 'admin') router.replace('/dashboard')
+    if (user && user.role !== 'admin' && user.role !== 'rrhh') router.replace('/dashboard')
   }, [user, router])
 
-  if (!user || user.role !== 'admin') return null
+  if (!user || (user.role !== 'admin' && user.role !== 'rrhh')) return null
 
   const totalEmpleados = empleados.length
   const activos = empleados.filter(e => e.estado === 'activo').length
