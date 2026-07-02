@@ -39,6 +39,7 @@ interface FormState {
   horaHasta: string
   descripcion: string
   categoria: RegistroNovedadCategoria | ''
+  edificio: string
   fotoUrl: string
 }
 
@@ -55,6 +56,7 @@ const emptyForm: FormState = {
   horaHasta: '',
   descripcion: '',
   categoria: '',
+  edificio: '',
   fotoUrl: '',
 }
 
@@ -313,6 +315,7 @@ function NovedadesInternasContent() {
       horaHasta: r.horaHasta ?? '',
       descripcion: r.descripcion,
       categoria: r.categoria,
+      edificio: r.edificio ?? '',
       fotoUrl: r.fotoUrl ?? '',
     })
     setFotoPreview(r.fotoUrl ?? '')
@@ -385,6 +388,7 @@ function NovedadesInternasContent() {
       horaHasta: form.horaTipo === 'rango' ? form.horaHasta : undefined,
       descripcion: form.descripcion.trim(),
       categoria: form.categoria as RegistroNovedadCategoria,
+      edificio: form.edificio.trim() || undefined,
       fotoUrl: form.fotoUrl || undefined,
     }
 
@@ -608,6 +612,11 @@ function NovedadesInternasContent() {
                           · {[r.cargo, r.sector].filter(Boolean).join(' — ')}
                         </span>
                       )}
+                      {r.edificio && (
+                        <span className="text-xs text-gray-400 dark:text-gray-500">
+                          · {r.edificio}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       <button
@@ -739,6 +748,20 @@ function NovedadesInternasContent() {
                     className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
                   />
                 </div>
+              </div>
+
+              {/* Edificio / Área (opcional) */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                  <Building2 className="inline w-3.5 h-3.5 mr-1" />Edificio / Área <span className="font-normal text-gray-400">(opcional)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ej: Edificio Central, Planta Baja, Aula 3..."
+                  value={form.edificio}
+                  onChange={e => setForm(f => ({ ...f, edificio: e.target.value }))}
+                  className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
               </div>
 
               {/* Categoría */}

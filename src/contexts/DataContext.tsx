@@ -300,6 +300,7 @@ function mapSupabaseToRegistroNovedad(row: Record<string, unknown>): RegistroNov
     horaHasta: (row.hora_hasta as string) || undefined,
     descripcion: (row.descripcion as string) ?? '',
     categoria: (row.categoria as RegistroNovedadCategoria) ?? 'otro',
+    edificio: (row.edificio as string) || undefined,
     fotoUrl: (row.foto_url as string) || undefined,
     creadoEn: (row.creado_en as string) ?? new Date().toISOString(),
   }
@@ -318,6 +319,7 @@ function mapRegistroNovedadToSupabase(r: RegistroNovedad) {
     hora_hasta: r.horaHasta ?? null,
     descripcion: r.descripcion,
     categoria: r.categoria,
+    edificio: r.edificio ?? null,
     foto_url: r.fotoUrl ?? null,
     creado_en: r.creadoEn,
   }
