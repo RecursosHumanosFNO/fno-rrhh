@@ -68,6 +68,8 @@ export type RegistroNovedadCategoria =
   | 'ausencia' | 'llegada_tarde' | 'salida_anticipada'
   // Licencias
   | 'licencia_medica' | 'licencia_estudio' | 'licencia_maternidad_paternidad' | 'licencia_duelo'
+  // Reintegros
+  | 'vuelta_licencia' | 'vuelta_vacaciones'
   // Tiempo libre
   | 'permiso_sin_goce' | 'vacaciones'
   // Jornada
@@ -92,6 +94,7 @@ export interface RegistroNovedad {
   horaHasta?: string        // HH:MM (si rango)
   descripcion: string
   categoria: RegistroNovedadCategoria
+  edificio?: string
   fotoUrl?: string
   creadoEn: string          // ISO timestamp
 }
