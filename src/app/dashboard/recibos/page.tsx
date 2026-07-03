@@ -10,7 +10,7 @@ import {
   FileText, Download, Upload, Search, X, CheckCircle2,
   Loader2, AlertCircle, Eye, Cloud, HardDrive, Lock,
   Layers, ChevronRight, AlertTriangle, CheckCheck, User, Trash2,
-  PenLine, ShieldCheck, ClipboardList, Plus,
+  PenLine, ShieldCheck, ClipboardList, Plus, ArrowUpDown, ArrowUp, ArrowDown,
 } from 'lucide-react'
 
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -59,6 +59,7 @@ export default function RecibosPage() {
   const [firmando, setFirmando] = useState(false)
   const [showAuditoria, setShowAuditoria] = useState(false)
   const [auditQuery, setAuditQuery] = useState('')
+  const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc')
 
   function exportarAuditoria() {
     const hoy = new Date().toISOString().slice(0, 10)
@@ -248,7 +249,11 @@ export default function RecibosPage() {
     const matchMes = !mesFilter || r.mes === parseInt(mesFilter)
     const matchAnio = !anioFilter || r.anio === parseInt(anioFilter)
     return matchQuery && matchMes && matchAnio
-  }).sort((a, b) => b.anio - a.anio || b.mes - a.mes), [misRecibos, empleados, query, mesFilter, anioFilter])
+  }).sort((a, b) => {
+    const da = a.fechaSubida ?? ''
+    const db = b.fechaSubida ?? ''
+    return sortDir === 'desc' ? db.localeCompare(da) : da.localeCompare(db)
+  }), [misRecibos, empleados, query, mesFilter, anioFilter, sortDir])
 
   // ── Carga individual ───────────────────────────────────────────────────
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -692,7 +697,19 @@ export default function RecibosPage() {
               <tr>
                 {viewAsAdmin && <th className="table-header text-left">Empleado</th>}
                 <th className="table-header text-left">Período</th>
-                <th className="table-header text-left hidden sm:table-cell">Fecha de subida</th>
+                <th className="table-header text-left hidden sm:table-cell">
+                  <button
+                    onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')}
+                    className="inline-flex items-center gap-1.5 hover:text-brand-700 dark:hover:text-brand-400 transition-colors"
+                    title={sortDir === 'desc' ? 'Ordenar: más antiguos primero' : 'Ordenar: más recientes primero'}
+                  >
+                    Fecha de subida
+                    {sortDir === 'desc'
+                      ? <ArrowDown className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
+                      : <ArrowUp className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
+                    }
+                  </button>
+                </th>
                 <th className="table-header text-right">Acción</th>
               </tr>
             </thead>
