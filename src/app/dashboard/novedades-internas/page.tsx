@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
@@ -604,9 +605,15 @@ function NovedadesInternasContent() {
                       <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${REGISTRO_NOVEDAD_CATEGORIA_COLOR[r.categoria]}`}>
                         {REGISTRO_NOVEDAD_CATEGORIA_LABEL[r.categoria]}
                       </span>
-                      <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                        {r.empleadoNombre}
-                      </span>
+                      {r.empleadoId ? (
+                        <Link href={`/dashboard/empleados/${r.empleadoId}`} className="text-sm font-semibold text-gray-900 dark:text-white hover:text-brand-600 dark:hover:text-brand-400 hover:underline underline-offset-2 transition-colors duration-150">
+                          {r.empleadoNombre}
+                        </Link>
+                      ) : (
+                        <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                          {r.empleadoNombre}
+                        </span>
+                      )}
                       {(r.sector || r.cargo) && (
                         <span className="text-xs text-gray-500 dark:text-gray-400">
                           · {[r.cargo, r.sector].filter(Boolean).join(' — ')}

@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import React, { useState, useRef, useCallback, useMemo } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
@@ -725,11 +726,11 @@ export default function RecibosPage() {
                     {viewAsAdmin && (
                       <td className="table-cell max-w-[180px]">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-brand-700 flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden">
+                          <Link href={emp ? `/dashboard/empleados/${emp.id}` : '#'} className="w-8 h-8 rounded-full bg-brand-700 flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden ring-0 hover:ring-2 hover:ring-brand-400 transition-all duration-150">
                             {emp?.foto ? <img src={emp.foto} alt="" className="w-8 h-8 object-cover" /> : emp ? `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}` : '?'}
-                          </div>
+                          </Link>
                           <div className="min-w-0">
-                            <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{emp ? `${emp.apellido}, ${emp.nombre}` : 'N/A'}</p>
+                            <Link href={emp ? `/dashboard/empleados/${emp.id}` : '#'} className="text-sm font-medium text-slate-700 dark:text-slate-200 hover:text-brand-600 dark:hover:text-brand-400 hover:underline underline-offset-2 transition-colors duration-150 truncate block">{emp ? `${emp.apellido}, ${emp.nombre}` : 'N/A'}</Link>
                             <p className="text-xs text-slate-400 truncate">{emp?.sector}</p>
                           </div>
                         </div>
