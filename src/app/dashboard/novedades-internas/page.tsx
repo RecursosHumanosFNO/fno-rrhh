@@ -606,7 +606,7 @@ function NovedadesInternasContent() {
                         {REGISTRO_NOVEDAD_CATEGORIA_LABEL[r.categoria]}
                       </span>
                       {r.empleadoId ? (
-                        <Link href={`/dashboard/empleados/${r.empleadoId}`} className="text-sm font-semibold text-gray-900 dark:text-white hover:text-brand-600 dark:hover:text-brand-400 hover:underline underline-offset-2 transition-colors duration-150">
+                        <Link href={`/dashboard/empleados/${r.empleadoId}`} className="text-sm font-semibold text-gray-900 dark:text-white relative inline-block font-semibold hover:text-brand-700 dark:hover:text-brand-300 transition-colors duration-200 after:absolute after:bottom-0 after:left-0 after:h-[1.5px] after:w-0 hover:after:w-full after:bg-brand-600 dark:after:bg-brand-400 after:transition-all after:duration-200">
                           {r.empleadoNombre}
                         </Link>
                       ) : (
