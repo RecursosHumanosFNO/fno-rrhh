@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
@@ -9,7 +9,7 @@ import { useData } from '@/contexts/DataContext'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Users, FileText, ClipboardList, Megaphone,
-  BarChart3, User, HeadphonesIcon, ChevronLeft, ChevronRight,
+  BarChart3, User, HeadphonesIcon, ChevronRight,
   LogOut, ExternalLink, Info, UserCheck, CalendarDays, AlertTriangle,
   BookOpen, ClipboardCheck,
 } from 'lucide-react'
@@ -36,20 +36,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const isRRHH = user?.role === 'rrhh'
   const isComunicaciones = user?.role === 'comunicaciones'
 
-  // labelsVisible se desfasa de collapsed para coordinar el timing:
-  // al cerrar: texto desaparece primero, luego el sidebar se encoge
-  // al abrir: el sidebar se expande primero, luego aparece el texto
-  const [labelsVisible, setLabelsVisible] = useState(!collapsed)
-  useEffect(() => {
-    if (collapsed) {
-      setLabelsVisible(false)
-    } else {
-      const t = setTimeout(() => setLabelsVisible(true), 180)
-      return () => clearTimeout(t)
-    }
-  }, [collapsed])
-
-  // Perfil incompleto del usuario logueado (mismos campos que el detalle de empleado)
   const perfilIncompleto = !!empleado && [
     empleado.fechaNacimiento, empleado.cuil, empleado.telefono, empleado.direccion,
     empleado.cbu, empleado.banco, empleado.contactoEmergencia?.nombre,
@@ -107,16 +93,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   const links = isAdmin ? adminLinks : isRRHH ? rrhhLinks : isComunicaciones ? comunicacionesLinks : employeeLinks
 
-  const labelCls = cn(
-    'transition-opacity duration-150 whitespace-nowrap overflow-hidden',
-    labelsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none',
-  )
-
   return (
-    <aside
-      style={{ width: collapsed ? 72 : 240, transition: 'width 300ms cubic-bezier(0.4,0,0.2,1)' }}
-      className="fixed top-0 left-0 h-screen z-30 flex flex-col bg-brand-700 dark:bg-brand-900 overflow-hidden"
-    >
+    <aside className={cn('sidebar fixed top-0 left-0 h-screen z-30 flex flex-col bg-brand-700 dark:bg-brand-900', collapsed && 'sidebar-collapsed')}>
       {/* Logo */}
       <div className="flex items-center h-16 px-3 border-b border-white/10 gap-3">
         <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/30 bg-white shrink-0 flex items-center justify-center">
@@ -136,17 +114,14 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             }}
           />
         </div>
-        <div className={labelCls}>
+        <div className="sidebar-label flex-1 min-w-0">
           <p className="text-white font-bold text-sm leading-tight">Fundación</p>
           <p className="text-blue-200 text-xs">Neuquén Oeste</p>
         </div>
       </div>
 
       {/* Role badge */}
-      <div className={cn(
-        'mx-3 mt-3 px-3 py-1.5 bg-white/10 dark:bg-teal-900/30 rounded-lg border border-transparent dark:border-teal-700/30 transition-opacity duration-150',
-        labelsVisible ? 'opacity-100' : 'opacity-0',
-      )}>
+      <div className="sidebar-badge mx-3 mt-3 px-3 py-1.5 bg-white/10 dark:bg-teal-900/30 rounded-lg border border-transparent dark:border-teal-700/30">
         <p className="text-blue-100 dark:text-teal-300 text-xs font-medium whitespace-nowrap">
           {isAdmin ? '🔑 Administrador RRHH' : isRRHH ? '👥 Gestión de Personal' : isComunicaciones ? '📢 Comunicaciones' : '👤 Portal del Empleado'}
         </p>
@@ -164,7 +139,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               className={cn('nav-link relative', collapsed ? 'justify-center px-2' : '', isActive ? 'nav-link-active' : 'nav-link-inactive')}
             >
               <Icon className="w-5 h-5 shrink-0" />
-              <span className={cn(labelCls, 'flex-1')}>{label}</span>
+              <span className="sidebar-label flex-1">{label}</span>
               {warn && (
                 <AlertTriangle className={cn(
                   'text-amber-400 fill-amber-400/20 shrink-0',
@@ -195,7 +170,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 `${empleado.nombre.charAt(0)}${empleado.apellido.charAt(0)}`
               )}
             </div>
-            <div className={cn(labelCls, 'flex-1 min-w-0')}>
+            <div className="sidebar-label flex-1 min-w-0">
               <p className="text-white text-xs font-semibold truncate">{empleado.nombre} {empleado.apellido}</p>
               <p className="text-blue-200 text-xs truncate">{empleado.cargo}</p>
             </div>
@@ -210,7 +185,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           className={cn('nav-link nav-link-inactive', collapsed ? 'justify-center px-2' : '')}
         >
           <ExternalLink className="w-4 h-4 shrink-0" />
-          <span className={cn(labelCls, 'text-xs')}>Sitio web de la Fundación</span>
+          <span className="sidebar-label text-xs">Sitio web de la Fundación</span>
         </a>
 
         <button
@@ -219,7 +194,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           className={cn('nav-link nav-link-inactive w-full', collapsed ? 'justify-center px-2' : '')}
         >
           <LogOut className="w-4 h-4 shrink-0" />
-          <span className={cn(labelCls, 'text-sm')}>Cerrar sesión</span>
+          <span className="sidebar-label text-sm">Cerrar sesión</span>
         </button>
       </div>
 

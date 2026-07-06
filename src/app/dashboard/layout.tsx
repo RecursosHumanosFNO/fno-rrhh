@@ -50,10 +50,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </div>
 
       {/* Main area */}
-      <div
-        className={cn('min-h-screen flex flex-col', collapsed ? 'lg:pl-[72px]' : 'lg:pl-[240px]')}
-        style={{ transition: 'padding-left 300ms cubic-bezier(0.4,0,0.2,1)' }}
-      >
+      <div className={cn('sidebar-main min-h-screen flex flex-col', collapsed && 'sidebar-collapsed')}>
         <Header onMenuToggle={() => setMobileOpen(!mobileOpen)} />
         <main className="flex-1 overflow-x-hidden">
           {children}
