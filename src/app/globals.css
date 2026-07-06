@@ -184,8 +184,10 @@
   /* ── Sidebar transition ──────────────────────────────── */
   .sidebar {
     width: var(--sidebar-width);
-    transition: width 300ms cubic-bezier(0.4, 0, 0.2, 1);
     overflow: hidden;
+    /* Desktop: animate width; Mobile: animate transform (slide drawer) */
+    transition: width 300ms cubic-bezier(0.4, 0, 0.2, 1),
+                transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
   }
   .sidebar.sidebar-collapsed {
     width: var(--sidebar-collapsed);
@@ -208,6 +210,14 @@
   .sidebar-collapsed .sidebar-badge {
     opacity: 0;
     max-height: 0;
+  }
+  /* Toggle button follows sidebar width */
+  .sidebar-toggle-btn {
+    left: calc(var(--sidebar-width) - 12px);
+    transition: left 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .sidebar.sidebar-collapsed ~ .sidebar-toggle-btn {
+    left: calc(var(--sidebar-collapsed) - 12px);
   }
   /* Main content shifts with the sidebar */
   .sidebar-main {

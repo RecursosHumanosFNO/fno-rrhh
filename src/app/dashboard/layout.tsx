@@ -21,7 +21,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!isLoading && !isAuthenticated) router.replace('/login')
   }, [isAuthenticated, isLoading, router])
 
-  // Esperar: autenticación, datos sincronizados, y empleado cargado (excepto para admin que puede no tener empleado_id)
   const esperandoEmpleado = isAuthenticated && user?.role !== 'admin' && !empleado
   if (isLoading || !isAuthenticated || !synced || esperandoEmpleado) {
     return (
@@ -36,20 +35,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen">
-      {/* Mobile overlay */}
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-20 lg:hidden"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
+      {/* Mobile overlay — fade in/out */}
+      <div
+        className={cn(
+          'fixed inset-0 bg-black/50 z-20 lg:hidden transition-opacity duration-300',
+          mobileOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
+        )}
+        onClick={() => setMobileOpen(false)}
+      />
 
-      {/* Sidebar — desktop always visible, mobile drawer */}
-      <div className={cn('lg:block', mobileOpen ? 'block' : 'hidden')}>
-        <Sidebar collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
-      </div>
+      {/* Sidebar — always in DOM; slides on mobile, collapses on desktop */}
+      <Sidebar
+        collapsed={collapsed}
+        mobileOpen={mobileOpen}
+        onToggle={() => setCollapsed(!collapsed)}
+      />
 
-      {/* Main area */}
+      {/* Main area shifts right on desktop */}
       <div className={cn('sidebar-main min-h-screen flex flex-col', collapsed && 'sidebar-collapsed')}>
         <Header onMenuToggle={() => setMobileOpen(!mobileOpen)} />
         <main className="flex-1 overflow-x-hidden">
@@ -57,10 +59,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </main>
       </div>
 
-      {/* Asistente IA flotante */}
       <AIChatAssistant />
-
-      {/* Pull-to-refresh para PWA/mobile */}
       <PullToRefresh />
     </div>
   )
