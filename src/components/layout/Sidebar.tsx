@@ -9,13 +9,14 @@ import { useData } from '@/contexts/DataContext'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Users, FileText, ClipboardList, Megaphone,
-  BarChart3, User, HeadphonesIcon, ChevronRight,
+  BarChart3, User, ChevronRight,
   LogOut, ExternalLink, Info, UserCheck, CalendarDays, AlertTriangle,
   BookOpen, ClipboardCheck,
 } from 'lucide-react'
 
 interface SidebarProps {
   collapsed: boolean
+  mobileOpen: boolean
   onToggle: () => void
 }
 
@@ -27,7 +28,7 @@ interface NavLink {
   warn?: boolean
 }
 
-export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
+export default function Sidebar({ collapsed, mobileOpen, onToggle }: SidebarProps) {
   const pathname = usePathname()
   const { user, empleado, logout } = useAuth()
   const { pendingRegistrations, solicitudes } = useData()
@@ -94,119 +95,129 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const links = isAdmin ? adminLinks : isRRHH ? rrhhLinks : isComunicaciones ? comunicacionesLinks : employeeLinks
 
   return (
-    <aside className={cn('sidebar fixed top-0 left-0 h-screen z-30 flex flex-col bg-brand-700 dark:bg-brand-900', collapsed && 'sidebar-collapsed')}>
-      {/* Logo */}
-      <div className="flex items-center h-16 px-3 border-b border-white/10 gap-3">
-        <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/30 bg-white shrink-0 flex items-center justify-center">
-          <Image
-            src="/logo.png"
-            alt="Logo FNO"
-            width={40}
-            height={40}
-            className="object-contain"
-            onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
-              const target = e.target as HTMLImageElement
-              target.style.display = 'none'
-              const parent = target.parentElement
-              if (parent) {
-                parent.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#23597e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></svg>`
-              }
-            }}
-          />
-        </div>
-        <div className="sidebar-label flex-1 min-w-0">
-          <p className="text-white font-bold text-sm leading-tight">Fundación</p>
-          <p className="text-blue-200 text-xs">Neuquén Oeste</p>
-        </div>
-      </div>
-
-      {/* Role badge */}
-      <div className="sidebar-badge mx-3 mt-3 px-3 py-1.5 bg-white/10 dark:bg-teal-900/30 rounded-lg border border-transparent dark:border-teal-700/30">
-        <p className="text-blue-100 dark:text-teal-300 text-xs font-medium whitespace-nowrap">
-          {isAdmin ? '🔑 Administrador RRHH' : isRRHH ? '👥 Gestión de Personal' : isComunicaciones ? '📢 Comunicaciones' : '👤 Portal del Empleado'}
-        </p>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-0.5">
-        {links.map(({ href, label, icon: Icon, badge, warn }) => {
-          const isActive = href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(href)
-          return (
-            <Link
-              key={href}
-              href={href}
-              title={collapsed ? (warn ? `${label} · perfil incompleto` : label) : undefined}
-              className={cn('nav-link relative', collapsed ? 'justify-center px-2' : '', isActive ? 'nav-link-active' : 'nav-link-inactive')}
-            >
-              <Icon className="w-5 h-5 shrink-0" />
-              <span className="sidebar-label flex-1">{label}</span>
-              {warn && (
-                <AlertTriangle className={cn(
-                  'text-amber-400 fill-amber-400/20 shrink-0',
-                  collapsed ? 'absolute top-1 right-1 w-3.5 h-3.5' : 'w-4 h-4',
-                )} />
-              )}
-              {badge !== undefined && badge > 0 && (
-                <span className={cn(
-                  'bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center shrink-0',
-                  collapsed ? 'absolute top-1 right-1 w-4 h-4 text-[10px]' : 'w-5 h-5',
-                )}>
-                  {badge > 9 ? '9+' : badge}
-                </span>
-              )}
-            </Link>
-          )
-        })}
-      </nav>
-
-      {/* Footer */}
-      <div className="border-t border-white/10 p-3 space-y-1">
-        {empleado && (
-          <div className="flex items-center gap-2.5 px-2 py-2 mb-1">
-            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white text-xs font-bold shrink-0">
-              {empleado.foto ? (
-                <img src={empleado.foto} alt="" className="w-8 h-8 rounded-full object-cover" />
-              ) : (
-                `${empleado.nombre.charAt(0)}${empleado.apellido.charAt(0)}`
-              )}
-            </div>
-            <div className="sidebar-label flex-1 min-w-0">
-              <p className="text-white text-xs font-semibold truncate">{empleado.nombre} {empleado.apellido}</p>
-              <p className="text-blue-200 text-xs truncate">{empleado.cargo}</p>
-            </div>
+    <>
+      {/* Sidebar panel */}
+      <aside className={cn(
+        'sidebar fixed top-0 left-0 h-screen z-30 flex flex-col bg-brand-700 dark:bg-brand-900',
+        // Desktop: collapse by width
+        collapsed && 'sidebar-collapsed',
+        // Mobile: slide in/out via transform (default: off-screen)
+        'translate-x-[-100%] lg:translate-x-0',
+        mobileOpen && '!translate-x-0',
+      )}>
+        {/* Logo */}
+        <div className="flex items-center h-16 px-3 border-b border-white/10 gap-3">
+          <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/30 bg-white shrink-0 flex items-center justify-center">
+            <Image
+              src="/logo.png"
+              alt="Logo FNO"
+              width={40}
+              height={40}
+              className="object-contain"
+              onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                const target = e.target as HTMLImageElement
+                target.style.display = 'none'
+                const parent = target.parentElement
+                if (parent) {
+                  parent.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#23597e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></svg>`
+                }
+              }}
+            />
           </div>
-        )}
+          <div className="sidebar-label flex-1 min-w-0">
+            <p className="text-white font-bold text-sm leading-tight">Fundación</p>
+            <p className="text-blue-200 text-xs">Neuquén Oeste</p>
+          </div>
+        </div>
 
-        <a
-          href="https://fundacionnqnoeste.com/"
-          target="_blank"
-          rel="noopener noreferrer"
-          title={collapsed ? 'Sitio web' : undefined}
-          className={cn('nav-link nav-link-inactive', collapsed ? 'justify-center px-2' : '')}
-        >
-          <ExternalLink className="w-4 h-4 shrink-0" />
-          <span className="sidebar-label text-xs">Sitio web de la Fundación</span>
-        </a>
+        {/* Role badge */}
+        <div className="sidebar-badge mx-3 mt-3 px-3 py-1.5 bg-white/10 dark:bg-teal-900/30 rounded-lg border border-transparent dark:border-teal-700/30">
+          <p className="text-blue-100 dark:text-teal-300 text-xs font-medium whitespace-nowrap">
+            {isAdmin ? '🔑 Administrador RRHH' : isRRHH ? '👥 Gestión de Personal' : isComunicaciones ? '📢 Comunicaciones' : '👤 Portal del Empleado'}
+          </p>
+        </div>
 
-        <button
-          onClick={logout}
-          title={collapsed ? 'Cerrar sesión' : undefined}
-          className={cn('nav-link nav-link-inactive w-full', collapsed ? 'justify-center px-2' : '')}
-        >
-          <LogOut className="w-4 h-4 shrink-0" />
-          <span className="sidebar-label text-sm">Cerrar sesión</span>
-        </button>
-      </div>
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-0.5">
+          {links.map(({ href, label, icon: Icon, badge, warn }) => {
+            const isActive = href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(href)
+            return (
+              <Link
+                key={href}
+                href={href}
+                title={collapsed ? (warn ? `${label} · perfil incompleto` : label) : undefined}
+                className={cn('nav-link relative', collapsed ? 'justify-center px-2' : '', isActive ? 'nav-link-active' : 'nav-link-inactive')}
+              >
+                <Icon className="w-5 h-5 shrink-0" />
+                <span className="sidebar-label flex-1">{label}</span>
+                {warn && (
+                  <AlertTriangle className={cn(
+                    'text-amber-400 fill-amber-400/20 shrink-0',
+                    collapsed ? 'absolute top-1 right-1 w-3.5 h-3.5' : 'w-4 h-4',
+                  )} />
+                )}
+                {badge !== undefined && badge > 0 && (
+                  <span className={cn(
+                    'bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center shrink-0',
+                    collapsed ? 'absolute top-1 right-1 w-4 h-4 text-[10px]' : 'w-5 h-5',
+                  )}>
+                    {badge > 9 ? '9+' : badge}
+                  </span>
+                )}
+              </Link>
+            )
+          })}
+        </nav>
 
-      {/* Collapse toggle */}
+        {/* Footer */}
+        <div className="border-t border-white/10 p-3 space-y-1">
+          {empleado && (
+            <div className="flex items-center gap-2.5 px-2 py-2 mb-1">
+              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                {empleado.foto ? (
+                  <img src={empleado.foto} alt="" className="w-8 h-8 rounded-full object-cover" />
+                ) : (
+                  `${empleado.nombre.charAt(0)}${empleado.apellido.charAt(0)}`
+                )}
+              </div>
+              <div className="sidebar-label flex-1 min-w-0">
+                <p className="text-white text-xs font-semibold truncate">{empleado.nombre} {empleado.apellido}</p>
+                <p className="text-blue-200 text-xs truncate">{empleado.cargo}</p>
+              </div>
+            </div>
+          )}
+
+          <a
+            href="https://fundacionnqnoeste.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            title={collapsed ? 'Sitio web' : undefined}
+            className={cn('nav-link nav-link-inactive', collapsed ? 'justify-center px-2' : '')}
+          >
+            <ExternalLink className="w-4 h-4 shrink-0" />
+            <span className="sidebar-label text-xs">Sitio web de la Fundación</span>
+          </a>
+
+          <button
+            onClick={logout}
+            title={collapsed ? 'Cerrar sesión' : undefined}
+            className={cn('nav-link nav-link-inactive w-full', collapsed ? 'justify-center px-2' : '')}
+          >
+            <LogOut className="w-4 h-4 shrink-0" />
+            <span className="sidebar-label text-sm">Cerrar sesión</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* Toggle button — fixed so it's never clipped by sidebar overflow */}
       <button
         onClick={onToggle}
         aria-label={collapsed ? 'Expandir menú' : 'Colapsar menú'}
         title={collapsed ? 'Expandir menú' : 'Colapsar menú'}
-        className="absolute -right-3 top-20 w-6 h-6 bg-brand-700 dark:bg-brand-900 border border-white/20 rounded-full flex items-center justify-center text-white hover:bg-brand-600 transition-colors shadow-lg"
+        className="sidebar-toggle-btn hidden lg:flex fixed top-20 z-40 w-6 h-6 bg-brand-700 dark:bg-brand-900 border border-white/20 rounded-full items-center justify-center text-white hover:bg-brand-600 transition-colors shadow-lg"
       >
         <ChevronRight className={cn('w-3.5 h-3.5 transition-transform duration-300', collapsed ? 'rotate-0' : 'rotate-180')} />
       </button>
-    </aside>
+    </>
   )
 }
