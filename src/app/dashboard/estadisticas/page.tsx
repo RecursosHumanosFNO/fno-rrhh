@@ -327,8 +327,9 @@ export default function EstadisticasPage() {
               </div>
             </div>
           ) : (
-            <div className="flex items-center justify-between gap-2">
-              <ResponsiveContainer width="50%" height={240}>
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <div className="w-full sm:w-1/2 shrink-0">
+              <ResponsiveContainer width="100%" height={240}>
                 <PieChart>
                   <Pie
                     data={solicitudesPorTipo}
@@ -348,7 +349,8 @@ export default function EstadisticasPage() {
                   />
                 </PieChart>
               </ResponsiveContainer>
-              <div className="space-y-1.5 flex-1 overflow-hidden">
+              </div>
+              <div className="space-y-1.5 flex-1 min-w-0">
                 {solicitudesPorTipo.slice(0, 8).map((item, i) => (
                   <div key={item.tipo} className="flex items-center gap-2">
                     <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: COLORS[i % COLORS.length] }} />
@@ -384,15 +386,15 @@ export default function EstadisticasPage() {
 
       {/* Detail table */}
       {empleados.filter(e => e.id !== '1').length > 0 && (
-        <div className="card overflow-hidden">
+        <div className="card">
           <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
             <p className="section-title">Detalle por Empleado</p>
             <button onClick={exportarCSV} className="btn-secondary text-sm">
               <Download className="w-4 h-4" /> Exportar Excel
             </button>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className="overflow-x-auto rounded-b-xl">
+            <table className="w-full min-w-[480px]">
               <thead>
                 <tr>
                   <th className="table-header text-left">Empleado</th>
