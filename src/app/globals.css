@@ -181,6 +181,44 @@
     @apply dark:text-slate-300 dark:border-slate-800/60;
   }
 
+  /* ── Sidebar transition ──────────────────────────────── */
+  .sidebar {
+    width: var(--sidebar-width);
+    transition: width 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+  }
+  .sidebar.sidebar-collapsed {
+    width: var(--sidebar-collapsed);
+  }
+  .sidebar-label {
+    opacity: 1;
+    transition: opacity 120ms ease;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .sidebar-collapsed .sidebar-label {
+    opacity: 0;
+  }
+  .sidebar-badge {
+    opacity: 1;
+    max-height: 60px;
+    transition: opacity 120ms ease, max-height 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+  }
+  .sidebar-collapsed .sidebar-badge {
+    opacity: 0;
+    max-height: 0;
+  }
+  /* Main content shifts with the sidebar */
+  .sidebar-main {
+    padding-left: 0;
+    transition: padding-left 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  @media (min-width: 1024px) {
+    .sidebar-main { padding-left: var(--sidebar-width); }
+    .sidebar-main.sidebar-collapsed { padding-left: var(--sidebar-collapsed); }
+  }
+
   /* ── Nav sidebar ─────────────────────────────────────── */
   .nav-link {
     @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150;
