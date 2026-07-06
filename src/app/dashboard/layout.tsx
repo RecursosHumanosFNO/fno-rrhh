@@ -54,7 +54,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Main area shifts right on desktop */}
       <div className={cn('sidebar-main min-h-screen flex flex-col', collapsed && 'sidebar-collapsed')}>
         <Header onMenuToggle={() => setMobileOpen(!mobileOpen)} />
-        <main className="flex-1 overflow-x-hidden">
+        <main className="flex-1 [overflow-x:clip]">
           {children}
         </main>
       </div>
