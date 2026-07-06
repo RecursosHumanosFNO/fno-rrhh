@@ -51,10 +51,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Main area */}
       <div
-        className={cn(
-          'transition-all duration-300 ease-in-out min-h-screen flex flex-col',
-          collapsed ? 'lg:pl-[72px]' : 'lg:pl-[240px]',
-        )}
+        className={cn('min-h-screen flex flex-col', collapsed ? 'lg:pl-[72px]' : 'lg:pl-[240px]')}
+        style={{ transition: 'padding-left 300ms cubic-bezier(0.4,0,0.2,1)' }}
       >
         <Header onMenuToggle={() => setMobileOpen(!mobileOpen)} />
         <main className="flex-1 overflow-x-hidden">
