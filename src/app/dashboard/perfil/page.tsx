@@ -9,8 +9,9 @@ import { SECTORES, CARGOS_POR_SECTOR } from '@/lib/mockData'
 import {
   User, Edit2, Save, X, Lock, Building2, Phone, Mail,
   Clock, CheckCircle2, Eye, EyeOff, Camera, Image as ImageIcon,
-  Shield, AlertCircle, Loader2, AlertTriangle,
+  Shield, AlertCircle, Loader2, AlertTriangle, Bell,
 } from 'lucide-react'
+import { PushToggle } from '@/components/PushToggle'
 
 export default function PerfilPage() {
   const { empleado, user, updateEmpleado } = useAuth()
@@ -665,6 +666,15 @@ export default function PerfilPage() {
             Tu contraseña fue configurada al registrarte. Recomendamos cambiarla regularmente.
           </p>
         )}
+      </div>
+
+      {/* Notificaciones push */}
+      <div className="card p-5">
+        <p className="section-title flex items-center gap-2 mb-4"><Bell className="w-4 h-4" /> Notificaciones Push</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+          Recibí avisos importantes del portal directamente en este dispositivo, aunque la app esté cerrada.
+        </p>
+        <PushToggle empleadoId={empleado.id} />
       </div>
     </div>
   )
