@@ -49,7 +49,9 @@ const TIPOS_EVENTO: EventoTipo[] = [
 ]
 
 const FORM_INICIAL = {
-  titulo: '', contenido: '', categoria: 'novedad' as NovedadCategoria,
+  titulo: '', contenido: '',
+  categoriaRaw: 'novedad',   // string: valor del select; '__custom__' cuando es personalizada
+  categoriaCustom: '',       // texto libre cuando categoriaRaw === '__custom__'
   importante: false, fijado: false,
   notifyChannels: [] as NotifyChannel[],
   imagen: '', adjuntoUrl: '', adjuntoNombre: '', linkUrl: '',
@@ -143,13 +145,22 @@ export default function ComunicacionesPage() {
     return a.date.localeCompare(b.date)
   })
 
+  function resolveCategoria(): NovedadCategoria {
+    if (newForm.categoriaRaw === '__custom__') {
+      return (newForm.categoriaCustom.trim() || 'novedad') as unknown as NovedadCategoria
+    }
+    return newForm.categoriaRaw as NovedadCategoria
+  }
+
   function handlePublicar() {
     if (!newForm.titulo.trim() || !newForm.contenido.trim()) return
+    if (newForm.categoriaRaw === '__custom__' && !newForm.categoriaCustom.trim()) return
+    const categoriaFinal = resolveCategoria()
     if (editId) {
       updateNovedad(editId, {
         titulo: newForm.titulo,
         contenido: newForm.contenido,
-        categoria: newForm.categoria,
+        categoria: categoriaFinal,
         importante: newForm.importante,
         fijado: newForm.fijado,
         imagen: newForm.imagen || undefined,
@@ -162,7 +173,7 @@ export default function ComunicacionesPage() {
       addNovedad({
         titulo: newForm.titulo,
         contenido: newForm.contenido,
-        categoria: newForm.categoria,
+        categoria: categoriaFinal,
         fechaPublicacion: new Date().toISOString().slice(0, 10),
         autor: 'RRHH',
         importante: newForm.importante,
@@ -190,7 +201,7 @@ export default function ComunicacionesPage() {
   function handleEdit(n: Novedad) {
     setEditId(n.id)
     setNewForm({
-      titulo: n.titulo, contenido: n.contenido, categoria: n.categoria,
+      titulo: n.titulo, contenido: n.contenido, categoriaRaw: n.categoria as string, categoriaCustom: '',
       importante: n.importante, fijado: n.fijado ?? false,
       notifyChannels: [],
       imagen: n.imagen ?? '', adjuntoUrl: n.adjuntoUrl ?? '', adjuntoNombre: n.adjuntoNombre ?? '', linkUrl: n.linkUrl ?? '',
@@ -315,12 +326,12 @@ export default function ComunicacionesPage() {
                   n.categoria === 'cumpleanos' ? 'bg-pink-50 dark:bg-pink-900/20' :
                   'bg-purple-50 dark:bg-purple-900/20'
                 }`}>
-                  <Icon className={`w-5 h-5 ${NOVEDAD_CATEGORIA_COLOR[n.categoria].split(' ')[1]}`} />
+                  <Icon className={`w-5 h-5 ${(NOVEDAD_CATEGORIA_COLOR[n.categoria] ?? 'bg-slate-100 text-slate-600').split(' ')[1]}`} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <span className={`badge ${NOVEDAD_CATEGORIA_COLOR[n.categoria]}`}>
-                      {NOVEDAD_CATEGORIA_LABEL[n.categoria]}
+                    <span className={`badge ${NOVEDAD_CATEGORIA_COLOR[n.categoria] ?? 'bg-slate-100 text-slate-700 dark:bg-slate-700/40 dark:text-slate-300'}`}>
+                      {NOVEDAD_CATEGORIA_LABEL[n.categoria] ?? n.categoria}
                     </span>
                     {n.fijado && (
                       <span className="badge bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
@@ -433,11 +444,28 @@ export default function ComunicacionesPage() {
               </div>
               <div>
                 <label className="form-label">Categoría *</label>
-                <select className="form-select" value={newForm.categoria} onChange={e => setNewForm(f => ({ ...f, categoria: e.target.value as NovedadCategoria }))}>
+                <select
+                  className="form-select"
+                  value={newForm.categoriaRaw}
+                  onChange={e => setNewForm(f => ({
+                    ...f,
+                    categoriaRaw: e.target.value,
+                    categoriaCustom: e.target.value !== '__custom__' ? '' : f.categoriaCustom,
+                  }))}
+                >
                   {NOVEDAD_CATEGORIAS.map(c => (
                     <option key={c} value={c}>{NOVEDAD_CATEGORIA_LABEL[c]}</option>
                   ))}
+                  <option value="__custom__">✏️ Personalizada...</option>
                 </select>
+                {newForm.categoriaRaw === '__custom__' && (
+                  <input
+                    className="form-input mt-2"
+                    placeholder="Escribí el nombre de la categoría"
+                    value={newForm.categoriaCustom}
+                    onChange={e => setNewForm(f => ({ ...f, categoriaCustom: e.target.value }))}
+                  />
+                )}
               </div>
               <div>
                 <label className="form-label">Contenido *</label>
