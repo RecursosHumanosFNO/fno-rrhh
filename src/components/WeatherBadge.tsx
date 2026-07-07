@@ -32,19 +32,34 @@ export default function WeatherBadge({ className }: { className?: string }) {
 
   useEffect(() => {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&current=temperature_2m,weather_code,is_day&timezone=auto`
+
     let cancelled = false
-    fetch(url)
-      .then(r => r.json())
-      .then(d => {
-        if (cancelled || !d?.current) return
-        setData({
-          temp: Math.round(d.current.temperature_2m),
-          code: d.current.weather_code,
-          isDay: d.current.is_day === 1,
+    const fetchWeather = () => {
+      fetch(url)
+        .then(r => r.json())
+        .then(d => {
+          if (cancelled || !d?.current) return
+          setData({
+            temp: Math.round(d.current.temperature_2m),
+            code: d.current.weather_code,
+            isDay: d.current.is_day === 1,
+          })
         })
-      })
-      .catch(() => { /* clima no disponible — no rompe nada */ })
-    return () => { cancelled = true }
+        .catch(() => { /* clima no disponible — no rompe nada */ })
+    }
+
+    fetchWeather()
+    // Refrescar cada 30 min mientras el componente esté montado
+    const interval = setInterval(fetchWeather, 30 * 60 * 1000)
+    // También refrescar al volver a la pestaña/app después de estar en background
+    const onVisible = () => { if (document.visibilityState === 'visible') fetchWeather() }
+    document.addEventListener('visibilitychange', onVisible)
+
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [])
 
   if (!data) return null

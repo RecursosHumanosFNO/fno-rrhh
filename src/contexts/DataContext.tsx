@@ -452,7 +452,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     syncFromSupabase()
     const onVisible = () => {
-      if (document.visibilityState === 'visible') syncFromSupabase()
+      if (document.visibilityState === 'visible') {
+        syncFromSupabase()
+        // Disparar reconexión del canal Realtime si el WebSocket cayó en background
+        // (frecuente en iOS Safari y PWAs). Se hace vía evento personalizado que
+        // el efecto de Realtime escucha.
+        window.dispatchEvent(new Event('fno:reconnect-realtime'))
+      }
     }
     document.addEventListener('visibilitychange', onVisible)
     const interval = setInterval(() => {
@@ -546,8 +552,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         .subscribe()
     }
 
+    // Reconectar canal Realtime cuando el tab vuelve de background (WebSocket caído en móvil)
+    const onReconnect = () => { if (channel) setupChannel() }
+    window.addEventListener('fno:reconnect-realtime', onReconnect)
+
     // Solo conectar realtime cuando hay sesión activa
     const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((_event, session) => {
+      // TOKEN_REFRESHED ocurre ~cada hora y NO requiere rearmar el canal ni re-sincronizar.
+      // Ignorarlo evita teardown/re-subscribe innecesarios y gaps de Realtime.
+      if (_event === 'TOKEN_REFRESHED') return
+
       // Diferir con setTimeout(0): evita el deadlock del lock interno de Supabase
       // (sin esto, updateUser/signIn quedan colgados al rearmar realtime + queries).
       setTimeout(() => {
@@ -561,6 +575,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     })
 
     return () => {
+      window.removeEventListener('fno:reconnect-realtime', onReconnect)
       authSub.unsubscribe()
       if (channel) supabase?.removeChannel(channel)
     }

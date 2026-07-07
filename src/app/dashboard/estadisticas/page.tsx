@@ -1,16 +1,15 @@
 'use client'
 
-import Link from 'next/link'
 import { useMemo, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useRouter } from 'next/navigation'
-import { SOLICITUD_TIPO_LABEL } from '@/lib/utils'
+import { SOLICITUD_TIPO_LABEL, REGISTRO_NOVEDAD_CATEGORIA_LABEL } from '@/lib/utils'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, Legend,
 } from 'recharts'
-import { TrendingUp, Users, ClipboardList, CalendarCheck, Download, BarChart3 } from 'lucide-react'
+import { TrendingUp, Users, ClipboardList, CalendarCheck, Download, BarChart3, FileText } from 'lucide-react'
 import * as XLSX from 'xlsx'
 
 const COLORS = ['#23597e', '#3078ac', '#5193bd', '#82afcf', '#49d8b7', '#28c4a0', '#f59e0b', '#ef4444']
@@ -21,7 +20,7 @@ const MESES_COMPLETOS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
 
 export default function EstadisticasPage() {
   const { user } = useAuth()
-  const { empleados, solicitudes, recibos } = useData()
+  const { empleados, solicitudes, recibos, registrosNovedad } = useData()
   const router = useRouter()
 
   useEffect(() => {
@@ -35,6 +34,45 @@ export default function EstadisticasPage() {
   const pendientes = solicitudes.filter(s => s.estado === 'pendiente').length
   const aprobadas = solicitudes.filter(s => s.estado === 'aprobado').length
   const sectoresActivos = new Set(empleados.map(e => e.sector).filter(Boolean)).size
+
+  // ── Estadísticas de Registros de Novedad ──────────────────────────────────
+  const currentYear = new Date().getFullYear()
+  const registrosAnio = registrosNovedad.filter(r => r.fecha.startsWith(String(currentYear)))
+
+  const registrosPorCategoria = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const r of registrosAnio) {
+      const label = REGISTRO_NOVEDAD_CATEGORIA_LABEL[r.categoria] ?? r.categoria
+      map.set(label, (map.get(label) || 0) + 1)
+    }
+    return Array.from(map.entries())
+      .map(([tipo, cantidad]) => ({ tipo, cantidad }))
+      .sort((a, b) => b.cantidad - a.cantidad)
+  }, [registrosAnio])
+
+  const horasExtra = registrosAnio.filter(r => r.categoria === 'horas_extra').length
+  const ausencias = registrosAnio.filter(r => r.categoria === 'ausencia').length
+  const licencias = registrosAnio.filter(r =>
+    ['licencia_medica', 'licencia_estudio', 'licencia_maternidad_paternidad', 'licencia_duelo'].includes(r.categoria)
+  ).length
+  const salidasAnticipadas = registrosAnio.filter(r => r.categoria === 'salida_anticipada').length
+
+  // Registros de novedad por mes (año actual)
+  const registrosMensuales = useMemo(() => {
+    return ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'].map((mes, idx) => {
+      const m = idx + 1
+      const del = (cat: string[]) => registrosAnio.filter(r => {
+        const rm = parseInt(r.fecha.split('-')[1])
+        return rm === m && cat.includes(r.categoria)
+      }).length
+      return {
+        mes,
+        horasExtra: del(['horas_extra']),
+        ausencias: del(['ausencia', 'llegada_tarde', 'salida_anticipada']),
+        licencias: del(['licencia_medica', 'licencia_estudio', 'licencia_maternidad_paternidad', 'licencia_duelo']),
+      }
+    })
+  }, [registrosAnio])
 
   // ── Item 16: Sector labels sin truncar ─────────────────────────────────────
   const empleadosPorSector = Array.from(
@@ -63,7 +101,6 @@ export default function EstadisticasPage() {
 
   // ── Item 15: Evolución mensual con datos reales ─────────────────────────────
   const estadisticasMensuales = useMemo(() => {
-    const currentYear = new Date().getFullYear()
     return MESES_CORTOS.map((mes, idx) => {
       const monthNum = idx + 1
       // Empleados activos al mes (empleados cuyo ingreso es <= ese mes)
@@ -248,29 +285,78 @@ export default function EstadisticasPage() {
         </button>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Empleados', value: totalEmpleados, sub: `${activos} activos`, icon: Users, color: 'text-brand-700 dark:text-brand-400 bg-blue-50 dark:bg-blue-900/20' },
-          { label: 'Solicitudes Totales', value: solicitudes.length, sub: `${pendientes} pendientes`, icon: ClipboardList, color: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20' },
-          { label: 'Tasa de Aprobación', value: `${tasaAprobacion}%`, sub: `${aprobadas} aprobadas`, icon: CalendarCheck, color: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20' },
-          { label: 'Sectores Activos', value: sectoresActivos, sub: 'Unidades de trabajo', icon: TrendingUp, color: 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20' },
-        ].map(({ label, value, sub, icon: Icon, color }) => (
-          <div key={label} className="card p-5 flex items-start gap-3">
-            <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
-              <Icon className="w-5 h-5" />
+      {/* KPI Cards — Novedades */}
+      <div>
+        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Registros de Novedad — {currentYear}</p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            { label: 'Total Registros', value: registrosAnio.length, sub: 'este año', icon: FileText, color: 'text-brand-700 dark:text-brand-400 bg-blue-50 dark:bg-blue-900/20' },
+            { label: 'Horas Extra', value: horasExtra, sub: 'registradas', icon: TrendingUp, color: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20' },
+            { label: 'Ausencias', value: ausencias, sub: 'días sin presentarse', icon: CalendarCheck, color: 'text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/20' },
+            { label: 'Licencias', value: licencias, sub: `+ ${salidasAnticipadas} salidas anticipadas`, icon: ClipboardList, color: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20' },
+          ].map(({ label, value, sub, icon: Icon, color }) => (
+            <div key={label} className="card p-5 flex items-start gap-3">
+              <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
+                <Icon className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{value}</p>
+                <p className="text-xs font-medium text-slate-600 dark:text-slate-400">{label}</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{sub}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{value}</p>
-              <p className="text-xs font-medium text-slate-600 dark:text-slate-400">{label}</p>
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{sub}</p>
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
-      {/* Charts row 1 */}
+      {/* Charts row 1 — Novedades */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Novedades por categoría */}
+        <div className="card p-5">
+          <div className="mb-5">
+            <p className="section-title">Novedades por Categoría</p>
+            <p className="section-subtitle">Distribución de registros — {currentYear}</p>
+          </div>
+          {registrosPorCategoria.length === 0 ? (
+            <div className="flex items-center justify-center h-48 text-slate-400">
+              <div className="text-center">
+                <FileText className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">Sin registros este año</p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-2">
+              <ResponsiveContainer width="50%" height={240}>
+                <PieChart>
+                  <Pie
+                    data={registrosPorCategoria}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={55}
+                    outerRadius={85}
+                    paddingAngle={3}
+                    dataKey="cantidad"
+                  >
+                    {registrosPorCategoria.map((_, i) => (
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 12 }} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="space-y-1.5 flex-1 overflow-hidden">
+                {registrosPorCategoria.slice(0, 8).map((item, i) => (
+                  <div key={item.tipo} className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: COLORS[i % COLORS.length] }} />
+                    <p className="text-xs text-slate-600 dark:text-slate-400 truncate flex-1" title={item.tipo}>{item.tipo}</p>
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300 shrink-0">{item.cantidad}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Empleados por sector */}
         <div className="card p-5">
           <div className="mb-5">
@@ -312,63 +398,112 @@ export default function EstadisticasPage() {
             </ResponsiveContainer>
           )}
         </div>
+      </div>
 
-        {/* Solicitudes por tipo */}
-        <div className="card p-5">
-          <div className="mb-5">
-            <p className="section-title">Solicitudes por Tipo</p>
-            <p className="section-subtitle">Total registradas en el sistema</p>
+      {/* Evolución mensual de novedades */}
+      <div className="card p-5">
+        <div className="mb-5">
+          <p className="section-title">Evolución Mensual de Novedades — {currentYear}</p>
+          <p className="section-subtitle">Horas extra, ausencias y licencias por mes</p>
+        </div>
+        {registrosAnio.length === 0 ? (
+          <div className="flex items-center justify-center h-48 text-slate-400">
+            <div className="text-center">
+              <FileText className="w-10 h-10 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">Sin registros este año</p>
+            </div>
           </div>
-          {solicitudesPorTipo.length === 0 ? (
-            <div className="flex items-center justify-center h-48 text-slate-400">
-              <div className="text-center">
-                <ClipboardList className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                <p className="text-sm">Sin solicitudes aún</p>
+        ) : (
+          <ResponsiveContainer width="100%" height={260}>
+            <LineChart data={registrosMensuales} margin={{ top: 4, right: 20, left: -20, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis dataKey="mes" tick={{ fontSize: 11, fill: '#94a3b8' }} />
+              <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} allowDecimals={false} />
+              <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 12 }} />
+              <Legend wrapperStyle={{ fontSize: 12, paddingTop: 12 }} />
+              <Line type="monotone" dataKey="horasExtra" stroke="#28c4a0" strokeWidth={2.5} dot={{ r: 4 }} name="Horas Extra" />
+              <Line type="monotone" dataKey="ausencias" stroke="#ef4444" strokeWidth={2.5} dot={{ r: 4 }} name="Ausencias / Tardanzas" strokeDasharray="5 3" />
+              <Line type="monotone" dataKey="licencias" stroke="#3078ac" strokeWidth={2.5} dot={{ r: 4 }} name="Licencias" strokeDasharray="3 3" />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+
+      {/* Separador — Solicitudes */}
+      <div>
+        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Solicitudes y Pedidos</p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            { label: 'Total Empleados', value: totalEmpleados, sub: `${activos} activos`, icon: Users, color: 'text-brand-700 dark:text-brand-400 bg-blue-50 dark:bg-blue-900/20' },
+            { label: 'Solicitudes Totales', value: solicitudes.length, sub: `${pendientes} pendientes`, icon: ClipboardList, color: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20' },
+            { label: 'Tasa de Aprobación', value: `${tasaAprobacion}%`, sub: `${aprobadas} aprobadas`, icon: CalendarCheck, color: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20' },
+            { label: 'Sectores Activos', value: sectoresActivos, sub: 'Unidades de trabajo', icon: TrendingUp, color: 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20' },
+          ].map(({ label, value, sub, icon: Icon, color }) => (
+            <div key={label} className="card p-5 flex items-start gap-3">
+              <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
+                <Icon className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{value}</p>
+                <p className="text-xs font-medium text-slate-600 dark:text-slate-400">{label}</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{sub}</p>
               </div>
             </div>
-          ) : (
-            <div className="flex flex-col sm:flex-row items-center gap-4">
-              <div className="w-full sm:w-1/2 shrink-0">
-              <ResponsiveContainer width="100%" height={240}>
-                <PieChart>
-                  <Pie
-                    data={solicitudesPorTipo}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={55}
-                    outerRadius={85}
-                    paddingAngle={3}
-                    dataKey="cantidad"
-                  >
-                    {solicitudesPorTipo.map((_, i) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 12 }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-              </div>
-              <div className="space-y-1.5 flex-1 min-w-0">
-                {solicitudesPorTipo.slice(0, 8).map((item, i) => (
-                  <div key={item.tipo} className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: COLORS[i % COLORS.length] }} />
-                    <p className="text-xs text-slate-600 dark:text-slate-400 truncate flex-1" title={item.tipo}>{item.tipo}</p>
-                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300 shrink-0">{item.cantidad}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          ))}
         </div>
       </div>
 
-      {/* Charts row 2: Evolución mensual con datos reales */}
+      {/* Solicitudes por tipo */}
+      <div className="card p-5">
+        <div className="mb-5">
+          <p className="section-title">Solicitudes por Tipo</p>
+          <p className="section-subtitle">Total registradas en el sistema</p>
+        </div>
+        {solicitudesPorTipo.length === 0 ? (
+          <div className="flex items-center justify-center h-48 text-slate-400">
+            <div className="text-center">
+              <ClipboardList className="w-10 h-10 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">Sin solicitudes aún</p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between gap-2">
+            <ResponsiveContainer width="30%" height={240}>
+              <PieChart>
+                <Pie
+                  data={solicitudesPorTipo}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={55}
+                  outerRadius={85}
+                  paddingAngle={3}
+                  dataKey="cantidad"
+                >
+                  {solicitudesPorTipo.map((_, i) => (
+                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 12 }} />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="space-y-1.5 flex-1 overflow-hidden">
+              {solicitudesPorTipo.slice(0, 8).map((item, i) => (
+                <div key={item.tipo} className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: COLORS[i % COLORS.length] }} />
+                  <p className="text-xs text-slate-600 dark:text-slate-400 truncate flex-1" title={item.tipo}>{item.tipo}</p>
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 shrink-0">{item.cantidad}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Evolución mensual solicitudes */}
       <div className="card p-5">
         <div className="mb-5">
           <p className="section-title">Evolución Mensual — {new Date().getFullYear()}</p>
-          <p className="section-subtitle">Solicitudes y ausencias aprobadas por mes (datos reales)</p>
+          <p className="section-subtitle">Solicitudes y ausencias aprobadas por mes</p>
         </div>
         <ResponsiveContainer width="100%" height={260}>
           <LineChart data={estadisticasMensuales} margin={{ top: 4, right: 20, left: -20, bottom: 4 }}>
@@ -386,15 +521,15 @@ export default function EstadisticasPage() {
 
       {/* Detail table */}
       {empleados.filter(e => e.id !== '1').length > 0 && (
-        <div className="card">
+        <div className="card overflow-hidden">
           <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
             <p className="section-title">Detalle por Empleado</p>
             <button onClick={exportarCSV} className="btn-secondary text-sm">
               <Download className="w-4 h-4" /> Exportar Excel
             </button>
           </div>
-          <div className="overflow-x-auto rounded-b-xl">
-            <table className="w-full min-w-[480px]">
+          <div className="overflow-x-auto">
+            <table className="w-full">
               <thead>
                 <tr>
                   <th className="table-header text-left">Empleado</th>
@@ -412,10 +547,10 @@ export default function EstadisticasPage() {
                     <tr key={emp.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                       <td className="table-cell max-w-[180px]">
                         <div className="flex items-center gap-2.5">
-                          <Link href={`/dashboard/empleados/${emp.id}`} className="w-8 h-8 rounded-full bg-brand-700 flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden ring-0 hover:ring-2 hover:ring-brand-400 hover:scale-110 transition-all duration-200">
+                          <div className="w-8 h-8 rounded-full bg-brand-700 flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden">
                             {emp.foto ? <img src={emp.foto} alt="" className="w-8 h-8 object-cover" /> : `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}`}
-                          </Link>
-                          <Link href={`/dashboard/empleados/${emp.id}`} className="font-medium text-slate-700 dark:text-slate-200 relative inline-block font-medium hover:text-brand-700 dark:hover:text-brand-300 transition-colors duration-200 after:absolute after:bottom-0 after:left-0 after:h-[1.5px] after:w-0 hover:after:w-full after:bg-brand-600 dark:after:bg-brand-400 after:transition-all after:duration-200 truncate">{emp.apellido}, {emp.nombre}</Link>
+                          </div>
+                          <span className="font-medium text-slate-700 dark:text-slate-200 truncate">{emp.apellido}, {emp.nombre}</span>
                         </div>
                       </td>
                       <td className="table-cell text-slate-600 dark:text-slate-400 text-sm max-w-[160px] truncate" title={emp.sector}>{emp.sector}</td>
