@@ -179,66 +179,193 @@ export default function EstadisticasPage() {
     }
   }
 
-  // ── Item 13: Exportar informe Excel ────────────────────────────────────────
+  // ── Exportar informe Excel completo ───────────────────────────────────────
   function exportarInforme() {
     const wb = XLSX.utils.book_new()
+    const fecha = new Date().toISOString().slice(0, 10)
+    const MESES_LABEL = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 
-    // Hoja 1: KPIs
-    const kpiHeaders = ['Indicador', 'Valor']
-    const kpiRows = [
-      ['Total Empleados', totalEmpleados],
-      ['Empleados Activos', activos],
-      ['Total Solicitudes', solicitudes.length],
-      ['Solicitudes Pendientes', pendientes],
-      ['Solicitudes Aprobadas', aprobadas],
-      ['Tasa de Aprobación', `${tasaAprobacion}%`],
-      ['Sectores Activos', sectoresActivos],
-    ]
-    const wsKpi = XLSX.utils.aoa_to_sheet([kpiHeaders, ...kpiRows])
-    applyHeader(wsKpi, kpiHeaders, [32, 18])
-    applyRowStripes(wsKpi, kpiRows.length, kpiHeaders.length)
-    XLSX.utils.book_append_sheet(wb, wsKpi, 'Resumen KPIs')
+    // ── Helpers de sección ────────────────────────────────────────────────
+    function secTitle(ws: XLSX.WorkSheet, row: number, title: string, ncols: number) {
+      const addr = XLSX.utils.encode_cell({ r: row, c: 0 })
+      ws[addr] = {
+        v: title, t: 's',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        s: { font: { bold: true, sz: 13, color: { rgb: 'FFFFFF' } }, fill: { patternType: 'solid', fgColor: { rgb: '0F3E56' } }, alignment: { vertical: 'center' } },
+      } as any
+      if (!ws['!merges']) ws['!merges'] = []
+      ws['!merges'].push({ s: { r: row, c: 0 }, e: { r: row, c: ncols - 1 } })
+    }
 
-    // Hoja 2: Empleados por sector
-    const sectorHeaders = ['Sector', 'Cantidad de Empleados']
-    const sectorRows = empleadosPorSector.map(r => [r.sector, r.cantidad])
-    const wsSector = XLSX.utils.aoa_to_sheet([sectorHeaders, ...sectorRows])
-    applyHeader(wsSector, sectorHeaders, [28, 22])
-    applyRowStripes(wsSector, sectorRows.length, sectorHeaders.length)
-    XLSX.utils.book_append_sheet(wb, wsSector, 'Por Sector')
+    function kv(ws: XLSX.WorkSheet, row: number, label: string, value: string | number, highlight = false) {
+      const lAddr = XLSX.utils.encode_cell({ r: row, c: 0 })
+      const vAddr = XLSX.utils.encode_cell({ r: row, c: 1 })
+      const bg = highlight ? 'FFF3CD' : (row % 2 === 0 ? 'F1FAFA' : 'FFFFFF')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const baseStyle: any = {
+        fill: { patternType: 'solid', fgColor: { rgb: bg } },
+        border: { top: { style: 'thin', color: { rgb: 'D1D5DB' } }, bottom: { style: 'thin', color: { rgb: 'D1D5DB' } }, left: { style: 'thin', color: { rgb: 'D1D5DB' } }, right: { style: 'thin', color: { rgb: 'D1D5DB' } } },
+        alignment: { vertical: 'center' },
+      }
+      ws[lAddr] = { v: label, t: 's', s: { ...baseStyle, font: { sz: 11, bold: true, color: { rgb: '1B5E6A' } } } } as any
+      ws[vAddr] = { v: value, t: typeof value === 'number' ? 'n' : 's', s: { ...baseStyle, font: { sz: 11, bold: highlight, color: { rgb: highlight ? 'C05600' : '1a202c' } } } } as any
+    }
 
-    // Hoja 3: Solicitudes por tipo
-    const tipoHeaders = ['Tipo de Solicitud', 'Cantidad']
-    const tipoRows = solicitudesPorTipo.map(r => [r.tipo, r.cantidad])
-    const wsTipo = XLSX.utils.aoa_to_sheet([tipoHeaders, ...tipoRows])
-    applyHeader(wsTipo, tipoHeaders, [30, 16])
-    applyRowStripes(wsTipo, tipoRows.length, tipoHeaders.length)
-    XLSX.utils.book_append_sheet(wb, wsTipo, 'Por Tipo')
+    // ── Hoja 1: Resumen ejecutivo ─────────────────────────────────────────
+    const wsRes: XLSX.WorkSheet = { '!ref': 'A1:B40' }
+    wsRes['!cols'] = [{ wch: 36 }, { wch: 22 }]
+    wsRes['!rows'] = Array.from({ length: 40 }, () => ({ hpx: 20 }))
 
-    // Hoja 4: Evolución mensual
-    const mensualHeaders = ['Mes', 'Empleados', 'Solicitudes', 'Ausencias']
-    const mensualRows = estadisticasMensuales.map(r => [r.mes, r.empleados, r.solicitudes, r.ausencias])
-    const wsMensual = XLSX.utils.aoa_to_sheet([mensualHeaders, ...mensualRows])
-    applyHeader(wsMensual, mensualHeaders, [14, 16, 16, 16])
-    applyRowStripes(wsMensual, mensualRows.length, mensualHeaders.length)
-    XLSX.utils.book_append_sheet(wb, wsMensual, 'Evolución Mensual')
+    let r = 0
+    secTitle(wsRes, r++, `📋  INFORME RRHH — FNO — ${fecha}`, 2)
+    r++ // espacio
 
-    // Hoja 5: Detalle empleados
-    const empHeaders = ['Apellido', 'Nombre', 'DNI', 'Cargo', 'Sector', 'Estado', 'Ingreso', 'Solicitudes', 'Aprobadas']
-    const empRows = empleados.filter(e => e.id !== '1').map(emp => {
-      const mSol = solicitudes.filter(s => s.empleadoId === emp.id)
+    secTitle(wsRes, r++, '👥  PERSONAL', 2)
+    kv(wsRes, r++, 'Total empleados', totalEmpleados)
+    kv(wsRes, r++, 'Empleados activos', activos)
+    kv(wsRes, r++, 'Empleados inactivos', totalEmpleados - activos)
+    kv(wsRes, r++, 'Sectores / áreas activas', sectoresActivos)
+    r++
+
+    secTitle(wsRes, r++, '📝  REGISTROS DE NOVEDAD — ' + currentYear, 2)
+    kv(wsRes, r++, 'Total registros del año', registrosAnio.length)
+    kv(wsRes, r++, 'Horas extra', horasExtra, true)
+    kv(wsRes, r++, 'Ausencias', ausencias, true)
+    kv(wsRes, r++, 'Salidas anticipadas', salidasAnticipadas, true)
+    kv(wsRes, r++, 'Licencias médicas', registrosAnio.filter(x => x.categoria === 'licencia_medica').length)
+    kv(wsRes, r++, 'Licencias por estudio', registrosAnio.filter(x => x.categoria === 'licencia_estudio').length)
+    kv(wsRes, r++, 'Licencias maternidad/paternidad', registrosAnio.filter(x => x.categoria === 'licencia_maternidad_paternidad').length)
+    kv(wsRes, r++, 'Licencias por duelo', registrosAnio.filter(x => x.categoria === 'licencia_duelo').length)
+    kv(wsRes, r++, 'Llegadas tarde', registrosAnio.filter(x => x.categoria === 'llegada_tarde').length)
+    kv(wsRes, r++, 'Cambios de turno / coberturas', registrosAnio.filter(x => x.categoria === 'cambio_turno').length)
+    kv(wsRes, r++, 'Guardias / turnos especiales', registrosAnio.filter(x => x.categoria === 'guardia_turno_especial').length)
+    kv(wsRes, r++, 'Capacitaciones', registrosAnio.filter(x => x.categoria === 'capacitacion').length)
+    kv(wsRes, r++, 'Accidentes laborales', registrosAnio.filter(x => x.categoria === 'accidente_laboral').length, registrosAnio.filter(x => x.categoria === 'accidente_laboral').length > 0)
+    kv(wsRes, r++, 'Suspensiones', registrosAnio.filter(x => x.categoria === 'suspension').length, registrosAnio.filter(x => x.categoria === 'suspension').length > 0)
+    kv(wsRes, r++, 'Reconocimientos / felicitaciones', registrosAnio.filter(x => x.categoria === 'reconocimiento').length)
+    r++
+
+    secTitle(wsRes, r++, '📩  SOLICITUDES Y PEDIDOS', 2)
+    kv(wsRes, r++, 'Total solicitudes', solicitudes.length)
+    kv(wsRes, r++, 'Pendientes', pendientes)
+    kv(wsRes, r++, 'Aprobadas', aprobadas)
+    kv(wsRes, r++, 'Tasa de aprobación', `${tasaAprobacion}%`, true)
+    wsRes['!ref'] = `A1:B${r}`
+    XLSX.utils.book_append_sheet(wb, wsRes, '📋 Resumen')
+
+    // ── Hoja 2: Novedades — detalle completo ──────────────────────────────
+    const novHeaders = ['Fecha', 'Empleado', 'Sector', 'Cargo', 'Categoría', 'Descripción', 'Hora inicio', 'Hora fin', 'Edificio']
+    const novRows = registrosNovedad.map(reg => [
+      reg.fecha,
+      reg.empleadoNombre,
+      reg.sector,
+      reg.cargo,
+      REGISTRO_NOVEDAD_CATEGORIA_LABEL[reg.categoria] ?? reg.categoria,
+      reg.descripcion,
+      reg.horaDesde ?? reg.hora ?? '',
+      reg.horaHasta ?? '',
+      reg.edificio ?? '',
+    ])
+    const wsNov = XLSX.utils.aoa_to_sheet([novHeaders, ...novRows])
+    applyHeader(wsNov, novHeaders, [14, 24, 20, 22, 26, 50, 12, 12, 18])
+    applyRowStripes(wsNov, novRows.length, novHeaders.length)
+    XLSX.utils.book_append_sheet(wb, wsNov, '📝 Novedades Detalle')
+
+    // ── Hoja 3: Novedades por categoría ───────────────────────────────────
+    const catHeaders = ['Categoría', `Total ${currentYear}`, '% del total']
+    const total = registrosAnio.length || 1
+    const catRows = registrosPorCategoria.map(r2 => [
+      r2.tipo,
+      r2.cantidad,
+      `${Math.round(r2.cantidad / total * 100)}%`,
+    ])
+    const wsCat = XLSX.utils.aoa_to_sheet([catHeaders, ...catRows])
+    applyHeader(wsCat, catHeaders, [30, 16, 14])
+    applyRowStripes(wsCat, catRows.length, catHeaders.length)
+    XLSX.utils.book_append_sheet(wb, wsCat, '📊 Nov. por Categoría')
+
+    // ── Hoja 4: Novedades por empleado ────────────────────────────────────
+    const novEmpHeaders = ['Apellido', 'Nombre', 'Sector', 'Total Novedades', 'Horas Extra', 'Ausencias', 'Salidas Anticipadas', 'Licencias', 'Llegadas Tarde', 'Capacitaciones']
+    const novEmpRows = empleados.filter(e => e.id !== '1').map(emp => {
+      const regs = registrosNovedad.filter(r2 => r2.empleadoId === emp.id)
       return [
-        emp.apellido, emp.nombre, emp.dni ?? '', emp.cargo, emp.sector,
-        emp.estado, emp.fechaIngreso ?? '',
+        emp.apellido, emp.nombre, emp.sector,
+        regs.length,
+        regs.filter(r2 => r2.categoria === 'horas_extra').length,
+        regs.filter(r2 => r2.categoria === 'ausencia').length,
+        regs.filter(r2 => r2.categoria === 'salida_anticipada').length,
+        regs.filter(r2 => ['licencia_medica','licencia_estudio','licencia_maternidad_paternidad','licencia_duelo'].includes(r2.categoria)).length,
+        regs.filter(r2 => r2.categoria === 'llegada_tarde').length,
+        regs.filter(r2 => r2.categoria === 'capacitacion').length,
+      ]
+    }).sort((a, b) => (b[3] as number) - (a[3] as number))
+    const wsNovEmp = XLSX.utils.aoa_to_sheet([novEmpHeaders, ...novEmpRows])
+    applyHeader(wsNovEmp, novEmpHeaders, [18, 16, 20, 16, 14, 12, 18, 12, 16, 14])
+    applyRowStripes(wsNovEmp, novEmpRows.length, novEmpHeaders.length)
+    XLSX.utils.book_append_sheet(wb, wsNovEmp, '👤 Nov. por Empleado')
+
+    // ── Hoja 5: Evolución mensual novedades ───────────────────────────────
+    const evNovHeaders = ['Mes', 'Total Registros', 'Horas Extra', 'Ausencias / Tardanzas', 'Licencias', 'Otros']
+    const evNovRows = registrosMensuales.map((m, idx) => {
+      const total2 = m.horasExtra + m.ausencias + m.licencias
+      const otros = registrosAnio.filter(r2 => {
+        const rm = parseInt(r2.fecha.split('-')[1])
+        return rm === idx + 1 && !['horas_extra','ausencia','llegada_tarde','salida_anticipada','licencia_medica','licencia_estudio','licencia_maternidad_paternidad','licencia_duelo'].includes(r2.categoria)
+      }).length
+      return [MESES_LABEL[idx], total2 + otros, m.horasExtra, m.ausencias, m.licencias, otros]
+    })
+    const wsEvNov = XLSX.utils.aoa_to_sheet([evNovHeaders, ...evNovRows])
+    applyHeader(wsEvNov, evNovHeaders, [16, 16, 14, 22, 12, 10])
+    applyRowStripes(wsEvNov, evNovRows.length, evNovHeaders.length)
+    XLSX.utils.book_append_sheet(wb, wsEvNov, '📅 Nov. Mensual')
+
+    // ── Hoja 6: Empleados por sector ──────────────────────────────────────
+    const sectorHeaders = ['Sector', 'Empleados', '% del total', 'Novedades del año']
+    const sectorRows2 = empleadosPorSector.map(s => {
+      const novSect = registrosAnio.filter(r2 => r2.sector === s.sector).length
+      return [s.sector, s.cantidad, `${Math.round(s.cantidad / (totalEmpleados || 1) * 100)}%`, novSect]
+    })
+    const wsSect = XLSX.utils.aoa_to_sheet([sectorHeaders, ...sectorRows2])
+    applyHeader(wsSect, sectorHeaders, [28, 14, 14, 20])
+    applyRowStripes(wsSect, sectorRows2.length, sectorHeaders.length)
+    XLSX.utils.book_append_sheet(wb, wsSect, '🏢 Por Sector')
+
+    // ── Hoja 7: Solicitudes por tipo ──────────────────────────────────────
+    const tipoHeaders2 = ['Tipo de Solicitud', 'Total', 'Aprobadas', 'Pendientes', 'Rechazadas', '% Aprobación']
+    const tipoRows2 = solicitudesPorTipo.map(t => {
+      const tipoKey = Object.keys(SOLICITUD_TIPO_LABEL).find(k => (SOLICITUD_TIPO_LABEL as Record<string,string>)[k] === t.tipo) ?? t.tipo
+      const del = solicitudes.filter(s => s.tipo === tipoKey)
+      const ap = del.filter(s => s.estado === 'aprobado').length
+      const pe = del.filter(s => s.estado === 'pendiente').length
+      const re = del.filter(s => s.estado === 'rechazado').length
+      return [t.tipo, del.length, ap, pe, re, del.length > 0 ? `${Math.round(ap/del.length*100)}%` : '—']
+    })
+    const wsTipo2 = XLSX.utils.aoa_to_sheet([tipoHeaders2, ...tipoRows2])
+    applyHeader(wsTipo2, tipoHeaders2, [30, 10, 12, 12, 14, 14])
+    applyRowStripes(wsTipo2, tipoRows2.length, tipoHeaders2.length)
+    XLSX.utils.book_append_sheet(wb, wsTipo2, '📩 Solicitudes x Tipo')
+
+    // ── Hoja 8: Detalle completo de empleados ─────────────────────────────
+    const empHeaders2 = ['Apellido', 'Nombre', 'DNI', 'CUIL', 'Cargo', 'Sector', 'Estado', 'Fecha Ingreso', 'Email', 'Teléfono', 'Solicitudes', 'Sol. Aprobadas', 'Novedades', 'Hs. Extra', 'Ausencias', 'Licencias']
+    const empRows2 = empleados.filter(e => e.id !== '1').map(emp => {
+      const mSol = solicitudes.filter(s => s.empleadoId === emp.id)
+      const mReg = registrosNovedad.filter(r2 => r2.empleadoId === emp.id)
+      return [
+        emp.apellido, emp.nombre, emp.dni ?? '', emp.cuil ?? '',
+        emp.cargo, emp.sector, emp.estado, emp.fechaIngreso ?? '',
+        emp.email ?? '', emp.telefono ?? '',
         mSol.length, mSol.filter(s => s.estado === 'aprobado').length,
+        mReg.length,
+        mReg.filter(r2 => r2.categoria === 'horas_extra').length,
+        mReg.filter(r2 => r2.categoria === 'ausencia').length,
+        mReg.filter(r2 => ['licencia_medica','licencia_estudio','licencia_maternidad_paternidad','licencia_duelo'].includes(r2.categoria)).length,
       ]
     })
-    const wsEmp = XLSX.utils.aoa_to_sheet([empHeaders, ...empRows])
-    applyHeader(wsEmp, empHeaders, [18, 16, 14, 22, 20, 12, 14, 14, 14])
-    applyRowStripes(wsEmp, empRows.length, empHeaders.length)
-    XLSX.utils.book_append_sheet(wb, wsEmp, 'Detalle Empleados')
+    const wsEmp2 = XLSX.utils.aoa_to_sheet([empHeaders2, ...empRows2])
+    applyHeader(wsEmp2, empHeaders2, [18, 16, 12, 16, 22, 20, 12, 14, 28, 16, 12, 14, 12, 10, 12, 12])
+    applyRowStripes(wsEmp2, empRows2.length, empHeaders2.length)
+    XLSX.utils.book_append_sheet(wb, wsEmp2, '👥 Detalle Empleados')
 
-    const fecha = new Date().toISOString().slice(0, 10)
     XLSX.writeFile(wb, `informe_rrhh_${fecha}.xlsx`)
   }
 
