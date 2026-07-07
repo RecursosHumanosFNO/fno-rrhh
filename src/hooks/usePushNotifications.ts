@@ -28,7 +28,11 @@ export function usePushNotifications(empleadoId: string | undefined) {
       return
     }
     try {
-      const reg = await navigator.serviceWorker.ready
+      const reg = await navigator.serviceWorker.getRegistration()
+      if (!reg) {
+        setStatus('unsubscribed')
+        return
+      }
       const sub = await reg.pushManager.getSubscription()
       setStatus(sub ? 'subscribed' : 'unsubscribed')
     } catch {
@@ -41,7 +45,7 @@ export function usePushNotifications(empleadoId: string | undefined) {
   const subscribe = useCallback(async () => {
     if (!empleadoId) return
     try {
-      const reg = await navigator.serviceWorker.ready
+      const reg = (await navigator.serviceWorker.getRegistration()) ?? await navigator.serviceWorker.ready
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
@@ -59,8 +63,8 @@ export function usePushNotifications(empleadoId: string | undefined) {
 
   const unsubscribe = useCallback(async () => {
     try {
-      const reg = await navigator.serviceWorker.ready
-      const sub = await reg.pushManager.getSubscription()
+      const reg = await navigator.serviceWorker.getRegistration()
+      const sub = reg ? await reg.pushManager.getSubscription() : null
       if (sub) {
         await fetch('/api/push/subscribe', {
           method: 'DELETE',
