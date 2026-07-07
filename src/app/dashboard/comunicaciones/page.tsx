@@ -26,6 +26,7 @@ import {
   Megaphone, Plus, Pin, Calendar, PartyPopper, AlertTriangle,
   Bell, MessageSquare, X, ChevronRight, Trash2, Edit2, Save, Mail,
   Image as ImageIcon, Loader2, Paperclip, Download, ExternalLink, ChevronDown,
+  Send,
 } from 'lucide-react'
 
 // Ícono por categoría (las que no estén usan Calendar por defecto)
@@ -69,6 +70,11 @@ export default function ComunicacionesPage() {
   const [selectedNovedad, setSelectedNovedad] = useState<string | null>(null)
   const [showNueva, setShowNueva] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
+
+  const [showPush, setShowPush] = useState(false)
+  const [pushForm, setPushForm] = useState({ title: '', body: '', url: '' })
+  const [pushSending, setPushSending] = useState(false)
+  const [pushResult, setPushResult] = useState<string | null>(null)
 
   const [newForm, setNewForm] = useState(FORM_INICIAL)
   const [uploadingImg, setUploadingImg] = useState(false)
@@ -216,6 +222,26 @@ export default function ComunicacionesPage() {
     setNewForm(FORM_INICIAL)
   }
 
+  async function handleEnviarPush() {
+    if (!pushForm.title.trim() || !pushForm.body.trim()) return
+    setPushSending(true)
+    setPushResult(null)
+    try {
+      const res = await fetch('/api/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-empleado-id': user?.empleadoId ?? '' },
+        body: JSON.stringify({ title: pushForm.title, body: pushForm.body, url: pushForm.url || '/dashboard' }),
+      })
+      const data = await res.json()
+      setPushResult(`Enviado a ${data.sent} dispositivo${data.sent !== 1 ? 's' : ''}.`)
+      setPushForm({ title: '', body: '', url: '' })
+    } catch {
+      setPushResult('Error al enviar. Intentá de nuevo.')
+    } finally {
+      setPushSending(false)
+    }
+  }
+
   return (
     <div className="page-container">
       {/* Header */}
@@ -227,9 +253,14 @@ export default function ComunicacionesPage() {
           </p>
         </div>
         {isAdmin && (
-          <button onClick={() => setShowNueva(true)} className="btn-primary">
-            <Plus className="w-4 h-4" /> Publicar novedad
-          </button>
+          <div className="flex gap-2">
+            <button onClick={() => setShowPush(true)} className="btn-secondary">
+              <Bell className="w-4 h-4" /> Enviar Push
+            </button>
+            <button onClick={() => setShowNueva(true)} className="btn-primary">
+              <Plus className="w-4 h-4" /> Publicar novedad
+            </button>
+          </div>
         )}
       </div>
 
@@ -640,6 +671,73 @@ export default function ComunicacionesPage() {
 
       {/* Visor de imagen */}
       {lightbox && <ImageLightbox src={lightbox} onClose={() => setLightbox(null)} />}
+
+      {/* Modal enviar push */}
+      {showPush && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => { setShowPush(false); setPushResult(null) }} />
+          <div className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Bell className="w-5 h-5 text-[#23597e]" />
+                <p className="font-semibold text-slate-800 dark:text-slate-100">Enviar notificación push</p>
+              </div>
+              <button onClick={() => { setShowPush(false); setPushResult(null) }} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              La notificación llegará a todos los dispositivos que tengan activadas las notificaciones push.
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="form-label">Título *</label>
+                <input
+                  className="form-input"
+                  placeholder="Ej: Recordatorio importante"
+                  value={pushForm.title}
+                  onChange={e => setPushForm(f => ({ ...f, title: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="form-label">Mensaje *</label>
+                <textarea
+                  className="form-input resize-none"
+                  rows={3}
+                  placeholder="Ej: Recordá completar tu perfil antes del viernes."
+                  value={pushForm.body}
+                  onChange={e => setPushForm(f => ({ ...f, body: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="form-label">URL destino (opcional)</label>
+                <input
+                  className="form-input"
+                  placeholder="/dashboard (por defecto)"
+                  value={pushForm.url}
+                  onChange={e => setPushForm(f => ({ ...f, url: e.target.value }))}
+                />
+              </div>
+            </div>
+            {pushResult && (
+              <p className={`text-sm font-medium ${pushResult.startsWith('Error') ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                {pushResult}
+              </p>
+            )}
+            <div className="flex justify-end gap-2 pt-2">
+              <button onClick={() => { setShowPush(false); setPushResult(null) }} className="btn-secondary">Cancelar</button>
+              <button
+                onClick={handleEnviarPush}
+                disabled={pushSending || !pushForm.title.trim() || !pushForm.body.trim()}
+                className="btn-primary disabled:opacity-50"
+              >
+                {pushSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                {pushSending ? 'Enviando...' : 'Enviar a todos'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
