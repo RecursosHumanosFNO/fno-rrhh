@@ -743,6 +743,7 @@ export default function EstadisticasPage() {
                   <th className="table-header text-left">Sector</th>
                   <th className="table-header text-center">Solicitudes</th>
                   <th className="table-header text-center">Aprobadas</th>
+                  <th className="table-header text-center">Novedades</th>
                   <th className="table-header text-left">Estado</th>
                 </tr>
               </thead>
@@ -750,6 +751,7 @@ export default function EstadisticasPage() {
                 {empleados.filter(e => e.id !== '1').map(emp => {
                   const mSolicitudes = solicitudes.filter(s => s.empleadoId === emp.id)
                   const mAprobadas = mSolicitudes.filter(s => s.estado === 'aprobado').length
+                  const mNovedades = registrosNovedad.filter(r => r.empleadoId === emp.id).length
                   return (
                     <tr key={emp.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                       <td className="table-cell max-w-[180px]">
@@ -763,6 +765,7 @@ export default function EstadisticasPage() {
                       <td className="table-cell text-slate-600 dark:text-slate-400 text-sm max-w-[160px] truncate" title={emp.sector}>{emp.sector}</td>
                       <td className="table-cell text-center font-semibold text-slate-700 dark:text-slate-300">{mSolicitudes.length}</td>
                       <td className="table-cell text-center font-semibold text-emerald-600">{mAprobadas}</td>
+                      <td className="table-cell text-center font-semibold text-[#23597e] dark:text-[#49d8b7]">{mNovedades}</td>
                       <td className="table-cell">
                         <span className={`badge text-xs ${
                           emp.estado === 'activo' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300' :
