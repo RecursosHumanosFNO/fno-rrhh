@@ -203,30 +203,37 @@ export const EVENTO_TIPO_DOT: Record<EventoTipo, string> = {
 
 // ── Categorías de Novedades: las propias + todas las de eventos ───────────────
 export const NOVEDAD_CATEGORIA_LABEL: Record<NovedadCategoria, string> = {
-  comunicado: '📣 Comunicado',
-  novedad:    '📰 Novedad',
-  alerta:     '⚠️ Alerta',
-  evento:     '📅 Evento',
-  cumpleanos: '🎂 Cumpleaños',
-  streaming:  '🔴 Streaming / En vivo',
-  vacaciones: '🏖️ Vacaciones',
+  comunicado:   '📣 Comunicado',
+  novedad:      '📰 Novedad',
+  alerta:       '⚠️ Alerta',
+  evento:       '📅 Evento',
+  cumpleanos:   '🎂 Cumpleaños',
+  streaming:    '🔴 Streaming / En vivo',
+  vacaciones:   '🏖️ Vacaciones',
+  recordatorio: '🔔 Recordatorio',
+  aviso_admin:  '📋 Aviso administrativo',
+  urgente:      '🚨 Urgente',
   ...EVENTO_TIPO_LABEL,
 }
 
 export const NOVEDAD_CATEGORIA_COLOR: Record<NovedadCategoria, string> = {
-  comunicado: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-  novedad:    'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
-  alerta:     'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
-  evento:     'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
-  cumpleanos: 'bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300',
-  streaming:  'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-  vacaciones: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300',
+  comunicado:   'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+  novedad:      'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
+  alerta:       'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+  evento:       'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+  cumpleanos:   'bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300',
+  streaming:    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+  vacaciones:   'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300',
+  recordatorio: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
+  aviso_admin:  'bg-slate-100 text-slate-700 dark:bg-slate-700/40 dark:text-slate-300',
+  urgente:      'bg-red-200 text-red-900 dark:bg-red-900/50 dark:text-red-200',
   ...EVENTO_TIPO_COLOR,
 }
 
 // Lista ordenada para selects/filtros de novedades (curada)
 export const NOVEDAD_CATEGORIAS: NovedadCategoria[] = [
-  'comunicado', 'novedad', 'alerta', 'streaming', 'evento', 'cumpleanos', 'vacaciones',
+  'comunicado', 'recordatorio', 'aviso_admin', 'urgente',
+  'novedad', 'alerta', 'streaming', 'evento', 'cumpleanos', 'vacaciones',
   'feriado', 'jornada', 'acto', 'capacitacion', 'reunion',
   'receso', 'institucional', 'otro',
 ]
