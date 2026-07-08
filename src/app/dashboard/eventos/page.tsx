@@ -631,8 +631,8 @@ export default function EventosPage() {
 
       {/* ── Modal agregar/editar evento ──────────────────────────────────────── */}
       {modal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setModal(null)}>
-          <div className="card w-full max-w-lg animate-scale-in max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="card w-full max-w-lg animate-scale-in max-h-[90vh] overflow-y-auto">
             <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between sticky top-0 bg-[#eef8fc] dark:bg-slate-900 z-10">
               <p className="section-title">
                 {modal.mode === 'edit' ? 'Editar evento' : 'Nuevo evento'}

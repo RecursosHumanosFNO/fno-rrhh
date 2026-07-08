@@ -209,7 +209,11 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
                     <CheckCircle2 className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => rejectPendingRegistration(reg.id)}
+                    onClick={() => {
+                      if (window.confirm(`¿Rechazar la solicitud de acceso de ${reg.nombre} ${reg.apellido}? Esta acción no se puede deshacer.`)) {
+                        rejectPendingRegistration(reg.id)
+                      }
+                    }}
                     className="text-red-500 hover:text-red-600 p-0.5 shrink-0" title="Rechazar"
                   >
                     <XCircle className="w-4 h-4" />
