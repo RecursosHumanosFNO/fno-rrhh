@@ -161,9 +161,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       // Timeout de 15s: evita spinner infinito si Supabase está pausado o con latencia
       const timeout = new Promise<'timeout'>(resolve => setTimeout(() => resolve('timeout'), 15000))
+      // Guardar flags ANTES de llamar a Supabase: onAuthStateChange dispara un
+      // setTimeout(0) durante signInWithPassword y necesita leer estos flags ya
+      // presentes, o de lo contrario los ve vacíos y llama signOut() (race condition).
+      if (remember) {
+        localStorage.setItem('fno_remember', '1')
+        sessionStorage.removeItem('fno_session_active')
+      } else {
+        localStorage.removeItem('fno_remember')
+        sessionStorage.setItem('fno_session_active', '1')
+      }
+
       const attempt = (async (): Promise<'ok' | 'error' | 'desactivada'> => {
         const { data, error } = await supabase!.auth.signInWithPassword({ email: normalEmail, password })
-        if (error || !data.user) return 'error'
+        if (error || !data.user) {
+          // Limpiar flags si el login falla
+          localStorage.removeItem('fno_remember')
+          sessionStorage.removeItem('fno_session_active')
+          return 'error'
+        }
         // Cargar el perfil y dejar la sesión lista ANTES de devolver 'ok'.
         // (onAuthStateChange está diferido, así que sin esto el dashboard
         //  no vería isAuthenticated=true al primer intento)
@@ -189,14 +205,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           nombre: nombreLogin,
           email: normalEmail,
         }).then()
-        // Persistencia de sesión según "recordar"
-        if (remember) {
-          localStorage.setItem('fno_remember', '1')
-          sessionStorage.removeItem('fno_session_active')
-        } else {
-          localStorage.removeItem('fno_remember')
-          sessionStorage.setItem('fno_session_active', '1')
-        }
         return 'ok'
       })().catch(() => 'error' as const)
       return await Promise.race([attempt, timeout])
