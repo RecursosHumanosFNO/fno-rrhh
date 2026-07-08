@@ -55,6 +55,7 @@ const FORM_INICIAL = {
   categoriaCustom: '',       // texto libre cuando categoriaRaw === '__custom__'
   importante: false, fijado: false,
   notifyChannels: [] as NotifyChannel[],
+  destinatarios: [] as string[],   // IDs de empleados; vacío = todos
   imagen: '', adjuntoUrl: '', adjuntoNombre: '', linkUrl: '',
   addToCalendario: false,
   calendarioFecha: '',
@@ -63,7 +64,7 @@ const FORM_INICIAL = {
 
 export default function ComunicacionesPage() {
   const { user } = useAuth()
-  const { novedades, eventos, addNovedad, updateNovedad, deleteNovedad, addEvento, forceSync } = useData()
+  const { novedades, eventos, empleados, addNovedad, updateNovedad, deleteNovedad, addEvento, forceSync } = useData()
   useEffect(() => { forceSync() }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const isAdmin = user?.role === 'admin' || user?.role === 'comunicaciones'
 
@@ -130,7 +131,29 @@ export default function ComunicacionesPage() {
     }))
   }
 
+  function toggleDestinatario(empId: string) {
+    setNewForm(f => ({
+      ...f,
+      destinatarios: f.destinatarios.includes(empId)
+        ? f.destinatarios.filter(id => id !== empId)
+        : [...f.destinatarios, empId],
+    }))
+  }
+
+  const empleadosActivos = empleados
+    .filter(e => e.estado === 'activo')
+    .sort((a, b) => `${a.apellido} ${a.nombre}`.localeCompare(`${b.apellido} ${b.nombre}`))
+
+  // Visibilidad: admin/comunicaciones ven todo; un empleado solo ve las novedades
+  // sin destinatarios (públicas) o donde su id esté incluido.
+  const puedeVerNovedad = (n: Novedad) => {
+    if (isAdmin) return true
+    const dest = n.destinatarios ?? []
+    return dest.length === 0 || (user?.empleadoId ? dest.includes(user.empleadoId) : false)
+  }
+
   const filteredNovedades = novedades
+    .filter(puedeVerNovedad)
     .filter(n => !catFilter || n.categoria === catFilter)
     .sort((a, b) => b.fechaPublicacion.localeCompare(a.fechaPublicacion))
 
@@ -173,7 +196,8 @@ export default function ComunicacionesPage() {
         adjuntoUrl: newForm.adjuntoUrl || undefined,
         adjuntoNombre: newForm.adjuntoNombre || undefined,
         linkUrl: newForm.linkUrl || undefined,
-      })
+        destinatarios: newForm.destinatarios,
+      }, newForm.notifyChannels)
       setEditId(null)
     } else {
       addNovedad({
@@ -188,6 +212,7 @@ export default function ComunicacionesPage() {
         adjuntoUrl: newForm.adjuntoUrl || undefined,
         adjuntoNombre: newForm.adjuntoNombre || undefined,
         linkUrl: newForm.linkUrl || undefined,
+        destinatarios: newForm.destinatarios,
       }, newForm.notifyChannels)
       if (newForm.addToCalendario && newForm.calendarioFecha) {
         addEvento({
@@ -210,6 +235,7 @@ export default function ComunicacionesPage() {
       titulo: n.titulo, contenido: n.contenido, categoriaRaw: n.categoria as string, categoriaCustom: '',
       importante: n.importante, fijado: n.fijado ?? false,
       notifyChannels: [],
+      destinatarios: n.destinatarios ?? [],
       imagen: n.imagen ?? '', adjuntoUrl: n.adjuntoUrl ?? '', adjuntoNombre: n.adjuntoNombre ?? '', linkUrl: n.linkUrl ?? '',
       addToCalendario: false, calendarioFecha: '', calendarioTipo: 'jornada',
     })
@@ -582,44 +608,82 @@ export default function ComunicacionesPage() {
                 </label>
               </div>
 
-              {/* Canales de notificación (solo al crear) */}
-              {!editId && (
-                <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-                  <div className="bg-slate-50 dark:bg-slate-800/60 px-4 py-2.5 border-b border-slate-200 dark:border-slate-700">
-                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Notificaciones al publicar</p>
-                    <p className="text-xs text-slate-400 mt-0.5">Elegí cómo avisar a los empleados (podés marcar más de uno)</p>
-                  </div>
-                  <div className="p-3 space-y-2">
-                    <label className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                      <input type="checkbox" checked={newForm.notifyChannels.includes('app')}
-                        onChange={() => toggleChannel('app')}
-                        className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" />
-                      <div className="flex items-center gap-2">
-                        <Bell className="w-4 h-4 text-brand-600 dark:text-brand-400" />
-                        <div>
-                          <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Notificación en la app</p>
-                          <p className="text-xs text-slate-400">Aparece en el ícono de campana del portal</p>
-                        </div>
-                      </div>
-                    </label>
-                    <label className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                      <input type="checkbox" checked={newForm.notifyChannels.includes('email')}
-                        onChange={() => toggleChannel('email')}
-                        className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" />
-                      <div className="flex items-center gap-2">
-                        <Mail className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                        <div>
-                          <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Notificar por email</p>
-                          <p className="text-xs text-slate-400">Envía un aviso al correo institucional de RRHH</p>
-                        </div>
-                      </div>
-                    </label>
-                    {newForm.notifyChannels.length === 0 && (
-                      <p className="text-xs text-slate-400 px-2 italic">Sin aviso — la novedad se publica pero no se notifica.</p>
-                    )}
+              {/* Destinatarios: a quién le llega / quién la ve */}
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <div className="bg-slate-50 dark:bg-slate-800/60 px-4 py-2.5 border-b border-slate-200 dark:border-slate-700">
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Destinatarios</p>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {newForm.destinatarios.length === 0
+                      ? 'Sin marcar = todos los empleados activos'
+                      : `${newForm.destinatarios.length} empleado(s) seleccionado(s)`}
+                  </p>
+                </div>
+                <div className="p-2">
+                  {newForm.destinatarios.length > 0 && (
+                    <button type="button"
+                      onClick={() => setNewForm(f => ({ ...f, destinatarios: [] }))}
+                      className="text-xs text-brand-600 dark:text-brand-400 hover:underline px-2 py-1">
+                      Limpiar selección (enviar a todos)
+                    </button>
+                  )}
+                  <div className="max-h-48 overflow-y-auto space-y-0.5">
+                    {empleadosActivos.map(e => (
+                      <label key={e.id} className="flex items-center gap-2 cursor-pointer px-2 py-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                        <input type="checkbox" checked={newForm.destinatarios.includes(e.id)}
+                          onChange={() => toggleDestinatario(e.id)}
+                          className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" />
+                        <span className="text-sm text-slate-700 dark:text-slate-200">{e.nombre} {e.apellido}</span>
+                        {e.sector && <span className="text-xs text-slate-400">· {e.sector}</span>}
+                      </label>
+                    ))}
                   </div>
                 </div>
-              )}
+              </div>
+
+              {/* Canales de notificación (al crear y al editar: reenvía el aviso) */}
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <div className="bg-slate-50 dark:bg-slate-800/60 px-4 py-2.5 border-b border-slate-200 dark:border-slate-700">
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    {editId ? 'Reenviar aviso al guardar' : 'Notificaciones al publicar'}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {editId
+                      ? 'Marcá si querés volver a avisar a los destinatarios con los cambios'
+                      : 'Elegí cómo avisar a los destinatarios (podés marcar más de uno)'}
+                  </p>
+                </div>
+                <div className="p-3 space-y-2">
+                  <label className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                    <input type="checkbox" checked={newForm.notifyChannels.includes('app')}
+                      onChange={() => toggleChannel('app')}
+                      className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" />
+                    <div className="flex items-center gap-2">
+                      <Bell className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+                      <div>
+                        <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Notificación en la app</p>
+                        <p className="text-xs text-slate-400">Aparece en el ícono de campana del portal</p>
+                      </div>
+                    </div>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                    <input type="checkbox" checked={newForm.notifyChannels.includes('email')}
+                      onChange={() => toggleChannel('email')}
+                      className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" />
+                    <div className="flex items-center gap-2">
+                      <Mail className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      <div>
+                        <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Notificar por email</p>
+                        <p className="text-xs text-slate-400">Envía el aviso por correo a los destinatarios</p>
+                      </div>
+                    </div>
+                  </label>
+                  {newForm.notifyChannels.length === 0 && (
+                    <p className="text-xs text-slate-400 px-2 italic">
+                      {editId ? 'Sin reenvío — solo se guardan los cambios.' : 'Sin aviso — la novedad se publica pero no se notifica.'}
+                    </p>
+                  )}
+                </div>
+              </div>
 
               {/* Cross-post al calendario (solo al crear) */}
               {!editId && (

@@ -36,7 +36,7 @@ interface DataContextType {
   cancelSolicitud: (id: string) => void
   // Novedades
   addNovedad: (n: Omit<Novedad, 'id'>, notifyChannels?: ('app' | 'email')[]) => void
-  updateNovedad: (id: string, data: Partial<Omit<Novedad, 'id'>>) => void
+  updateNovedad: (id: string, data: Partial<Omit<Novedad, 'id'>>, notifyChannels?: ('app' | 'email')[]) => void
   deleteNovedad: (id: string) => void
   // Eventos
   addEvento: (e: Omit<Evento, 'id'>, notifyChannels?: ('app' | 'email')[]) => void
@@ -194,16 +194,22 @@ function mapSupabaseToNovedad(row: Record<string, unknown>): Novedad {
     adjuntoUrl: (row.adjunto_url as string) || undefined,
     adjuntoNombre: (row.adjunto_nombre as string) || undefined,
     linkUrl: (row.link_url as string) || undefined,
+    destinatarios: (row.destinatarios as string[]) ?? [],
   }
 }
-function mapNovedadToSupabase(n: Novedad) {
-  return {
+function mapNovedadToSupabase(n: Novedad, baseOnly = false) {
+  const base = {
     id: n.id, titulo: n.titulo, contenido: n.contenido,
     categoria: n.categoria, fecha_publicacion: n.fechaPublicacion,
     autor: n.autor, importante: n.importante, fijado: n.fijado ?? false,
     imagen: n.imagen ?? '',
     adjunto_url: n.adjuntoUrl ?? null, adjunto_nombre: n.adjuntoNombre ?? null,
     link_url: n.linkUrl ?? null,
+  }
+  if (baseOnly) return base
+  return {
+    ...base,
+    destinatarios: n.destinatarios ?? [],
   }
 }
 
@@ -771,35 +777,87 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, [solicitudes, addNotification])
 
   // ── Novedades ──────────────────────────────────────────────────────────────
-  const addNovedad = useCallback((n: Omit<Novedad, 'id'>, notifyChannels: ('app' | 'email')[] = []) => {
-    const nueva = { ...n, id: uid() }
-    setNovedades(prev => [nueva, ...prev])
+  // Notifica una novedad respetando destinatarios: si es privada va solo a esos
+  // empleados; si no hay destinatarios, la notif es global y el mail a todos los activos.
+  const notifyNovedad = useCallback((n: Novedad, notifyChannels: ('app' | 'email')[], esEdicion = false) => {
+    if (notifyChannels.length === 0) return
+    const dest = n.destinatarios ?? []
+    const verbo = esEdicion ? 'Novedad actualizada' : 'Nueva novedad publicada'
+
     if (notifyChannels.includes('app')) {
-      addNotification({ texto: `Nueva novedad publicada: ${n.titulo}`, tipo: 'novedad' })
+      if (dest.length > 0) {
+        dest.forEach(empleadoId => addNotification({
+          texto: `${verbo}: ${n.titulo}`,
+          tipo: 'novedad', empleadoId, soloEmpleado: true,
+        }))
+      } else {
+        addNotification({ texto: `${verbo}: ${n.titulo}`, tipo: 'novedad' })
+      }
     }
-    if (supabase) supabase.from('fno_novedades').insert(mapNovedadToSupabase(nueva)).then(({ error }) => {
-      if (error) console.error('[supabase] insert fno_novedades:', error)
-    })
+
     if (notifyChannels.includes('email')) {
-      // Mail a todos los empleados activos (leemos la lista sin agregar dependencia)
-      setEmpleados(prev => {
-        const emails = prev.filter(e => e.estado === 'activo').map(e => e.email).filter(Boolean)
-        sendEmail('novedad_publicada', { titulo: n.titulo, contenido: n.contenido, autor: n.autor, imagen: n.imagen ?? '', emails: emails.join(',') })
-        return prev
+      const targets = dest.length > 0
+        ? empleados.filter(e => dest.includes(e.id))
+        : empleados.filter(e => e.estado === 'activo')
+      const emails = targets.map(e => e.email).filter(Boolean)
+      if (emails.length > 0) {
+        sendEmail('novedad_publicada', {
+          titulo: n.titulo, contenido: n.contenido, autor: n.autor,
+          imagen: n.imagen ?? '', emails: emails.join(','),
+        })
+      }
+    }
+
+    // Confirmación para el admin: a quién se le envió el aviso
+    const nombresDest = dest.length > 0
+      ? empleados.filter(e => dest.includes(e.id)).map(e => `${e.nombre} ${e.apellido}`).join(', ') || `${dest.length} empleado(s)`
+      : 'todo el equipo'
+    const canales = notifyChannels.map(c => c === 'app' ? 'app' : 'mail').join(' + ')
+    addNotification({
+      texto: `✓ Aviso de "${n.titulo}" enviado a ${nombresDest} (${canales})`,
+      tipo: 'sistema', soloAdmin: true,
+    })
+  }, [empleados, addNotification])
+
+  const addNovedad = useCallback((n: Omit<Novedad, 'id'>, notifyChannels: ('app' | 'email')[] = []) => {
+    const nueva: Novedad = { ...n, id: uid() }
+    setNovedades(prev => [nueva, ...prev])
+    notifyNovedad(nueva, notifyChannels)
+    if (supabase) {
+      const sb = supabase
+      sb.from('fno_novedades').insert(mapNovedadToSupabase(nueva)).then(({ error }) => {
+        if (error) {
+          console.warn('[supabase] insert fno_novedades (full):', error.message, error.code)
+          // Retry sin columnas nuevas (por si la migración SQL de destinatarios no se corrió)
+          sb.from('fno_novedades').insert(mapNovedadToSupabase(nueva, true)).then(({ error: e2 }) => {
+            if (e2) console.error('[supabase] insert fno_novedades (base):', e2.message, e2.code)
+          })
+        }
       })
     }
-  }, [addNotification])
+  }, [notifyNovedad])
 
-  const updateNovedad = useCallback((id: string, data: Partial<Omit<Novedad, 'id'>>) => {
+  const updateNovedad = useCallback((id: string, data: Partial<Omit<Novedad, 'id'>>, notifyChannels: ('app' | 'email')[] = []) => {
     setNovedades(prev => {
       const updated = prev.map(n => n.id === id ? { ...n, ...data } : n)
-      if (supabase) {
-        const full = updated.find(n => n.id === id)
-        if (full) supabase.from('fno_novedades').upsert(mapNovedadToSupabase(full)).then()
+      const full = updated.find(n => n.id === id)
+      if (full) {
+        notifyNovedad(full, notifyChannels, true)
+        if (supabase) {
+          const sb = supabase
+          sb.from('fno_novedades').upsert(mapNovedadToSupabase(full)).then(({ error }) => {
+            if (error) {
+              console.warn('[supabase] upsert fno_novedades (full):', error.message, error.code)
+              sb.from('fno_novedades').upsert(mapNovedadToSupabase(full, true)).then(({ error: e2 }) => {
+                if (e2) console.error('[supabase] upsert fno_novedades (base):', e2.message, e2.code)
+              })
+            }
+          })
+        }
       }
       return updated
     })
-  }, [])
+  }, [notifyNovedad])
 
   const deleteNovedad = useCallback((id: string) => {
     setNovedades(prev => prev.filter(n => n.id !== id))
