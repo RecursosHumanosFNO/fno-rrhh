@@ -378,7 +378,11 @@ function EmpleadosContent() {
                     <CheckCircle2 className="w-4 h-4" /> Aprobar
                   </button>
                   <button
-                    onClick={() => rejectPendingRegistration(reg.id)}
+                    onClick={() => {
+                      if (window.confirm(`¿Rechazar la solicitud de acceso de ${reg.nombre} ${reg.apellido}? Esta acción no se puede deshacer.`)) {
+                        rejectPendingRegistration(reg.id)
+                      }
+                    }}
                     className="btn-danger text-sm py-1.5 px-3"
                     title="Rechazar"
                   >

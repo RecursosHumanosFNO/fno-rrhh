@@ -402,28 +402,22 @@ export default function ComunicacionesPage() {
                     )}
                   </div>
                   <h3 className="font-semibold text-slate-800 dark:text-slate-100">{n.titulo}</h3>
+                  {/* La imagen siempre se muestra (no se minimiza). Click = ver en grande. */}
+                  {n.imagen && (
+                    <div className="mt-3">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={n.imagen} alt=""
+                        onClick={ev => { ev.stopPropagation(); setLightbox(n.imagen!) }}
+                        className="rounded-xl border border-slate-200 dark:border-slate-700 w-full max-w-lg cursor-zoom-in hover:opacity-90 transition-opacity"
+                        title="Ver imagen completa"
+                      />
+                    </div>
+                  )}
                   {isSelected ? (
-                    n.imagen ? (
-                      <div className="mt-3 flex flex-col sm:flex-row gap-4 items-start animate-fade-in">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={n.imagen} alt=""
-                          onClick={ev => { ev.stopPropagation(); setLightbox(n.imagen!) }}
-                          className="rounded-xl border border-slate-200 dark:border-slate-700 w-full sm:w-72 sm:shrink-0 cursor-zoom-in hover:opacity-90 transition-opacity"
-                          title="Ver imagen completa"
-                        />
-                        <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed flex-1 min-w-0"><Linkify text={n.contenido} /></p>
-                      </div>
-                    ) : (
-                      <p className="text-sm text-slate-600 dark:text-slate-300 mt-1 leading-relaxed animate-fade-in"><Linkify text={n.contenido} /></p>
-                    )
+                    <p className="text-sm text-slate-600 dark:text-slate-300 mt-2 leading-relaxed animate-fade-in"><Linkify text={n.contenido} /></p>
                   ) : (
-                    <>
-                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{n.contenido}</p>
-                      {n.imagen && (
-                        <span className="inline-flex items-center gap-1 text-xs text-brand-600 dark:text-brand-400 mt-1.5"><ImageIcon className="w-3.5 h-3.5" /> Incluye imagen</span>
-                      )}
-                    </>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 line-clamp-2">{n.contenido}</p>
                   )}
                   {n.adjuntoUrl && (
                     <a href={n.adjuntoUrl} target="_blank" rel="noopener noreferrer" download={n.adjuntoNombre}
@@ -465,7 +459,12 @@ export default function ComunicacionesPage() {
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={ev => { ev.stopPropagation(); deleteNovedad(n.id) }}
+                        onClick={ev => {
+                          ev.stopPropagation()
+                          if (window.confirm(`¿Eliminar la comunicación "${n.titulo}"? Esta acción no se puede deshacer.`)) {
+                            deleteNovedad(n.id)
+                          }
+                        }}
                         className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 transition-colors"
                         title="Eliminar"
                       >
@@ -483,8 +482,8 @@ export default function ComunicacionesPage() {
 
       {/* Modal nueva / editar novedad */}
       {showNueva && isAdmin && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={handleCerrarModal}>
-          <div className="card w-full max-w-lg animate-scale-in max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="card w-full max-w-lg animate-scale-in max-h-[90vh] overflow-y-auto">
             <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between sticky top-0 bg-[#eef8fc] dark:bg-slate-900 z-10">
               <p className="section-title">{editId ? 'Editar Novedad' : 'Publicar Novedad'}</p>
               <button onClick={handleCerrarModal}><X className="w-5 h-5 text-slate-400" /></button>
