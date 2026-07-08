@@ -116,7 +116,12 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
 
   const hoy = new Date()
   const hoyStr = hoy.toISOString().slice(0, 10)
-  const en7 = new Date(hoy); en7.setDate(hoy.getDate() + 7)
+  // Fin de la semana actual (domingo), semana lunes-domingo
+  const finSemana = new Date(hoy)
+  const diaSemana = hoy.getDay() // 0=dom, 1=lun … 6=sab
+  const diasHastaDomingo = diaSemana === 0 ? 0 : 7 - diaSemana
+  finSemana.setDate(hoy.getDate() + diasHastaDomingo)
+  finSemana.setHours(23, 59, 59, 999)
   const en30 = new Date(hoy); en30.setDate(hoy.getDate() + 30)
   const en30Str = en30.toISOString().slice(0, 10)
 
@@ -129,8 +134,8 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
       return diff >= 0 && diff <= 30
     })
     .sort((a, b) => a.cumple.getTime() - b.cumple.getTime())
-  const cumpleEstaSemana = todosCumples.filter(({ cumple }) => cumple <= en7)
-  const cumpleProximo = todosCumples.filter(({ cumple }) => cumple > en7)
+  const cumpleEstaSemana = todosCumples.filter(({ cumple }) => cumple <= finSemana)
+  const cumpleProximo = todosCumples.filter(({ cumple }) => cumple > finSemana)
 
   // ── Próximos feriados (30 días) ───────────────────────────────────────────
   const proximosFeriados = eventos
