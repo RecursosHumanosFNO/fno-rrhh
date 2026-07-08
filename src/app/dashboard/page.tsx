@@ -60,7 +60,9 @@ function StatCard({ icon: Icon, label, value, sub, color }: {
 
 function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string }) {
   const { empleado } = useAuth()
-  const { empleados, solicitudes, novedades, eventos, pendingRegistrations, approvePendingRegistration, rejectPendingRegistration, registrosNovedad } = useData()
+  const { empleados, solicitudes, novedades, eventos, pendingRegistrations, approvePendingRegistration, rejectPendingRegistration, registrosNovedad, forceSync } = useData()
+
+  useEffect(() => { forceSync() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const [logins, setLogins] = useState<LoginRecord[]>([])
   useEffect(() => {
@@ -537,7 +539,9 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
 
 function EmployeeDashboard({ saludo, fechaStr, empleadoId }: { saludo: string, fechaStr: string, empleadoId: string }) {
   const { empleado } = useAuth()
-  const { solicitudes, recibos, novedades, eventos, empleados } = useData()
+  const { solicitudes, recibos, novedades, eventos, empleados, forceSync } = useData()
+
+  useEffect(() => { forceSync() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const misSolicitudes = solicitudes
     .filter(s => s.empleadoId === empleadoId)
