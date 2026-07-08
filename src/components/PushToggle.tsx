@@ -1,10 +1,18 @@
 'use client'
 
+import { useState } from 'react'
 import { Bell, BellOff, BellRing, Loader2 } from 'lucide-react'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
 
 export function PushToggle({ empleadoId }: { empleadoId: string }) {
   const { status, error, subscribe, unsubscribe } = usePushNotifications(empleadoId)
+  const [subscribing, setSubscribing] = useState(false)
+
+  const handleSubscribe = async () => {
+    setSubscribing(true)
+    await subscribe()
+    setSubscribing(false)
+  }
 
   if (status === 'unsupported') return null
 
@@ -51,10 +59,12 @@ export function PushToggle({ empleadoId }: { empleadoId: string }) {
           <span className="text-sm text-slate-600 dark:text-slate-400">Recibir notificaciones en este dispositivo</span>
         </div>
         <button
-          onClick={subscribe}
-          className="btn-primary text-xs py-1.5 px-3"
+          onClick={handleSubscribe}
+          disabled={subscribing}
+          className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 disabled:opacity-60"
         >
-          Activar
+          {subscribing && <Loader2 className="w-3 h-3 animate-spin" />}
+          {subscribing ? 'Activando...' : 'Activar'}
         </button>
       </div>
       {error && (

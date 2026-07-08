@@ -47,9 +47,15 @@ export function usePushNotifications(empleadoId: string | undefined) {
     if (!empleadoId) return
     setError(null)
     try {
-      if (!VAPID_PUBLIC_KEY) throw new Error('VAPID key no configurada')
-      const reg = (await navigator.serviceWorker.getRegistration()) ?? await navigator.serviceWorker.ready
-      if (!reg) throw new Error('Service worker no disponible')
+      if (!VAPID_PUBLIC_KEY) throw new Error('VAPID key no configurada. Contactá a RRHH.')
+      // Obtener el SW registrado; si no hay uno activo en 5s, abortar con error claro
+      let reg = await navigator.serviceWorker.getRegistration()
+      if (!reg) {
+        const timeout = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Service worker no disponible. Intentá recargar la página.')), 5000)
+        )
+        reg = await Promise.race([navigator.serviceWorker.ready, timeout])
+      }
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
