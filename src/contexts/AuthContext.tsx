@@ -56,6 +56,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // (ej: updateUser/signIn quedan colgados). Al diferir, el lock se libera.
       setTimeout(async () => {
         if (session?.user) {
+          // Si no hay "recordar sesión" activo ni marca de sesión activa en esta pestaña,
+          // significa que el usuario cerró el navegador sin marcar "recordar" y la sesión
+          // quedó guardada en localStorage. La invalidamos.
+          const remember = localStorage.getItem('fno_remember') === '1'
+          const sessionActive = sessionStorage.getItem('fno_session_active') === '1'
+          if (!remember && !sessionActive) {
+            await supabase!.auth.signOut()
+            setAuth({ user: null, empleado: null, isAuthenticated: false })
+            setIsLoading(false)
+            return
+          }
           const user = await loadProfile(session.user.id)
           if (user) {
             setAuth(prev => ({
@@ -137,7 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(async (
     email: string,
     password: string,
-    _remember: boolean,
+    remember: boolean,
   ): Promise<'ok' | 'pendiente' | 'error' | 'timeout' | 'desactivada'> => {
     const normalEmail = email.toLowerCase().trim()
 
@@ -178,6 +189,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           nombre: nombreLogin,
           email: normalEmail,
         }).then()
+        // Persistencia de sesión según "recordar"
+        if (remember) {
+          localStorage.setItem('fno_remember', '1')
+          sessionStorage.removeItem('fno_session_active')
+        } else {
+          localStorage.removeItem('fno_remember')
+          sessionStorage.setItem('fno_session_active', '1')
+        }
         return 'ok'
       })().catch(() => 'error' as const)
       return await Promise.race([attempt, timeout])
@@ -187,6 +206,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [pendingRegistrations, empleados, loadProfile])
 
   const logout = useCallback(() => {
+    localStorage.removeItem('fno_remember')
+    sessionStorage.removeItem('fno_session_active')
     if (supabase) supabase.auth.signOut().catch(() => {})
     setAuth({ user: null, empleado: null, isAuthenticated: false })
   }, [])
