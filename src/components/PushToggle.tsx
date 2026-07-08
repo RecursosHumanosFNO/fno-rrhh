@@ -4,7 +4,7 @@ import { Bell, BellOff, BellRing, Loader2 } from 'lucide-react'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
 
 export function PushToggle({ empleadoId }: { empleadoId: string }) {
-  const { status, subscribe, unsubscribe } = usePushNotifications(empleadoId)
+  const { status, error, subscribe, unsubscribe } = usePushNotifications(empleadoId)
 
   if (status === 'unsupported') return null
 
@@ -44,17 +44,22 @@ export function PushToggle({ empleadoId }: { empleadoId: string }) {
   }
 
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <Bell className="w-4 h-4 text-slate-400" />
-        <span className="text-sm text-slate-600 dark:text-slate-400">Recibir notificaciones en este dispositivo</span>
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Bell className="w-4 h-4 text-slate-400" />
+          <span className="text-sm text-slate-600 dark:text-slate-400">Recibir notificaciones en este dispositivo</span>
+        </div>
+        <button
+          onClick={subscribe}
+          className="btn-primary text-xs py-1.5 px-3"
+        >
+          Activar
+        </button>
       </div>
-      <button
-        onClick={subscribe}
-        className="btn-primary text-xs py-1.5 px-3"
-      >
-        Activar
-      </button>
+      {error && (
+        <p className="text-xs text-red-500 dark:text-red-400">{error}</p>
+      )}
     </div>
   )
 }
