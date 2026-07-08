@@ -209,6 +209,7 @@ export interface Novedad {
   adjuntoUrl?: string
   adjuntoNombre?: string
   linkUrl?: string
+  destinatarios?: string[] // IDs de empleados; vacío = visible/notificado para todos
 }
 
 export type EventoTipo =

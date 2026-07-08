@@ -552,6 +552,12 @@ function EmployeeDashboard({ saludo, fechaStr, empleadoId }: { saludo: string, f
     .filter(r => r.empleadoId === empleadoId)
     .sort((a, b) => b.anio - a.anio || b.mes - a.mes)[0]
 
+  // Solo novedades públicas (sin destinatarios) o dirigidas a este empleado
+  const misNovedades = novedades.filter(n => {
+    const dest = n.destinatarios ?? []
+    return dest.length === 0 || dest.includes(empleadoId)
+  })
+
   // Eventos próximos 30 días
   const hoy = new Date()
   const hoyMidnight = new Date(hoy); hoyMidnight.setHours(0, 0, 0, 0)
@@ -752,11 +758,11 @@ function EmployeeDashboard({ saludo, fechaStr, empleadoId }: { saludo: string, f
           </div>
 
           <div className="divide-y divide-slate-100 dark:divide-slate-800">
-            {novedades.length === 0 ? (
+            {misNovedades.length === 0 ? (
               <div className="p-6 text-center">
                 <p className="text-slate-400 text-sm">Sin novedades publicadas</p>
               </div>
-            ) : novedades.slice(0, 3).map(n => (
+            ) : misNovedades.slice(0, 3).map(n => (
               <div key={n.id} className="px-4 py-3">
                 <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                   {n.importante && <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />}

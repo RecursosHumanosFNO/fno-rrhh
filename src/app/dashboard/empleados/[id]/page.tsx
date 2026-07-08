@@ -164,49 +164,9 @@ export default function EmpleadoDetailPage() {
     const nuevoEmail = form.email.toLowerCase().trim()
     const emailCambio = nuevoEmail !== emp!.email.toLowerCase().trim()
 
-    // Si cambió el email, actualizarlo en Supabase Auth + tablas via API
-    if (emailCambio) {
-      if (!empUser) {
-        setSaveError('Este empleado no tiene cuenta de acceso, no se puede cambiar el email de login.')
-        return
-      }
-      setSavingEmail(true)
-      try {
-        const res = await fetch('/api/admin/set-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ empleadoId: emp!.id, newEmail: nuevoEmail, requesterId: user?.empleadoId }),
-        })
-        const data = await res.json()
-        setSavingEmail(false)
-        if (!data.ok) {
-          setSaveError(data.error ?? 'No se pudo actualizar el email.')
-          return
-        }
-      } catch {
-        setSavingEmail(false)
-        setSaveError('Error de conexión al actualizar el email.')
-        return
-      }
-    }
-
-    // Estado local inmediato (UI responde al instante)
-    updateEmpleado(emp!.id, {
-      nombre: form.nombre, apellido: form.apellido, dni: form.dni, cuil: form.cuil,
-      email: nuevoEmail,
-      fechaNacimiento: form.fechaNacimiento, telefono: form.telefono, direccion: form.direccion,
-      sector: form.sector, cargo: form.cargo, cargosExtra: form.cargosExtra,
-      jornada: form.jornada as Empleado['jornada'], supervisor: form.supervisor,
-      estado: form.estado as EmpleadoEstado, fechaIngreso: form.fechaIngreso,
-      contactoEmergencia: {
-        nombre: form.contactoNombre,
-        telefono: form.contactoTelefono,
-        relacion: form.contactoRelacion,
-      },
-      cbu: form.cbu, banco: form.banco,
-    })
-
-    // Persistencia garantizada vía service role (el email ya se guardó arriba)
+    // 1. Persistir primero los campos del perfil (no dependen del email).
+    //    Así, aunque el cambio de email falle (email duplicado/ inválido en Auth),
+    //    el resto de los datos sí se guardan y no queda todo bloqueado.
     setSavingEmail(true)
     const ok = await persistEmpleado({
       nombre: form.nombre, apellido: form.apellido, dni: form.dni, cuil: form.cuil,
@@ -221,9 +181,56 @@ export default function EmpleadoDetailPage() {
       },
       cbu: form.cbu, banco: form.banco,
     })
-    setSavingEmail(false)
     if (!ok) {
+      setSavingEmail(false)
       setSaveError('No se pudieron guardar los cambios. Intentá de nuevo.')
+      return
+    }
+
+    // 2. Intentar cambiar el email de login (si cambió). Independiente del guardado anterior.
+    let emailOk = true
+    let emailErrMsg = ''
+    if (emailCambio) {
+      if (!empUser) {
+        emailOk = false
+        emailErrMsg = 'Este empleado no tiene cuenta de acceso, no se pudo cambiar el email de login.'
+      } else {
+        try {
+          const res = await fetch('/api/admin/set-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ empleadoId: emp!.id, newEmail: nuevoEmail, requesterId: user?.empleadoId }),
+          })
+          const data = await res.json()
+          if (!data.ok) { emailOk = false; emailErrMsg = data.error ?? 'No se pudo actualizar el email.' }
+        } catch {
+          emailOk = false
+          emailErrMsg = 'Error de conexión al actualizar el email.'
+        }
+      }
+    }
+    setSavingEmail(false)
+
+    // 3. Estado local: aplicar el email nuevo solo si el cambio funcionó
+    updateEmpleado(emp!.id, {
+      nombre: form.nombre, apellido: form.apellido, dni: form.dni, cuil: form.cuil,
+      email: emailOk && emailCambio ? nuevoEmail : emp!.email,
+      fechaNacimiento: form.fechaNacimiento, telefono: form.telefono, direccion: form.direccion,
+      sector: form.sector, cargo: form.cargo, cargosExtra: form.cargosExtra,
+      jornada: form.jornada as Empleado['jornada'], supervisor: form.supervisor,
+      estado: form.estado as EmpleadoEstado, fechaIngreso: form.fechaIngreso,
+      contactoEmergencia: {
+        nombre: form.contactoNombre,
+        telefono: form.contactoTelefono,
+        relacion: form.contactoRelacion,
+      },
+      cbu: form.cbu, banco: form.banco,
+    })
+
+    if (!emailOk) {
+      // Los demás datos ya se guardaron; solo avisamos del problema de email
+      setForm(f => ({ ...f, email: emp!.email }))
+      setSaveError(`Los datos se guardaron, pero el email no se pudo cambiar: ${emailErrMsg}`)
       return
     }
     setEditMode(false)
