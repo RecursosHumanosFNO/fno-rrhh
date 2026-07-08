@@ -149,7 +149,7 @@ export default function ComunicacionesPage() {
     const aFijado = a.kind === 'novedad' && a.item.fijado ? 1 : 0
     const bFijado = b.kind === 'novedad' && b.item.fijado ? 1 : 0
     if (bFijado !== aFijado) return bFijado - aFijado
-    return a.date.localeCompare(b.date)
+    return b.date.localeCompare(a.date)
   })
 
   function resolveCategoria(): NovedadCategoria {
