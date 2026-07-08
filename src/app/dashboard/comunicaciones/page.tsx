@@ -141,16 +141,15 @@ export default function ComunicacionesPage() {
     ? eventos.filter(e => e.fecha >= hoy && (!catFilter || e.tipo === catFilter))
     : []
 
-  // Fijados primero, luego ordenados por fecha asc (más próximo primero)
+  // Fijadas primero → novedades más nuevas primero → eventos más próximos al final
+  const pinnedNovedades = filteredNovedades.filter(n => n.fijado)
+  const unpinnedNovedades = filteredNovedades.filter(n => !n.fijado)
+  const sortedEventos = [...filteredEventos].sort((a, b) => a.fecha.localeCompare(b.fecha))
   const displayItems: DisplayItem[] = [
-    ...filteredNovedades.map(n => ({ kind: 'novedad' as const, date: n.fechaPublicacion, item: n })),
-    ...filteredEventos.map(e => ({ kind: 'evento' as const, date: e.fecha, item: e })),
-  ].sort((a, b) => {
-    const aFijado = a.kind === 'novedad' && a.item.fijado ? 1 : 0
-    const bFijado = b.kind === 'novedad' && b.item.fijado ? 1 : 0
-    if (bFijado !== aFijado) return bFijado - aFijado
-    return b.date.localeCompare(a.date)
-  })
+    ...pinnedNovedades.map(n => ({ kind: 'novedad' as const, date: n.fechaPublicacion, item: n })),
+    ...unpinnedNovedades.map(n => ({ kind: 'novedad' as const, date: n.fechaPublicacion, item: n })),
+    ...sortedEventos.map(e => ({ kind: 'evento' as const, date: e.fecha, item: e })),
+  ]
 
   function resolveCategoria(): NovedadCategoria {
     if (newForm.categoriaRaw === '__custom__') {
