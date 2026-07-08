@@ -43,6 +43,8 @@ export async function POST(req: NextRequest) {
       'nombre', 'apellido', 'dni', 'cuil', 'fecha_nacimiento',
       'telefono', 'direccion', 'contacto_emergencia', 'cbu', 'banco',
       'foto', 'foto_cover',
+      // Info laboral editable por el propio empleado
+      'sector', 'cargo', 'jornada', 'supervisor', 'fecha_ingreso',
     ]
     // Admins pueden editar todo; empleados solo sus campos permitidos
     const update: Record<string, unknown> = { id: empleadoId }
