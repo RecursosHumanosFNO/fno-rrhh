@@ -303,7 +303,8 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
               <div className="space-y-2">
                 {proximosFeriados.slice(0, 4).map(ev => {
                   const evDate = parseFecha(ev.fecha)
-                  const diffDays = Math.round((evDate.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24))
+                  const hoyMidnight = parseFecha(hoyStr)
+                  const diffDays = Math.round((evDate.getTime() - hoyMidnight.getTime()) / (1000 * 60 * 60 * 24))
                   const esHoy = diffDays === 0
                   const esMañana = diffDays === 1
                   return (
