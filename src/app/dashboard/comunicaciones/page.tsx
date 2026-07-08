@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { supabase } from '@/lib/supabase'
@@ -63,7 +63,8 @@ const FORM_INICIAL = {
 
 export default function ComunicacionesPage() {
   const { user } = useAuth()
-  const { novedades, eventos, addNovedad, updateNovedad, deleteNovedad, addEvento } = useData()
+  const { novedades, eventos, addNovedad, updateNovedad, deleteNovedad, addEvento, forceSync } = useData()
+  useEffect(() => { forceSync() }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const isAdmin = user?.role === 'admin' || user?.role === 'comunicaciones'
 
   const [catFilter, setCatFilter] = useState<NovedadCategoria | ''>('')
