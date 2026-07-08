@@ -213,6 +213,7 @@ export const NOVEDAD_CATEGORIA_LABEL: Record<NovedadCategoria, string> = {
   recordatorio: '🔔 Recordatorio',
   aviso_admin:  '📋 Aviso administrativo',
   urgente:      '🚨 Urgente',
+  podcast:      '🎙️ Podcast',
   ...EVENTO_TIPO_LABEL,
 }
 
@@ -227,13 +228,14 @@ export const NOVEDAD_CATEGORIA_COLOR: Record<NovedadCategoria, string> = {
   recordatorio: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
   aviso_admin:  'bg-slate-100 text-slate-700 dark:bg-slate-700/40 dark:text-slate-300',
   urgente:      'bg-red-200 text-red-900 dark:bg-red-900/50 dark:text-red-200',
+  podcast:      'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300',
   ...EVENTO_TIPO_COLOR,
 }
 
 // Lista ordenada para selects/filtros de novedades (curada)
 export const NOVEDAD_CATEGORIAS: NovedadCategoria[] = [
   'comunicado', 'recordatorio', 'aviso_admin', 'urgente',
-  'novedad', 'alerta', 'streaming', 'evento', 'cumpleanos', 'vacaciones',
+  'novedad', 'alerta', 'streaming', 'podcast', 'evento', 'cumpleanos', 'vacaciones',
   'feriado', 'jornada', 'acto', 'capacitacion', 'reunion',
   'receso', 'institucional', 'otro',
 ]
