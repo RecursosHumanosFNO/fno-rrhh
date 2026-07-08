@@ -17,6 +17,7 @@ export type PushStatus = 'unsupported' | 'denied' | 'subscribed' | 'unsubscribed
 
 export function usePushNotifications(empleadoId: string | undefined) {
   const [status, setStatus] = useState<PushStatus>('loading')
+  const [error, setError] = useState<string | null>(null)
 
   const checkStatus = useCallback(async () => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
@@ -44,20 +45,30 @@ export function usePushNotifications(empleadoId: string | undefined) {
 
   const subscribe = useCallback(async () => {
     if (!empleadoId) return
+    setError(null)
     try {
+      if (!VAPID_PUBLIC_KEY) throw new Error('VAPID key no configurada')
       const reg = (await navigator.serviceWorker.getRegistration()) ?? await navigator.serviceWorker.ready
+      if (!reg) throw new Error('Service worker no disponible')
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
       })
-      await fetch('/api/push/subscribe', {
+      const res = await fetch('/api/push/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ subscription: sub.toJSON(), empleadoId }),
       })
+      if (!res.ok) throw new Error(`Error al guardar suscripción (${res.status})`)
       setStatus('subscribed')
-    } catch {
-      setStatus(Notification.permission === 'denied' ? 'denied' : 'unsubscribed')
+    } catch (err) {
+      console.error('[PushToggle] subscribe error:', err)
+      if (Notification.permission === 'denied') {
+        setStatus('denied')
+      } else {
+        setError(err instanceof Error ? err.message : 'Error al activar notificaciones')
+        setStatus('unsubscribed')
+      }
     }
   }, [empleadoId])
 
@@ -79,5 +90,5 @@ export function usePushNotifications(empleadoId: string | undefined) {
     }
   }, [])
 
-  return { status, subscribe, unsubscribe }
+  return { status, error, subscribe, unsubscribe }
 }

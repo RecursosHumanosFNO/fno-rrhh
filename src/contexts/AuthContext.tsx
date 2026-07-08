@@ -205,14 +205,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           nombre: nombreLogin,
           email: normalEmail,
         }).then()
-        // Persistencia de sesión según "recordar"
-        if (remember) {
-          localStorage.setItem('fno_remember', '1')
-          sessionStorage.removeItem('fno_session_active')
-        } else {
-          localStorage.removeItem('fno_remember')
-          sessionStorage.setItem('fno_session_active', '1')
-        }
         return 'ok'
       })().catch(() => 'error' as const)
       return await Promise.race([attempt, timeout])
