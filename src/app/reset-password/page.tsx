@@ -9,7 +9,10 @@ import { supabase } from '@/lib/supabase'
 function ResetPasswordForm() {
   const params = useSearchParams()
   const router = useRouter()
+  // Dos flujos posibles: ?token= (reset propio iniciado por admin) o ?code= (flujo nativo Supabase desde "Olvidé mi contraseña")
+  const token = params.get('token') ?? ''
   const code = params.get('code') ?? ''
+  const mode: 'token' | 'code' | 'none' = token ? 'token' : code ? 'code' : 'none'
 
   const [status, setStatus] = useState<'loading' | 'valid' | 'invalid' | 'success'>('loading')
   const [email, setEmail] = useState('')
@@ -19,38 +22,65 @@ function ResetPasswordForm() {
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  // Intercambiar el código de Supabase por una sesión activa
   useEffect(() => {
-    if (!code) { setStatus('invalid'); return }
-    if (!supabase) { setStatus('invalid'); return }
-
-    supabase.auth.exchangeCodeForSession(code)
-      .then(({ data, error: err }) => {
-        if (err || !data.session) {
-          setStatus('invalid')
-        } else {
-          setEmail(data.session.user.email ?? '')
-          setStatus('valid')
-        }
-      })
-  }, [code])
+    if (mode === 'token') {
+      // Validar el token propio contra el backend (fno_password_resets, expira en 30 min)
+      fetch(`/api/reset-password?token=${encodeURIComponent(token)}`)
+        .then(r => r.json())
+        .then(d => {
+          if (d.valid) { setEmail(d.email ?? ''); setStatus('valid') }
+          else setStatus('invalid')
+        })
+        .catch(() => setStatus('invalid'))
+    } else if (mode === 'code') {
+      // Flujo nativo de Supabase: intercambiar el código por una sesión activa
+      if (!supabase) { setStatus('invalid'); return }
+      supabase.auth.exchangeCodeForSession(code)
+        .then(({ data, error: err }) => {
+          if (err || !data.session) setStatus('invalid')
+          else { setEmail(data.session.user.email ?? ''); setStatus('valid') }
+        })
+    } else {
+      setStatus('invalid')
+    }
+  }, [token, code, mode])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
     if (password.length < 6) { setError('La contraseña debe tener al menos 6 caracteres.'); return }
     if (password !== confirm) { setError('Las contraseñas no coinciden.'); return }
-    if (!supabase) { setError('Error de conexión.'); return }
 
     setSubmitting(true)
-    const { error: err } = await supabase.auth.updateUser({ password })
-    setSubmitting(false)
-
-    if (err) {
-      setError(err.message ?? 'Ocurrió un error. Intentá de nuevo.')
-    } else {
+    try {
+      if (mode === 'token') {
+        const res = await fetch('/api/reset-password', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, password }),
+        })
+        const d = await res.json().catch(() => ({}))
+        if (!res.ok || !d.ok) {
+          setSubmitting(false)
+          setError(d.error ?? 'Ocurrió un error. Intentá de nuevo.')
+          return
+        }
+      } else {
+        // Flujo nativo: la sesión ya quedó activa tras exchangeCodeForSession
+        if (!supabase) { setSubmitting(false); setError('Error de conexión.'); return }
+        const { error: err } = await supabase.auth.updateUser({ password })
+        if (err) {
+          setSubmitting(false)
+          setError(err.message ?? 'Ocurrió un error. Intentá de nuevo.')
+          return
+        }
+      }
+      setSubmitting(false)
       setStatus('success')
       setTimeout(() => router.push('/login'), 3000)
+    } catch {
+      setSubmitting(false)
+      setError('Error de conexión. Intentá de nuevo.')
     }
   }
 
