@@ -9,7 +9,7 @@ import { SECTORES, CARGOS_POR_SECTOR } from '@/lib/mockData'
 import {
   EMPLEADO_ESTADO_COLOR, EMPLEADO_ESTADO_LABEL, SOLICITUD_TIPO_LABEL,
   SOLICITUD_ESTADO_COLOR, SOLICITUD_ESTADO_LABEL, formatFecha, formatMes,
-  calcularAntiguedad, calcularEdad,
+  calcularAntiguedad, calcularEdad, uid,
 } from '@/lib/utils'
 import type { EmpleadoEstado, Empleado, DesvinculacionInfo, DesvinculacionMotivo } from '@/types'
 import {
@@ -26,13 +26,15 @@ export default function EmpleadoDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { user } = useAuth()
   const router = useRouter()
-  const { empleados, solicitudes, recibos, users, updateEmpleado, deleteEmpleado, setUserRole, desactivarEmpleado, reactivarEmpleado } = useData()
+  const { empleados, solicitudes, recibos, users, updateEmpleado, deleteEmpleado, setUserRole, desactivarEmpleado, reactivarEmpleado, forceSync } = useData()
 
   const [tab, setTab] = useState(0)
   const [editMode, setEditMode] = useState(false)
   const [downloadingReciboId, setDownloadingReciboId] = useState<string | null>(null)
   const [pdfViewer, setPdfViewer] = useState<{ url: string; label: string } | null>(null)
   const [resetStatus, setResetStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const [createAcctStatus, setCreateAcctStatus] = useState<'idle' | 'creating' | 'done' | 'error'>('idle')
+  const [createAcctErr, setCreateAcctErr] = useState('')
   const [roleStatus, setRoleStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
   const [confirmRole, setConfirmRole] = useState<'admin' | 'employee' | 'comunicaciones' | 'rrhh' | null>(null)
   const [showDelete, setShowDelete] = useState(false)
@@ -323,6 +325,45 @@ export default function EmpleadoDetailPage() {
       setResetStatus('error')
     }
     setTimeout(() => setResetStatus('idle'), 5000)
+  }
+
+  // Crea la cuenta de login para un empleado que no la tenía (Supabase Auth + fno_users)
+  // y le manda un link de reset para que establezca su propia contraseña.
+  async function handleCreateAccount() {
+    if (!emp?.email || !user?.empleadoId) return
+    setCreateAcctErr('')
+    setCreateAcctStatus('creating')
+    try {
+      const { data: { user: authUser } } = await supabase!.auth.getUser()
+      const res = await fetch('/api/admin/create-auth-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: emp.email,
+          userId: uid(),
+          empleadoId: id,
+          role: 'employee',
+          requesterId: authUser?.id,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!data.ok) {
+        setCreateAcctErr(data.error ?? 'No se pudo crear la cuenta de acceso.')
+        setCreateAcctStatus('error')
+        return
+      }
+      // Enviar link de reset para que el empleado defina su contraseña (30 min)
+      await fetch('/api/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emp.email }),
+      }).catch(() => {})
+      await forceSync() // recargar la lista de usuarios para que aparezca la cuenta
+      setCreateAcctStatus('done')
+    } catch {
+      setCreateAcctErr('Error de conexión. Intentá de nuevo.')
+      setCreateAcctStatus('error')
+    }
   }
 
   async function handleSetRole(newRole: 'admin' | 'employee' | 'comunicaciones' | 'rrhh') {
@@ -745,7 +786,32 @@ export default function EmpleadoDetailPage() {
 
                   </div>
                 ) : (
-                  <p className="text-sm text-slate-400">Este empleado no tiene cuenta de acceso creada.</p>
+                  <div className="space-y-3">
+                    <p className="text-sm text-slate-400">Este empleado no tiene cuenta de acceso creada.</p>
+                    {createAcctStatus === 'done' ? (
+                      <p className="text-sm text-emerald-600 dark:text-emerald-400">
+                        ✓ Cuenta creada. Se le envió un link a <strong>{emp.email}</strong> para que establezca su contraseña (válido 30 min).
+                      </p>
+                    ) : (
+                      <>
+                        <button
+                          onClick={handleCreateAccount}
+                          disabled={createAcctStatus === 'creating' || !emp.email}
+                          className="btn-primary text-sm py-2 px-4 flex items-center gap-2 disabled:opacity-60"
+                        >
+                          {createAcctStatus === 'creating'
+                            ? <><Loader2 className="w-4 h-4 animate-spin" /> Creando cuenta...</>
+                            : <><Mail className="w-4 h-4" /> Crear cuenta de acceso y enviar link</>}
+                        </button>
+                        {createAcctStatus === 'error' && (
+                          <p className="text-sm text-red-500 dark:text-red-400">{createAcctErr}</p>
+                        )}
+                        <p className="text-xs text-slate-400">
+                          Se creará la cuenta de login con el email <strong>{emp.email || '(sin email)'}</strong> y se le enviará un link para que defina su contraseña.
+                        </p>
+                      </>
+                    )}
+                  </div>
                 )}
               </div>
             )}
