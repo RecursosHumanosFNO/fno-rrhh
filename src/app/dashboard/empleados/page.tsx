@@ -264,6 +264,8 @@ function EmpleadosContent() {
       })
 
       // Crear cuenta de login en Supabase Auth (contraseña encriptada) + fno_users
+      // requesterId = auth id del admin logueado (el backend verifica que sea admin)
+      const { data: { user: authUser } } = await supabase!.auth.getUser()
       const res = await fetch('/api/admin/create-auth-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -273,6 +275,7 @@ function EmpleadosContent() {
           userId: uid(),
           empleadoId: empId,
           role: 'employee',
+          requesterId: authUser?.id,
         }),
       })
       const data = await res.json()
