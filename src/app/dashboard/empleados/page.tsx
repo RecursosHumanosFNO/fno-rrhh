@@ -140,7 +140,7 @@ export default function EmpleadosPage() {
 function EmpleadosContent() {
   const {
     empleados: allEmpleados, pendingRegistrations,
-    addEmpleado, deleteEmpleado,
+    deleteEmpleado, forceSync,
     approvePendingRegistration, rejectPendingRegistration,
   } = useData()
 
@@ -250,22 +250,40 @@ function EmpleadosContent() {
     const emailNorm = form.email.toLowerCase().trim()
 
     try {
-      const empId = addEmpleado({
-        nombre: form.nombre, apellido: form.apellido, dni: form.dni,
-        fechaNacimiento: form.fechaNacimiento, email: emailNorm,
-        telefono: form.telefono, direccion: '', foto: '', fotoCover: '', cuil: '',
-        contactoEmergencia: { nombre: '', telefono: '', relacion: '' },
-        sector: form.sector, cargo: form.cargo, cargosExtra: [],
-        fechaIngreso: form.fechaIngreso,
-        tipoContrato: form.tipoContrato,
-        jornada: form.jornada,
-        supervisor: form.supervisor,
-        estado: 'activo' as EmpleadoEstado,
-      })
-
-      // Crear cuenta de login en Supabase Auth (contraseña encriptada) + fno_users
+      const empId = uid()
       // requesterId = auth id del admin logueado (el backend verifica que sea admin)
       const { data: { user: authUser } } = await supabase!.auth.getUser()
+
+      // 1. Crear el empleado vía service role (persistencia garantizada, evita que RLS
+      //    lo bloquee en silencio y devuelve el error real —ej. DNI/email duplicado)
+      const empRes = await fetch('/api/admin/create-empleado', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requesterId: authUser?.id,
+          empleado: {
+            id: empId,
+            nombre: form.nombre, apellido: form.apellido, dni: form.dni,
+            fechaNacimiento: form.fechaNacimiento, email: emailNorm,
+            telefono: form.telefono, direccion: '', cuil: '',
+            contactoEmergencia: { nombre: '', telefono: '', relacion: '' },
+            sector: form.sector, cargo: form.cargo, cargosExtra: [],
+            fechaIngreso: form.fechaIngreso,
+            tipoContrato: form.tipoContrato,
+            jornada: form.jornada,
+            supervisor: form.supervisor,
+            estado: 'activo' as EmpleadoEstado,
+          },
+        }),
+      })
+      const empData = await empRes.json().catch(() => ({}))
+      if (!empData.ok) {
+        setCreating(false)
+        setCreateError(empData.error ?? 'No se pudo crear el empleado.')
+        return
+      }
+
+      // 2. Crear cuenta de login en Supabase Auth (contraseña encriptada) + fno_users
       const res = await fetch('/api/admin/create-auth-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -279,6 +297,9 @@ function EmpleadosContent() {
         }),
       })
       const data = await res.json()
+
+      // Cargar el empleado recién creado en el estado local (viene de la base)
+      await forceSync()
 
       if (!data.ok) {
         // El empleado quedó creado pero la cuenta de login falló: avisar

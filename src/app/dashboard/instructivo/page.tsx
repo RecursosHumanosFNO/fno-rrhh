@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import {
   BookOpen, Printer, LogIn, UserPlus, KeyRound, FileText, ClipboardList,
   Megaphone, Calendar, HeadphonesIcon, User, Mail, Bell, AlertCircle,
-  CheckCircle2, Sparkles, Pin, Paperclip, Image as ImageIcon, Upload,
+  CheckCircle2, Pin, Paperclip, Image as ImageIcon, Upload,
   Users, Shield, BarChart2, UserMinus, UserCheck, ChevronRight, Info,
   Settings, Eye, Edit2, Trash2, Lock, Download,
 } from 'lucide-react'
@@ -64,8 +64,8 @@ function GuiaEmpleados() {
         <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">👋 Bienvenido/a al Portal</h2>
         <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
           Este es el portal interno de la <strong>Fundación Neuquén Oeste</strong>. Desde acá podés
-          consultar tus recibos, gestionar solicitudes, ver el calendario institucional, comunicarte con RRHH,
-          hablar con el asistente de IA y mantenerte al día con las novedades.
+          consultar tus recibos, gestionar solicitudes, ver el calendario institucional, comunicarte con RRHH
+          y mantenerte al día con las novedades.
         </p>
       </section>
 
@@ -145,25 +145,7 @@ function GuiaEmpleados() {
         <Note type="warn">Si en el menú lateral aparece un triángulo ⚠️ naranja al lado de "Mi Perfil", significa que faltan datos por completar. El banner en la parte superior del perfil te indica exactamente qué campos faltan.</Note>
       </Section>
 
-      <Section icon={Sparkles} number={8} title="Asistente de IA ✨" color="purple">
-        <p>El portal tiene un asistente virtual inteligente que podés usar para consultas rápidas. Lo encontrás en el <strong>botón brillante</strong> ✨ abajo a la derecha de la pantalla.</p>
-        <p className="font-medium mt-1">¿Qué puede hacer?</p>
-        <ul className="list-disc pl-6 space-y-1.5">
-          <li>Responderte dudas sobre <strong>licencias, contratos, políticas de RRHH</strong>.</li>
-          <li>Decirte <strong>qué hay en el calendario</strong>: feriados, jornadas, eventos del mes.</li>
-          <li>Decirte <strong>cuándo cumple años</strong> alguien del equipo 🎂.</li>
-          <li>Explicarte <strong>cómo usar el portal</strong> paso a paso.</li>
-          <li>Generar <strong>botones de navegación</strong> directa a cualquier sección.</li>
-        </ul>
-        <p className="font-medium mt-1">Lo que <em>no</em> hace:</p>
-        <ul className="list-disc pl-6 space-y-1.5">
-          <li>No accede a tus recibos, solicitudes ni datos de otros empleados — solo cumpleaños y eventos del calendario.</li>
-          <li>No puede realizar acciones: solo informa y orienta.</li>
-        </ul>
-        <Note type="tip">Podés usar los botones de sugerencia rápida o escribir cualquier pregunta en el chat. La IA conoce el contexto del portal y responde en español.</Note>
-      </Section>
-
-      <Section icon={Bell} number={9} title="Notificaciones">
+      <Section icon={Bell} number={8} title="Notificaciones">
         <p>La campana 🔔 arriba a la derecha muestra avisos en tiempo real:</p>
         <ul className="list-disc pl-6 space-y-1.5">
           <li>Nueva novedad o comunicado publicado.</li>
@@ -286,14 +268,6 @@ function GuiaComunicaciones() {
         </ul>
       </Section>
 
-      <Section icon={Sparkles} number={6} title="La IA conoce tus eventos" color="purple">
-        <p>El asistente de IA del portal lee en tiempo real los eventos del calendario. Esto significa que:</p>
-        <ul className="list-disc pl-6 space-y-1.5">
-          <li>Si cargás una jornada nueva, la IA ya puede responder sobre ella en el chat.</li>
-          <li>Si un empleado pregunta "¿qué pasa este mes?", la IA responde con los eventos reales que vos cargaste.</li>
-          <li>La IA también sabe los cumpleaños del equipo (solo día y mes, sin año).</li>
-        </ul>
-      </Section>
     </div>
   )
 }
@@ -458,7 +432,6 @@ function GuiaAdmin() {
       <Section icon={Lock} number={9} title="Privacidad y seguridad" color="red">
         <ul className="list-disc pl-6 space-y-2">
           <li>Nunca compartas con empleados información de otros: salarios, recibos, estado contractual, datos personales.</li>
-          <li>El asistente de IA está configurado para <strong>no revelar datos privados</strong> — pero si alguien te pregunta por datos sensibles, es tu responsabilidad no compartirlos.</li>
           <li>Si necesitás revocar el acceso de alguien urgente, cambiá su rol a <strong>"Empleado"</strong> o desvinculalo desde el portal.</li>
           <li>Las contraseñas son hasheadas en Supabase — nunca se almacenan en texto plano.</li>
           <li>Ante cualquier sospecha de acceso no autorizado, comunicate con el responsable técnico del portal.</li>
