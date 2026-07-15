@@ -93,6 +93,12 @@ export async function GET(req: NextRequest) {
   const enviados: string[] = []
   const fechaNotif = new Date().toISOString().slice(0, 10)
 
+  // IDs de los admins: en vez de la notif personal de "felicitá a X", reciben un
+  // único aviso resumen (soloAdmin). Evita que el panel de notif se llene.
+  const { data: adminUsers } = await sb
+    .from('fno_users').select('empleado_id').eq('role', 'admin')
+  const adminIds = new Set((adminUsers ?? []).map(u => u.empleado_id as string))
+
   for (const cumpleanero of cumpleaneros) {
     const nombre = cumpleanero.nombre as string
     const apellido = cumpleanero.apellido as string
@@ -131,17 +137,19 @@ export async function GET(req: NextRequest) {
     const otros = empleados.filter(e => e.id !== id)
 
     for (const otro of otros) {
-      // Notif in-app
-      await sb.from('fno_notifs').insert({
-        id: crypto.randomUUID(),
-        texto: `🎂 ¡Hoy es el cumpleaños de ${nombre} ${apellido}! Aprovechá para felicitarlo/a.`,
-        tipo: 'novedad',
-        leida: false,
-        fecha: fechaNotif,
-        empleado_id: otro.id as string,
-      }).then(({ error: e }) => {
-        if (e) console.error('[cron/cumpleanos] notif equipo:', e)
-      })
+      // Notif in-app personal — los admins la reciben como resumen (más abajo), no acá
+      if (!adminIds.has(otro.id as string)) {
+        await sb.from('fno_notifs').insert({
+          id: crypto.randomUUID(),
+          texto: `🎂 ¡Hoy es el cumpleaños de ${nombre} ${apellido}! Aprovechá para felicitarlo/a.`,
+          tipo: 'novedad',
+          leida: false,
+          fecha: fechaNotif,
+          empleado_id: otro.id as string,
+        }).then(({ error: e }) => {
+          if (e) console.error('[cron/cumpleanos] notif equipo:', e)
+        })
+      }
 
       // Email (solo si tiene email)
       if (transporter && otro.email) {
@@ -162,6 +170,19 @@ export async function GET(req: NextRequest) {
         }).catch(e => console.error('[cron/cumpleanos] email equipo:', e))
       }
     }
+
+    // ── 4. Aviso resumen para los admins (una sola notif, no una por empleado) ──
+    await sb.from('fno_notifs').insert({
+      id: crypto.randomUUID(),
+      texto: `🎂 Hoy cumple ${nombre} ${apellido}. Se envió el aviso de cumpleaños a todo el equipo.`,
+      tipo: 'sistema',
+      leida: false,
+      fecha: fechaNotif,
+      empleado_id: '',
+      solo_admin: true,
+    }).then(({ error: e }) => {
+      if (e) console.error('[cron/cumpleanos] notif resumen admin:', e)
+    })
 
     enviados.push(`${nombre} ${apellido}`)
   }
