@@ -153,9 +153,11 @@ function mapSupabaseToSolicitud(row: Record<string, unknown>): Solicitud {
 function mapSolicitudToSupabase(s: Solicitud) {
   return {
     id: s.id, empleado_id: s.empleadoId, tipo: s.tipo,
-    fecha_inicio: s.fechaInicio, fecha_fin: s.fechaFin ?? '',
+    // Fechas opcionales: null (no ''), porque una columna date rechaza el string vacío
+    // y haría fallar todo el insert en silencio.
+    fecha_inicio: s.fechaInicio || null, fecha_fin: s.fechaFin || null,
     descripcion: s.descripcion, estado: s.estado,
-    fecha_creacion: s.fechaCreacion, fecha_resolucion: s.fechaResolucion ?? '',
+    fecha_creacion: s.fechaCreacion, fecha_resolucion: s.fechaResolucion || null,
     comentario_admin: s.comentarioAdmin ?? '', adjunto: s.adjunto ?? '',
   }
 }
@@ -339,16 +341,23 @@ const EVENTOS_FIJOS_IDS = new Set(initial.eventos.map(e => e.id))
 // Persiste cambios de un empleado vía service role (/api/perfil), bypaseando RLS.
 // Los upserts client-side con anon key se bloquean silenciosamente, así que las
 // escrituras importantes (estado, desvinculación) deben ir por el endpoint.
-async function persistEmpleadoViaApi(empleadoId: string, data: Record<string, unknown>) {
-  if (!supabase) return
+// Devuelve true si el server confirmó el guardado. Los callers pueden avisar/revertir
+// si devuelve false, en vez de dejar el estado local desincronizado en silencio.
+async function persistEmpleadoViaApi(empleadoId: string, data: Record<string, unknown>): Promise<boolean> {
+  if (!supabase) return false
   try {
     const { data: { user: authUser } } = await supabase.auth.getUser()
-    await fetch('/api/perfil', {
+    const res = await fetch('/api/perfil', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ authId: authUser?.id, empleadoId, data }),
     })
-  } catch { /* el estado local ya se actualizó; reintenta al recargar */ }
+    if (!res.ok) console.error('[perfil] persistEmpleadoViaApi falló:', res.status)
+    return res.ok
+  } catch (err) {
+    console.error('[perfil] persistEmpleadoViaApi error de red:', err)
+    return false
+  }
 }
 
 // ── Realtime upsert helpers ────────────────────────────────────────────────────
@@ -632,20 +641,29 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   // Desactiva al empleado: guarda el registro de desvinculación + pone estado=inactivo
   const desactivarEmpleado = useCallback((id: string, info: DesvinculacionInfo) => {
+    let prevEmp: Empleado | undefined
     setEmpleados(prev => {
-      const updated = prev.map(e => e.id === id
+      prevEmp = prev.find(e => e.id === id)
+      return prev.map(e => e.id === id
         ? { ...e, estado: 'inactivo' as EmpleadoEstado, desvinculacion: info }
         : e
       )
-      // Persistir vía service role (RLS bloquea upserts client-side)
-      persistEmpleadoViaApi(id, { estado: 'inactivo', desvinculacion: info })
-      return updated
+    })
+    // Persistir vía service role (RLS bloquea upserts client-side). Si falla, revertir.
+    persistEmpleadoViaApi(id, { estado: 'inactivo', desvinculacion: info }).then(ok => {
+      if (!ok && prevEmp) {
+        setEmpleados(prev => prev.map(e => e.id === id ? prevEmp! : e))
+        if (typeof window !== 'undefined') window.alert('No se pudo desactivar al empleado en el servidor. Intentá de nuevo.')
+      }
     })
   }, [])
 
   // Reactiva al empleado: mueve la baja actual al historial (no se borra) + estado=activo
   const reactivarEmpleado = useCallback((id: string) => {
+    let prevEmp: Empleado | undefined
+    let full: Empleado | undefined
     setEmpleados(prev => {
+      prevEmp = prev.find(e => e.id === id)
       const updated = prev.map(e => {
         if (e.id !== id) return e
         const historial = [
@@ -659,14 +677,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           historialDesvinculaciones: historial.length > 0 ? historial : undefined,
         }
       })
-      const full = updated.find(e => e.id === id)
-      // Persistir vía service role (RLS bloquea upserts client-side)
-      persistEmpleadoViaApi(id, {
-        estado: 'activo',
-        desvinculacion: null,                              // limpiar baja activa
-        historial_desvinculaciones: full?.historialDesvinculaciones ?? null,
-      })
+      full = updated.find(e => e.id === id)
       return updated
+    })
+    // Persistir vía service role (RLS bloquea upserts client-side). Si falla, revertir.
+    persistEmpleadoViaApi(id, {
+      estado: 'activo',
+      desvinculacion: null,                              // limpiar baja activa
+      historial_desvinculaciones: full?.historialDesvinculaciones ?? null,
+    }).then(ok => {
+      if (!ok && prevEmp) {
+        setEmpleados(prev => prev.map(e => e.id === id ? prevEmp! : e))
+        if (typeof window !== 'undefined') window.alert('No se pudo reactivar al empleado en el servidor. Intentá de nuevo.')
+      }
     })
   }, [])
 
@@ -1097,20 +1120,35 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
     const userId = uid()
     const nuevoUser: User = { id: userId, email: reg.email, role: 'employee', empleadoId }
+    // Update optimista
     setEmpleados(prev => [...prev, nuevoEmpleado])
     setUsers(prev => [...prev, nuevoUser])
     setPending(prev => prev.filter(p => p.id !== id))
-    addNotification({ texto: `Acceso aprobado para ${reg.nombre} ${reg.apellido}`, tipo: 'registro', soloAdmin: true })
+
     if (supabase) {
-      supabase.from('fno_empleados').insert(mapEmpleadoToSupabase(nuevoEmpleado)).then(({ error }) => {
-        if (error) console.error('[supabase] insert fno_empleados (approve):', error)
-      })
-      supabase.from('fno_pending').delete().eq('id', id).then()
-      // Crear usuario en Supabase Auth + fno_users via ruta server-side (contraseña encriptada)
-      // Obtener el auth_id del admin desde la sesión activa de Supabase
       const { data: { session } } = await supabase.auth.getSession()
       const requesterId = session?.user?.id ?? ''
-      fetch('/api/admin/create-auth-user', {
+
+      // 1. Crear el empleado vía service role (evita que RLS bloquee el insert
+      //    client-side en silencio y deje un login huérfano sin empleado)
+      const empRes = await fetch('/api/admin/create-empleado', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requesterId, empleado: nuevoEmpleado }),
+      }).then(r => r.json()).catch(() => ({ ok: false, error: 'Error de conexión' }))
+
+      if (!empRes.ok) {
+        // Revertir el optimista: el registro sigue pendiente para reintentar
+        console.error('[approve] create-empleado falló:', empRes.error)
+        setEmpleados(prev => prev.filter(e => e.id !== empleadoId))
+        setUsers(prev => prev.filter(u => u.id !== userId))
+        setPending(prev => prev.some(p => p.id === id) ? prev : [reg, ...prev])
+        addNotification({ texto: `No se pudo aprobar a ${reg.nombre} ${reg.apellido}: ${empRes.error}`, tipo: 'sistema', soloAdmin: true })
+        return
+      }
+
+      // 2. Crear la cuenta de login (Supabase Auth + fno_users, contraseña encriptada)
+      await fetch('/api/admin/create-auth-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: reg.email, password: reg.password, userId, empleadoId, role: 'employee', requesterId }),
@@ -1118,9 +1156,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (!r.ok) {
           const err = await r.json().catch(() => ({}))
           console.error('[auth] create-auth-user falló:', r.status, err)
+          addNotification({ texto: `${reg.nombre} se creó como empleado, pero no se pudo crear su cuenta de login. Usá "Crear cuenta de acceso" en su ficha.`, tipo: 'sistema', soloAdmin: true })
         }
       }).catch(err => console.error('[auth] create-auth-user error de red:', err))
+
+      // 3. Quitar de pendientes en la base (recién ahora que el empleado sí persistió)
+      supabase.from('fno_pending').delete().eq('id', id).then()
     }
+
+    addNotification({ texto: `Acceso aprobado para ${reg.nombre} ${reg.apellido}`, tipo: 'registro', soloAdmin: true })
     sendEmail('registration_approved', { nombre: reg.nombre, email: reg.email })
   }, [pendingRegistrations, addNotification])
 

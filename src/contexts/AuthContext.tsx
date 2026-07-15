@@ -55,32 +55,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // porque Supabase mantiene un lock interno y se produce un deadlock
       // (ej: updateUser/signIn quedan colgados). Al diferir, el lock se libera.
       setTimeout(async () => {
-        if (session?.user) {
-          // Si no hay "recordar sesión" activo ni marca de sesión activa en esta pestaña,
-          // significa que el usuario cerró el navegador sin marcar "recordar" y la sesión
-          // quedó guardada en localStorage. La invalidamos.
-          const remember = localStorage.getItem('fno_remember') === '1'
-          const sessionActive = sessionStorage.getItem('fno_session_active') === '1'
-          if (!remember && !sessionActive) {
-            await supabase!.auth.signOut()
-            setAuth({ user: null, empleado: null, isAuthenticated: false })
-            setIsLoading(false)
-            return
-          }
-          const user = await loadProfile(session.user.id)
-          if (user) {
-            setAuth(prev => ({
-              user,
-              empleado: prev.empleado?.id === user.empleadoId ? prev.empleado : null,
-              isAuthenticated: true,
-            }))
+        // try/finally: si cualquier await lanza (error de red/RLS en loadProfile o
+        // signOut), igual bajamos isLoading — de lo contrario el spinner queda infinito.
+        try {
+          if (session?.user) {
+            // Si no hay "recordar sesión" activo ni marca de sesión activa en esta pestaña,
+            // significa que el usuario cerró el navegador sin marcar "recordar" y la sesión
+            // quedó guardada en localStorage. La invalidamos.
+            const remember = localStorage.getItem('fno_remember') === '1'
+            const sessionActive = sessionStorage.getItem('fno_session_active') === '1'
+            if (!remember && !sessionActive) {
+              await supabase!.auth.signOut()
+              setAuth({ user: null, empleado: null, isAuthenticated: false })
+              return
+            }
+            const user = await loadProfile(session.user.id)
+            if (user) {
+              setAuth(prev => ({
+                user,
+                empleado: prev.empleado?.id === user.empleadoId ? prev.empleado : null,
+                isAuthenticated: true,
+              }))
+            } else {
+              setAuth({ user: null, empleado: null, isAuthenticated: false })
+            }
           } else {
             setAuth({ user: null, empleado: null, isAuthenticated: false })
           }
-        } else {
-          setAuth({ user: null, empleado: null, isAuthenticated: false })
+        } catch (err) {
+          console.error('[auth] error resolviendo sesión:', err)
+        } finally {
+          setIsLoading(false)
         }
-        setIsLoading(false)
       }, 0)
     })
 
@@ -102,7 +108,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
       }))
     }
-  }, [empleados]) // eslint-disable-line react-hooks/exhaustive-deps
+    // Depende también de auth.user: si `empleados` sincroniza ANTES de que
+    // onAuthStateChange setee el user, sin esta dep el empleado quedaría en null.
+  }, [empleados, auth.user?.empleadoId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Carga foto/fotoCover del usuario logueado (no se incluyen en el fetch masivo para ahorrar bandwidth).
   // Aplica el cache de localStorage inmediatamente para evitar el delay visible,
