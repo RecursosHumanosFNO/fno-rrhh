@@ -738,7 +738,7 @@ export default function ComunicacionesPage() {
       {/* Modal enviar push */}
       {showPush && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => { setShowPush(false); setPushResult(null) }} />
+          <div className="absolute inset-0 bg-black/50" />
           <div className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
