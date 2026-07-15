@@ -290,12 +290,14 @@ export default function SolicitudesPage() {
   const [showNueva, setShowNueva] = useState(false)
   const [comments, setComments] = useState<Record<string, string>>({})
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [resolviendo, setResolviendo] = useState<string | null>(null) // id en curso (evita doble-submit)
   const [editComment, setEditComment] = useState('')
   const [editEstado, setEditEstado] = useState<'aprobado' | 'rechazado'>('aprobado')
   const [showMensaje, setShowMensaje] = useState(false)
   const [mensajeForm, setMensajeForm] = useState({ empleadoId: '', asunto: '', mensaje: '' })
   const [enviandoMensaje, setEnviandoMensaje] = useState(false)
   const [mensajeOk, setMensajeOk] = useState(false)
+  const [mensajeEmailOk, setMensajeEmailOk] = useState(true)
   const [lastMensajeSnap, setLastMensajeSnap] = useState<{ emp: Empleado; asunto: string; mensaje: string } | null>(null)
 
   // Estado para pedidos a RRHH (tickets)
@@ -378,12 +380,15 @@ export default function SolicitudesPage() {
   }
 
   function handleApprove(id: string) {
+    if (resolviendo) return // ya hay una acción en curso (anti doble-click)
     const sol = solicitudes.find(s => s.id === id)
     const emp = sol ? empleados.find(e => e.id === sol.empleadoId) : undefined
     if (emp?.estado === 'inactivo') {
       alert('No se puede aprobar: el empleado está dado de baja.')
       return
     }
+    setResolviendo(id)
+    setTimeout(() => setResolviendo(null), 1500)
     approveSolicitud(id, comments[id] ?? '')
     setComments(prev => { const n = { ...prev }; delete n[id]; return n })
     setExpandedId(null)
@@ -405,6 +410,9 @@ export default function SolicitudesPage() {
   }
 
   function handleReject(id: string) {
+    if (resolviendo) return // ya hay una acción en curso (anti doble-click)
+    setResolviendo(id)
+    setTimeout(() => setResolviendo(null), 1500)
     rejectSolicitud(id, comments[id] ?? '')
     setComments(prev => { const n = { ...prev }; delete n[id]; return n })
     setExpandedId(null)
@@ -422,14 +430,16 @@ export default function SolicitudesPage() {
     const emp = empleados.find(e => e.id === mensajeForm.empleadoId)
     // Notificación en la app
     addNotification({ texto: `📋 RRHH: ${mensajeForm.asunto}`, tipo: 'sistema', empleadoId: mensajeForm.empleadoId })
-    // Email al empleado
+    // Email al empleado — registramos si realmente se envió para no prometer de más
+    let emailOk = false
     if (emp?.email) {
-      await fetch('/api/notify', {
+      emailOk = await fetch('/api/notify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'mensaje_rrhh', data: { email: emp.email, nombre: emp.nombre, asunto: mensajeForm.asunto, mensaje: mensajeForm.mensaje } }),
-      }).catch(() => {})
+      }).then(r => r.ok).catch(() => false)
     }
+    setMensajeEmailOk(emailOk)
     setEnviandoMensaje(false)
     if (emp) setLastMensajeSnap({ emp, asunto: mensajeForm.asunto, mensaje: mensajeForm.mensaje })
     setMensajeOk(true)
@@ -729,10 +739,10 @@ export default function SolicitudesPage() {
                           onChange={e => setComments(prev => ({ ...prev, [sol.id]: e.target.value }))}
                         />
                         <div className="flex gap-2">
-                          <button onClick={() => handleApprove(sol.id)} className="btn-success flex-1 justify-center">
+                          <button onClick={() => handleApprove(sol.id)} disabled={resolviendo === sol.id} className="btn-success flex-1 justify-center disabled:opacity-60">
                             <CheckCircle2 className="w-4 h-4" /> Aprobar
                           </button>
-                          <button onClick={() => handleReject(sol.id)} className="btn-danger flex-1 justify-center">
+                          <button onClick={() => handleReject(sol.id)} disabled={resolviendo === sol.id} className="btn-danger flex-1 justify-center disabled:opacity-60">
                             <XCircle className="w-4 h-4" /> Rechazar
                           </button>
                         </div>
@@ -815,7 +825,7 @@ export default function SolicitudesPage() {
 
       {/* Modal — Enviar mensaje a empleado */}
       {showMensaje && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center sm:justify-center sm:p-4" onClick={() => { if (!enviandoMensaje) setShowMensaje(false) }}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center sm:justify-center sm:p-4">
           <div className="card w-full sm:max-w-lg animate-scale-in rounded-t-2xl rounded-b-none sm:rounded-2xl" onClick={e => e.stopPropagation()}>
             <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <p className="section-title flex items-center gap-2"><Bell className="w-4 h-4" /> Enviar mensaje a empleado</p>
@@ -827,7 +837,11 @@ export default function SolicitudesPage() {
                   <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
                   <div>
                     <p className="font-semibold text-slate-800 dark:text-slate-100">¡Mensaje enviado!</p>
-                    <p className="text-sm text-slate-500 mt-1">El empleado recibió la notificación y el email.</p>
+                    <p className="text-sm text-slate-500 mt-1">
+                      {mensajeEmailOk
+                        ? 'El empleado recibió la notificación en la app y el email.'
+                        : 'Se envió la notificación en la app. El email puede no haberse entregado.'}
+                    </p>
                   </div>
                   <div className="flex gap-2 justify-center">
                     {lastMensajeSnap && (
@@ -963,7 +977,7 @@ export default function SolicitudesPage() {
 
       {/* Nueva solicitud modal — bottom sheet en mobile, centrado en desktop */}
       {showNueva && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center sm:justify-center sm:p-4" onClick={() => setShowNueva(false)}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center sm:justify-center sm:p-4">
           <div className="card w-full sm:max-w-lg max-h-[90vh] sm:max-h-[85vh] overflow-y-auto animate-scale-in rounded-t-2xl rounded-b-none sm:rounded-2xl" onClick={e => e.stopPropagation()}>
             <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <p className="section-title">Nueva Solicitud</p>
@@ -1222,7 +1236,7 @@ function PedidosRRHH({ isAdmin, user, filteredTickets, baseTickets, ticketsActiv
 
       {/* Modal nuevo pedido */}
       {showNuevoTicket && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center sm:justify-center sm:p-4" onClick={() => setShowNuevoTicket(false)}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center sm:justify-center sm:p-4">
           <div className="card w-full sm:max-w-lg max-h-[90vh] sm:max-h-[85vh] overflow-y-auto animate-scale-in rounded-t-2xl rounded-b-none sm:rounded-2xl" onClick={e => e.stopPropagation()}>
             <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <p className="section-title">Nuevo Pedido a RRHH</p>

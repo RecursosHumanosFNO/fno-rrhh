@@ -240,6 +240,7 @@ export default function EmpleadoDetailPage() {
 
   // Elimina la foto del empleado — también borra de Storage si aplica
   function handleDeletePhoto() {
+    if (!window.confirm('¿Eliminar la foto de perfil de este empleado? Esta acción no se puede deshacer.')) return
     const current = profileFoto
     if (current?.includes('fno-media')) {
       supabase?.storage.from('fno-media').remove([`fotos/${emp!.id}/perfil.jpg`]).catch(() => {})
@@ -1130,7 +1131,7 @@ export default function EmpleadoDetailPage() {
 
       {/* ── Modal DESACTIVAR empleado ──────────────────────────────────── */}
       {showDesactivar && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center sm:justify-center sm:p-4" onClick={() => setShowDesactivar(false)}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center sm:justify-center sm:p-4">
           <div className="card w-full sm:max-w-lg max-h-[90vh] overflow-y-auto animate-scale-in rounded-t-2xl rounded-b-none sm:rounded-2xl" onClick={e => e.stopPropagation()}>
             <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-2">

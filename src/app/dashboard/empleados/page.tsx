@@ -702,7 +702,7 @@ function EmpleadosContent() {
 
       {/* Modal Nuevo Empleado */}
       {showNuevo && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { if (!creating) { setShowNuevo(false); setCreateError('') } }}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="card w-full max-w-lg max-h-[85vh] overflow-y-auto animate-scale-in" onClick={e => e.stopPropagation()}>
             <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <p className="section-title">Nuevo Empleado</p>

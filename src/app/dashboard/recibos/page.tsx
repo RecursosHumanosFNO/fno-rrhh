@@ -932,7 +932,7 @@ export default function RecibosPage() {
           MODAL: CARGA INDIVIDUAL
       ══════════════════════════════════════════════════════════════ */}
       {showUpload && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { if (uploadStatus !== 'uploading') setShowUpload(false) }}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="card w-full max-w-md animate-scale-in" onClick={e => e.stopPropagation()}>
             <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <p className="section-title">Subir Recibo de Sueldo</p>
@@ -1020,7 +1020,7 @@ export default function RecibosPage() {
           MODAL: CARGA MASIVA
       ══════════════════════════════════════════════════════════════ */}
       {showBulk && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => { if (bulkStep !== 'uploading') resetBulk() }}>
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="card w-full max-w-3xl max-h-[90vh] flex flex-col animate-scale-in" onClick={e => e.stopPropagation()}>
 
             {/* Header */}
