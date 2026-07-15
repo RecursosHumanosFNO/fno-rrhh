@@ -11,6 +11,7 @@ import {
   REGISTRO_NOVEDAD_CATEGORIAS,
   REGISTRO_NOVEDAD_CATEGORIA_COLOR,
   formatFecha,
+  hoyAR,
 } from '@/lib/utils'
 import type { RegistroNovedad, RegistroNovedadCategoria, Empleado } from '@/types'
 import {
@@ -50,7 +51,7 @@ const emptyForm: FormState = {
   empleadoNombre: '',
   sector: '',
   cargo: '',
-  fecha: new Date().toISOString().slice(0, 10),
+  fecha: hoyAR(),
   horaTipo: 'sin_hora',
   hora: '',
   horaDesde: '',

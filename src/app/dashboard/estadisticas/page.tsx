@@ -4,7 +4,7 @@ import { useMemo, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useRouter } from 'next/navigation'
-import { SOLICITUD_TIPO_LABEL, REGISTRO_NOVEDAD_CATEGORIA_LABEL } from '@/lib/utils'
+import { SOLICITUD_TIPO_LABEL, REGISTRO_NOVEDAD_CATEGORIA_LABEL, hoyAR } from '@/lib/utils'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, Legend,
@@ -216,7 +216,7 @@ export default function EstadisticasPage() {
   // ── Exportar informe Excel completo ───────────────────────────────────────
   function exportarInforme() {
     const wb = XLSX.utils.book_new()
-    const fecha = new Date().toISOString().slice(0, 10)
+    const fecha = hoyAR()
     const MESES_LABEL = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 
     // ── Helpers de sección ────────────────────────────────────────────────
@@ -468,7 +468,7 @@ export default function EstadisticasPage() {
     applyRowStripes(ws, rows.length, headers.length)
     XLSX.utils.book_append_sheet(wb, ws, 'Empleados')
 
-    const fecha = new Date().toISOString().slice(0, 10)
+    const fecha = hoyAR()
     XLSX.writeFile(wb, `empleados_${fecha}.xlsx`)
   }
 

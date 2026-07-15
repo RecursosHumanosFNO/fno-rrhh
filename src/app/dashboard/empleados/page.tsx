@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { SECTORES } from '@/lib/mockData'
 import {
   EMPLEADO_ESTADO_COLOR, EMPLEADO_ESTADO_LABEL, formatFecha, calcularAntiguedad, calcularEdad, uid,
+  hoyAR,
 } from '@/lib/utils'
 import {
   Search, Users, Plus, Download, LayoutGrid, List,
@@ -79,7 +80,7 @@ function exportarExcel(empleados: Empleado[]) {
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, 'Empleados FNO')
 
-  const hoy = new Date().toISOString().slice(0, 10)
+  const hoy = hoyAR()
   XLSX.writeFile(wb, `empleados_fno_${hoy}.xlsx`)
 }
 
@@ -200,7 +201,7 @@ function EmpleadosContent() {
   const [form, setForm] = useState({
     nombre: '', apellido: '', dni: '', email: '', telefono: '',
     fechaNacimiento: '', sector: '', cargo: '', tipoContrato: 'Contrato' as const,
-    jornada: 'Full Time' as const, fechaIngreso: new Date().toISOString().slice(0, 10),
+    jornada: 'Full Time' as const, fechaIngreso: hoyAR(),
     supervisor: '', password: 'cambiar123',
   })
 
@@ -317,7 +318,7 @@ function EmpleadosContent() {
       setForm({
         nombre: '', apellido: '', dni: '', email: '', telefono: '',
         fechaNacimiento: '', sector: '', cargo: '', tipoContrato: 'Contrato',
-        jornada: 'Full Time', fechaIngreso: new Date().toISOString().slice(0, 10),
+        jornada: 'Full Time', fechaIngreso: hoyAR(),
         supervisor: '', password: 'cambiar123',
       })
     } catch {

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import React, { useState, useRef, useCallback, useMemo } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
-import { formatFecha, formatMes } from '@/lib/utils'
+import { formatFecha, formatMes, hoyAR } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import * as XLSX from 'xlsx'
 import {
@@ -63,7 +63,7 @@ export default function RecibosPage() {
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc')
 
   function exportarAuditoria() {
-    const hoy = new Date().toISOString().slice(0, 10)
+    const hoy = hoyAR()
     const rows = firmas
       .map(f => {
         const emp = empleados.find(e => e.id === f.empleadoId)
@@ -172,7 +172,7 @@ export default function RecibosPage() {
     doc.setTextColor(...GRAY); doc.setFontSize(7.5); doc.setFont('helvetica', 'normal')
     doc.text(`Generado el ${now} · Portal RRHH · Fundación Neuquén Oeste · Documento de auditoría interna`, 14, 291)
 
-    const hoy = new Date().toISOString().slice(0, 10)
+    const hoy = hoyAR()
     doc.save(`auditoria_firmas_${hoy}.pdf`)
   }
 
@@ -293,7 +293,7 @@ export default function RecibosPage() {
       mes: uploadForm.mes,
       anio: uploadForm.anio,
       archivo: fileName,
-      fechaSubida: new Date().toISOString().slice(0, 10),
+      fechaSubida: hoyAR(),
       monto: 0,
       archivoUrl: storagePath,
       concepto: uploadForm.concepto,
@@ -397,7 +397,7 @@ export default function RecibosPage() {
           mes: bulkMes,
           anio: bulkAnio,
           archivo: `recibo_${emp?.apellido?.toLowerCase() ?? 'emp'}_${MESES[bulkMes - 1].toLowerCase()}_${bulkAnio}.pdf`,
-          fechaSubida: new Date().toISOString().slice(0, 10),
+          fechaSubida: hoyAR(),
           monto: 0,
           archivoUrl: storagePath,
           concepto: bulkConcepto,

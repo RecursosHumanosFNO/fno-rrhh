@@ -15,6 +15,16 @@ export function parseLocalDate(dateStr: string): Date {
   return new Date(y, m - 1, d)
 }
 
+/**
+ * Fecha de HOY en Argentina (UTC-3) como "YYYY-MM-DD".
+ * `new Date().toISOString()` da la fecha en UTC: entre las 21 y 24 hs de Argentina
+ * ya devuelve el día siguiente, adelantando fechas de creación un día.
+ */
+export function hoyAR(): string {
+  const ar = new Date(Date.now() - 3 * 60 * 60 * 1000)
+  return ar.toISOString().slice(0, 10)
+}
+
 export function formatFecha(fecha: string): string {
   if (!fecha) return '-'
   const d = parseLocalDate(fecha)
