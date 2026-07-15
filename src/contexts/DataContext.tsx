@@ -8,7 +8,7 @@ import type {
   DesvinculacionInfo, RegistroNovedad, RegistroNovedadCategoria,
 } from '@/types'
 import * as initial from '@/lib/mockData'
-import { uid, SOLICITUD_TIPO_LABEL } from '@/lib/utils'
+import { uid, hoyAR, SOLICITUD_TIPO_LABEL } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 
 interface DataContextType {
@@ -600,7 +600,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   // ── Notificaciones ─────────────────────────────────────────────────────────
   const addNotification = useCallback((n: Omit<AppNotification, 'id' | 'fecha' | 'leida'>) => {
-    const notif: AppNotification = { ...n, id: uid(), fecha: new Date().toISOString().slice(0, 10), leida: false }
+    const notif: AppNotification = { ...n, id: uid(), fecha: hoyAR(), leida: false }
     setNotifications(prev => [notif, ...prev])
     if (supabase) {
       const sb = supabase
@@ -702,7 +702,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   // ── Solicitudes ────────────────────────────────────────────────────────────
   const addSolicitud = useCallback((s: Omit<Solicitud, 'id' | 'fechaCreacion' | 'estado'>) => {
-    const nueva: Solicitud = { ...s, id: uid(), estado: 'pendiente', fechaCreacion: new Date().toISOString().slice(0, 10) }
+    const nueva: Solicitud = { ...s, id: uid(), estado: 'pendiente', fechaCreacion: hoyAR() }
     const tipoLabel = SOLICITUD_TIPO_LABEL[s.tipo] ?? s.tipo
     setSolicitudes(prev => [nueva, ...prev])
     // Confirmación al empleado
@@ -731,7 +731,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, [addNotification])
 
   const approveSolicitud = useCallback((id: string, comment: string) => {
-    const fechaRes = new Date().toISOString().slice(0, 10)
+    const fechaRes = hoyAR()
     setSolicitudes(prev => prev.map(s => s.id === id
       ? { ...s, estado: 'aprobado', fechaResolucion: fechaRes, comentarioAdmin: comment }
       : s
@@ -753,7 +753,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, [solicitudes, addNotification])
 
   const editSolicitud = useCallback((id: string, estado: 'aprobado' | 'rechazado', comment: string) => {
-    const fechaRes = new Date().toISOString().slice(0, 10)
+    const fechaRes = hoyAR()
     setSolicitudes(prev => prev.map(s => s.id === id
       ? { ...s, estado, fechaResolucion: fechaRes, comentarioAdmin: comment }
       : s
@@ -778,7 +778,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const rejectSolicitud = useCallback((id: string, comment: string) => {
-    const fechaRes = new Date().toISOString().slice(0, 10)
+    const fechaRes = hoyAR()
     setSolicitudes(prev => prev.map(s => s.id === id
       ? { ...s, estado: 'rechazado', fechaResolucion: fechaRes, comentarioAdmin: comment }
       : s
@@ -1041,7 +1041,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   // ── Tickets ────────────────────────────────────────────────────────────────
   const addTicket = useCallback((t: Omit<Ticket, 'id' | 'fechaCreacion' | 'fechaActualizacion' | 'estado'>) => {
-    const hoy = new Date().toISOString().slice(0, 10)
+    const hoy = hoyAR()
     const nuevo: Ticket = { ...t, id: uid(), estado: 'abierto', fechaCreacion: hoy, fechaActualizacion: hoy }
     setTickets(prev => [nuevo, ...prev])
     addNotification({ texto: `Nuevo ticket de RRHH: ${t.asunto}`, tipo: 'ticket', empleadoId: t.empleadoId })
@@ -1051,7 +1051,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, [addNotification])
 
   const respondTicket = useCallback((id: string, respuesta: string, estado: TicketEstado) => {
-    const hoy = new Date().toISOString().slice(0, 10)
+    const hoy = hoyAR()
     setTickets(prev => {
       const ticket = prev.find(t => t.id === id)
       if (ticket) {
@@ -1089,7 +1089,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   // ── Registro pendiente ─────────────────────────────────────────────────────
   const addPendingRegistration = useCallback((reg: Omit<PendingRegistration, 'id' | 'fechaSolicitud'>) => {
-    const newReg: PendingRegistration = { ...reg, id: uid(), fechaSolicitud: new Date().toISOString().slice(0, 10) }
+    const newReg: PendingRegistration = { ...reg, id: uid(), fechaSolicitud: hoyAR() }
     setPending(prev => [...prev, newReg])
     addNotification({ texto: `Nueva solicitud de acceso: ${reg.nombre} ${reg.apellido}`, tipo: 'registro', soloAdmin: true })
     if (supabase) {
@@ -1108,7 +1108,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const reg = pendingRegistrations.find(p => p.id === id)
     if (!reg) return
     const empleadoId = uid()
-    const hoy = new Date().toISOString().slice(0, 10)
+    const hoy = hoyAR()
     const nuevoEmpleado: Empleado = {
       id: empleadoId, nombre: reg.nombre, apellido: reg.apellido, dni: reg.dni,
       fechaNacimiento: '', email: reg.email, telefono: reg.telefono,

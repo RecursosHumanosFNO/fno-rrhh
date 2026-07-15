@@ -7,6 +7,7 @@ import { useData } from '@/contexts/DataContext'
 import {
   SOLICITUD_TIPO_LABEL, SOLICITUD_ESTADO_COLOR, SOLICITUD_ESTADO_LABEL,
   TICKET_ESTADO_LABEL, TICKET_ESTADO_COLOR, TICKET_TIPO_LABEL, formatFecha,
+  hoyAR,
 } from '@/lib/utils'
 import type { SolicitudTipo, TicketTipo, TicketEstado, Solicitud, Empleado } from '@/types'
 import {
@@ -84,7 +85,7 @@ async function exportarSolicitudesExcel(solicitudes: Solicitud[], empleados: Emp
 
   const wb = utils.book_new()
   utils.book_append_sheet(wb, ws, 'Solicitudes')
-  const hoy = new Date().toISOString().slice(0, 10)
+  const hoy = hoyAR()
   writeFile(wb, `solicitudes_fno_${hoy}.xlsx`)
 }
 

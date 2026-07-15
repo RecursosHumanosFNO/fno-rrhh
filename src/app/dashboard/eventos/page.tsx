@@ -6,7 +6,7 @@ import { useData } from '@/contexts/DataContext'
 import { supabase } from '@/lib/supabase'
 import ImageLightbox from '@/components/ImageLightbox'
 import Linkify from '@/components/Linkify'
-import { parseLocalDate, EVENTO_TIPO_LABEL, EVENTO_TIPO_COLOR, EVENTO_TIPO_DOT, formatFecha } from '@/lib/utils'
+import { parseLocalDate, EVENTO_TIPO_LABEL, EVENTO_TIPO_COLOR, EVENTO_TIPO_DOT, formatFecha, hoyAR } from '@/lib/utils'
 import type { EventoTipo, Evento, NovedadCategoria } from '@/types'
 import {
   Calendar, PartyPopper, Plus, ChevronLeft, ChevronRight,
@@ -227,7 +227,7 @@ export default function EventosPage() {
         titulo: form.titulo,
         contenido: form.descripcion ?? '',
         categoria: 'evento' as NovedadCategoria,
-        fechaPublicacion: new Date().toISOString().slice(0, 10),
+        fechaPublicacion: hoyAR(),
         autor: 'RRHH',
         importante: form.importante ?? false,
         fijado: form.fijado ?? false,

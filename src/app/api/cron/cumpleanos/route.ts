@@ -91,7 +91,8 @@ export async function GET(req: NextRequest) {
   const from = `"RRHH — Fundación Neuquén Oeste" <${gmailUser}>`
 
   const enviados: string[] = []
-  const fechaNotif = new Date().toISOString().slice(0, 10)
+  // Fecha completa YYYY-MM-DD en Argentina (hoyAR() local devuelve solo MM-DD)
+  const fechaNotif = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10)
 
   // IDs de los admins: en vez de la notif personal de "felicitá a X", reciben un
   // único aviso resumen (soloAdmin). Evita que el panel de notif se llene.

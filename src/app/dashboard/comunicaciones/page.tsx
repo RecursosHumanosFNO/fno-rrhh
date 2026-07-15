@@ -9,6 +9,7 @@ import Linkify from '@/components/Linkify'
 import {
   NOVEDAD_CATEGORIA_COLOR, NOVEDAD_CATEGORIA_LABEL, NOVEDAD_CATEGORIAS,
   EVENTO_TIPO_LABEL, EVENTO_TIPO_COLOR, formatFecha,
+  hoyAR,
 } from '@/lib/utils'
 import type { NovedadCategoria, Novedad, Evento, EventoTipo } from '@/types'
 
@@ -158,7 +159,7 @@ export default function ComunicacionesPage() {
     .sort((a, b) => b.fechaPublicacion.localeCompare(a.fechaPublicacion))
 
   // Los eventos del calendario se muestran cuando el filtro es "" (Todas) o coincide con su tipo
-  const hoy = new Date().toISOString().slice(0, 10)
+  const hoy = hoyAR()
   const shouldIncludeEventos = !catFilter || EVENTO_TIPOS_SET.has(catFilter)
   const filteredEventos = shouldIncludeEventos
     ? eventos.filter(e => e.fecha >= hoy && (!catFilter || e.tipo === catFilter))
@@ -204,7 +205,7 @@ export default function ComunicacionesPage() {
         titulo: newForm.titulo,
         contenido: newForm.contenido,
         categoria: categoriaFinal,
-        fechaPublicacion: new Date().toISOString().slice(0, 10),
+        fechaPublicacion: hoyAR(),
         autor: 'RRHH',
         importante: newForm.importante,
         fijado: newForm.fijado,

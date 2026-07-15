@@ -9,6 +9,7 @@ import {
   NOVEDAD_CATEGORIA_COLOR, NOVEDAD_CATEGORIA_LABEL, formatFecha, formatMes,
   getBirthdayThisYear, EVENTO_TIPO_LABEL, EVENTO_TIPO_DOT, EVENTO_TIPO_COLOR,
   REGISTRO_NOVEDAD_CATEGORIA_LABEL, REGISTRO_NOVEDAD_CATEGORIA_COLOR,
+  hoyAR,
 } from '@/lib/utils'
 import {
   Users, ClipboardList, CalendarCheck, TrendingUp, AlertTriangle,
@@ -104,7 +105,7 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
       ws['!views'] = [{ state: 'frozen', ySplit: 1 }]
       const wb = utils.book_new()
       utils.book_append_sheet(wb, ws, 'Accesos')
-      const hoy = new Date().toISOString().slice(0, 10)
+      const hoy = hoyAR()
       writeFile(wb, `accesos_fno_${hoy}.xlsx`)
     } finally {
       setExportandoLogins(false)

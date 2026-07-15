@@ -10,6 +10,7 @@ import {
   EMPLEADO_ESTADO_COLOR, EMPLEADO_ESTADO_LABEL, SOLICITUD_TIPO_LABEL,
   SOLICITUD_ESTADO_COLOR, SOLICITUD_ESTADO_LABEL, formatFecha, formatMes,
   calcularAntiguedad, calcularEdad, uid,
+  hoyAR,
 } from '@/lib/utils'
 import type { EmpleadoEstado, Empleado, DesvinculacionInfo, DesvinculacionMotivo } from '@/types'
 import {
@@ -54,7 +55,7 @@ export default function EmpleadoDetailPage() {
     otro: 'Otro',
   }
   const [desactivarForm, setDesactivarForm] = useState({
-    fecha: new Date().toISOString().slice(0, 10),
+    fecha: hoyAR(),
     motivo: 'renuncia_voluntaria' as DesvinculacionMotivo,
     motivoDetalle: '',
     telegramaEntregado: false,
@@ -1223,7 +1224,7 @@ export default function EmpleadoDetailPage() {
                       liquidacionFinal: desactivarForm.liquidacionFinal,
                       observaciones: desactivarForm.observaciones || undefined,
                       registradoPor: `${empleados.find(e => e.id === user?.empleadoId)?.nombre ?? ''} ${empleados.find(e => e.id === user?.empleadoId)?.apellido ?? ''}`.trim() || undefined,
-                      fechaRegistro: new Date().toISOString().slice(0, 10),
+                      fechaRegistro: hoyAR(),
                     }
                     desactivarEmpleado(id, info)
                     setShowDesactivar(false)
