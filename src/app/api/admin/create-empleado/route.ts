@@ -1,43 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { serviceClient, getRequester } from '@/lib/serverAuth'
 
 export const runtime = 'nodejs'
 
-function getSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !key) return null
-  return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } })
-}
-
 // POST /api/admin/create-empleado
 // Crea un registro en fno_empleados usando service role, evitando que RLS bloquee
-// el insert en silencio (el insert del cliente fallaba sin avisar). Solo admin.
-// Body: { empleado: <campos camelCase>, requesterId: <auth id del admin> }
+// el insert en silencio. El requester se valida por JWT. Solo admin.
+// Body: { empleado: <campos camelCase> }
 export async function POST(req: NextRequest) {
   try {
-    const { empleado, requesterId } = await req.json()
-    if (!empleado?.id || !requesterId) {
+    const { empleado } = await req.json().catch(() => ({}))
+    if (!empleado?.id) {
       return NextResponse.json({ ok: false, error: 'Faltan parámetros' }, { status: 400 })
     }
 
-    const sb = getSupabase()
+    const sb = serviceClient()
     if (!sb) return NextResponse.json({ ok: false, error: 'Servidor no configurado' }, { status: 503 })
 
-    // Verificar que quien crea es admin (por auth_id, con fallback por email para cuentas legacy)
-    let { data: requester } = await sb
-      .from('fno_users').select('role').eq('auth_id', requesterId).maybeSingle()
-    if (!requester) {
-      const { data: authUser } = await sb.auth.admin.getUserById(requesterId)
-      if (authUser?.user?.email) {
-        const { data: byEmail } = await sb
-          .from('fno_users').select('role').eq('email', authUser.user.email).maybeSingle()
-        requester = byEmail
-      }
-    }
-    if (requester?.role !== 'admin') {
-      return NextResponse.json({ ok: false, error: 'Acceso denegado' }, { status: 403 })
-    }
+    const requester = await getRequester(req, sb)
+    if (!requester) return NextResponse.json({ ok: false, error: 'No autenticado' }, { status: 401 })
+    if (requester.role !== 'admin') return NextResponse.json({ ok: false, error: 'Acceso denegado' }, { status: 403 })
 
     // Mapear a columnas de fno_empleados (snake_case)
     const row: Record<string, unknown> = {

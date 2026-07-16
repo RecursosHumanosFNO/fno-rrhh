@@ -10,6 +10,7 @@ import type {
 import * as initial from '@/lib/mockData'
 import { uid, hoyAR, SOLICITUD_TIPO_LABEL } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
+import { authFetch } from '@/lib/authFetch'
 
 interface DataContextType {
   empleados: Empleado[]
@@ -347,7 +348,7 @@ async function persistEmpleadoViaApi(empleadoId: string, data: Record<string, un
   if (!supabase) return false
   try {
     const { data: { user: authUser } } = await supabase.auth.getUser()
-    const res = await fetch('/api/perfil', {
+    const res = await authFetch('/api/perfil', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ authId: authUser?.id, empleadoId, data }),
@@ -1131,7 +1132,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
       // 1. Crear el empleado vía service role (evita que RLS bloquee el insert
       //    client-side en silencio y deje un login huérfano sin empleado)
-      const empRes = await fetch('/api/admin/create-empleado', {
+      const empRes = await authFetch('/api/admin/create-empleado', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ requesterId, empleado: nuevoEmpleado }),
@@ -1148,7 +1149,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       }
 
       // 2. Crear la cuenta de login (Supabase Auth + fno_users, contraseña encriptada)
-      await fetch('/api/admin/create-auth-user', {
+      await authFetch('/api/admin/create-auth-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: reg.email, password: reg.password, userId, empleadoId, role: 'employee', requesterId }),

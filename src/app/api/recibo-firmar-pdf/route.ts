@@ -1,34 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
+import { serviceClient, getRequester } from '@/lib/serverAuth'
 
 export const runtime = 'nodejs'
 
-function getSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !key) return null
-  return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } })
-}
-
 // POST /api/recibo-firmar-pdf
 // Descarga el PDF original, superpone la firma visual en todas las páginas (pie de página),
-// y sube el PDF firmado reemplazando el original en Storage.
+// y sube el PDF firmado reemplazando el original en Storage. Requester validado por JWT.
 export async function POST(req: NextRequest) {
   try {
-    const { reciboId, empleadoId, authId } = await req.json()
-    if (!reciboId || !empleadoId || !authId) {
+    const { reciboId, empleadoId } = await req.json().catch(() => ({}))
+    if (!reciboId || !empleadoId) {
       return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 })
     }
 
-    const sb = getSupabase()
+    const sb = serviceClient()
     if (!sb) return NextResponse.json({ error: 'Servidor no configurado' }, { status: 503 })
 
     // Verificar que el empleado es el dueño del recibo o es admin
-    const { data: user } = await sb.from('fno_users').select('role, empleado_id').eq('auth_id', authId).maybeSingle()
-    if (!user) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 403 })
-    const esAdmin = user.role === 'admin'
-    if (!esAdmin && user.empleado_id !== empleadoId) {
+    const requester = await getRequester(req, sb)
+    if (!requester) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+    const esAdmin = requester.role === 'admin'
+    if (!esAdmin && requester.empleadoId !== empleadoId) {
       return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
     }
 

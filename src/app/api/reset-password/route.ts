@@ -12,10 +12,6 @@ function getSupabase() {
   return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } })
 }
 
-function uid() {
-  return Math.random().toString(36).slice(2) + Date.now().toString(36)
-}
-
 // POST /api/reset-password — solicitar reset
 export async function POST(req: NextRequest) {
   const { email } = await req.json().catch(() => ({}))
@@ -49,8 +45,8 @@ export async function POST(req: NextRequest) {
 
   const nombre = empData?.[0]?.nombre ?? 'Usuario'
 
-  // Crear token
-  const token = uid() + uid()
+  // Crear token con entropía criptográfica (no Math.random, que es predecible)
+  const token = (crypto.randomUUID() + crypto.randomUUID()).replace(/-/g, '')
   const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString() // 30 minutos
 
   // Guardar token en Supabase (tabla fno_password_resets)

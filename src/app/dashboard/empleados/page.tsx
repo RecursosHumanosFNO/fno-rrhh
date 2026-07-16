@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import { authFetch } from '@/lib/authFetch'
 import type { EmpleadoEstado, Empleado, DesvinculacionMotivo } from '@/types'
 import * as XLSX from 'xlsx'
 
@@ -257,7 +258,7 @@ function EmpleadosContent() {
 
       // 1. Crear el empleado vía service role (persistencia garantizada, evita que RLS
       //    lo bloquee en silencio y devuelve el error real —ej. DNI/email duplicado)
-      const empRes = await fetch('/api/admin/create-empleado', {
+      const empRes = await authFetch('/api/admin/create-empleado', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -285,7 +286,7 @@ function EmpleadosContent() {
       }
 
       // 2. Crear cuenta de login en Supabase Auth (contraseña encriptada) + fno_users
-      const res = await fetch('/api/admin/create-auth-user', {
+      const res = await authFetch('/api/admin/create-auth-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

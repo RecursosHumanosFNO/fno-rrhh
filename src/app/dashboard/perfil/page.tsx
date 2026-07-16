@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
+import { authFetch } from '@/lib/authFetch'
 import { formatFecha, calcularAntiguedad, calcularEdad } from '@/lib/utils'
 import type { Empleado } from '@/types'
 import { SECTORES, CARGOS_POR_SECTOR } from '@/lib/mockData'
@@ -117,7 +118,7 @@ export default function PerfilPage() {
 
     try {
       const { data: { user: authUser } } = await supabase!.auth.getUser()
-      const res = await fetch('/api/perfil', {
+      const res = await authFetch('/api/perfil', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ authId: authUser?.id, empleadoId: empleado!.id, data: payload }),
@@ -207,7 +208,7 @@ export default function PerfilPage() {
         updateEmpleado({ [field]: fotoValue })
         try {
           const { data: { user: authUser } } = await supabase!.auth.getUser()
-          fetch('/api/perfil', {
+          authFetch('/api/perfil', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -234,7 +235,7 @@ export default function PerfilPage() {
     updateEmpleado({ [field]: '' })
     try {
       const { data: { user: authUser } } = await supabase!.auth.getUser()
-      fetch('/api/perfil', {
+      authFetch('/api/perfil', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

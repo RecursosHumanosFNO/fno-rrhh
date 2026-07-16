@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { authFetch } from '@/lib/authFetch'
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!
 
@@ -60,7 +61,7 @@ export function usePushNotifications(empleadoId: string | undefined) {
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
       })
-      const res = await fetch('/api/push/subscribe', {
+      const res = await authFetch('/api/push/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ subscription: sub.toJSON(), empleadoId }),
@@ -83,7 +84,7 @@ export function usePushNotifications(empleadoId: string | undefined) {
       const reg = await navigator.serviceWorker.getRegistration()
       const sub = reg ? await reg.pushManager.getSubscription() : null
       if (sub) {
-        await fetch('/api/push/subscribe', {
+        await authFetch('/api/push/subscribe', {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ endpoint: sub.endpoint }),
