@@ -1,42 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { serviceClient, getRequester } from '@/lib/serverAuth'
 
 export const runtime = 'nodejs'
 
-function getSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !key) return null
-  return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } })
-}
-
 // POST /api/admin/delete-user
-// Body: { empleadoId: string, requesterId: string }
+// Body: { empleadoId: string }
 // Elimina por completo a un empleado: cuenta de login (Supabase Auth) +
-// fila en fno_users + fila en fno_empleados. Solo lo puede hacer un admin.
+// fila en fno_users + fila en fno_empleados. El requester se valida por JWT.
+// Solo lo puede hacer un admin.
 export async function POST(req: NextRequest) {
   try {
-    const { empleadoId, requesterId } = await req.json()
+    const { empleadoId } = await req.json().catch(() => ({}))
 
-    if (!empleadoId || !requesterId) {
+    if (!empleadoId) {
       return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 })
     }
-    if (empleadoId === requesterId) {
-      return NextResponse.json({ error: 'No podés eliminar tu propia cuenta' }, { status: 400 })
-    }
 
-    const sb = getSupabase()
+    const sb = serviceClient()
     if (!sb) return NextResponse.json({ error: 'Servidor no configurado' }, { status: 503 })
 
-    // Verificar que quien hace el request es admin
-    const { data: requester } = await sb
-      .from('fno_users')
-      .select('role')
-      .eq('empleado_id', requesterId)
-      .maybeSingle()
+    const requester = await getRequester(req, sb)
+    if (!requester) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+    if (requester.role !== 'admin') return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
 
-    if (requester?.role !== 'admin') {
-      return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
+    if (empleadoId === requester.empleadoId) {
+      return NextResponse.json({ error: 'No podés eliminar tu propia cuenta' }, { status: 400 })
     }
 
     // Buscar el auth_id del empleado a eliminar

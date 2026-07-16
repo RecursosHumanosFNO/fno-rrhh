@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import webpush from 'web-push'
+import { serviceClient, getRequester } from '@/lib/serverAuth'
 
 export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
+  const supabase = serviceClient()
+  if (!supabase) return NextResponse.json({ error: 'Servidor no configurado' }, { status: 503 })
+
+  // Verificar que el solicitante sea admin/comunicaciones — SIEMPRE (validado por JWT).
+  // Antes el chequeo solo corría si venía un header; omitirlo saltaba la autorización.
+  const requester = await getRequester(req, supabase)
+  if (!requester) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+  if (requester.role !== 'admin' && requester.role !== 'comunicaciones') {
+    return NextResponse.json({ error: 'Sin permiso' }, { status: 403 })
+  }
 
   webpush.setVapidDetails(
     `mailto:${process.env.GMAIL_USER ?? 'rrhh@fno.org'}`,
@@ -16,20 +22,7 @@ export async function POST(req: NextRequest) {
     process.env.VAPID_PRIVATE_KEY!,
   )
 
-  // Verificar que el solicitante sea admin
-  const authHeader = req.headers.get('x-empleado-id')
-  if (authHeader) {
-    const { data: u } = await supabase
-      .from('fno_users')
-      .select('role')
-      .eq('empleado_id', authHeader)
-      .single()
-    if (!u || (u.role !== 'admin' && u.role !== 'comunicaciones')) {
-      return NextResponse.json({ error: 'Sin permiso' }, { status: 403 })
-    }
-  }
-
-  const { title, body, url, empleadoIds } = await req.json()
+  const { title, body, url, empleadoIds } = await req.json().catch(() => ({}))
   if (!title || !body) return NextResponse.json({ error: 'Faltan datos' }, { status: 400 })
 
   // Obtener suscripciones (todas o filtradas por empleado)

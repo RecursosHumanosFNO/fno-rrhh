@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { supabase } from '@/lib/supabase'
+import { authFetch } from '@/lib/authFetch'
 import { SECTORES, CARGOS_POR_SECTOR } from '@/lib/mockData'
 import {
   EMPLEADO_ESTADO_COLOR, EMPLEADO_ESTADO_LABEL, SOLICITUD_TIPO_LABEL,
@@ -120,7 +121,7 @@ export default function EmpleadoDetailPage() {
   async function persistEmpleado(data: Record<string, unknown>): Promise<boolean> {
     try {
       const { data: { user: authUser } } = await supabase!.auth.getUser()
-      const res = await fetch('/api/perfil', {
+      const res = await authFetch('/api/perfil', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ authId: authUser?.id, empleadoId: emp!.id, data }),
@@ -199,7 +200,7 @@ export default function EmpleadoDetailPage() {
         emailErrMsg = 'Este empleado no tiene cuenta de acceso, no se pudo cambiar el email de login.'
       } else {
         try {
-          const res = await fetch('/api/admin/set-email', {
+          const res = await authFetch('/api/admin/set-email', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ empleadoId: emp!.id, newEmail: nuevoEmail, requesterId: user?.empleadoId }),
@@ -298,7 +299,7 @@ export default function EmpleadoDetailPage() {
     if (!r.archivoUrl) return
     setDownloadingReciboId(r.id)
     try {
-      const res = await fetch('/api/recibo-url', {
+      const res = await authFetch('/api/recibo-url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path: r.archivoUrl, empleadoId: user?.empleadoId ?? '' }),
@@ -337,7 +338,7 @@ export default function EmpleadoDetailPage() {
     setCreateAcctStatus('creating')
     try {
       const { data: { user: authUser } } = await supabase!.auth.getUser()
-      const res = await fetch('/api/admin/create-auth-user', {
+      const res = await authFetch('/api/admin/create-auth-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -373,7 +374,7 @@ export default function EmpleadoDetailPage() {
     setConfirmRole(null)
     setRoleStatus('loading')
     try {
-      const res = await fetch('/api/admin/set-role', {
+      const res = await authFetch('/api/admin/set-role', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ empleadoId: id, role: newRole, requesterId: user.empleadoId }),
@@ -402,7 +403,7 @@ export default function EmpleadoDetailPage() {
     setDeleting(true)
     setDeleteErr('')
     try {
-      const res = await fetch('/api/admin/delete-user', {
+      const res = await authFetch('/api/admin/delete-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ empleadoId: id, requesterId: user.empleadoId }),

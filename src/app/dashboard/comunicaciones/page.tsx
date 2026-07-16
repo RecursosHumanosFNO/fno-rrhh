@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { supabase } from '@/lib/supabase'
+import { authFetch } from '@/lib/authFetch'
 import ImageLightbox from '@/components/ImageLightbox'
 import Linkify from '@/components/Linkify'
 import {
@@ -254,7 +255,7 @@ export default function ComunicacionesPage() {
     setPushSending(true)
     setPushResult(null)
     try {
-      const res = await fetch('/api/push/send', {
+      const res = await authFetch('/api/push/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-empleado-id': user?.empleadoId ?? '' },
         body: JSON.stringify({ title: pushForm.title, body: pushForm.body, url: pushForm.url || '/dashboard' }),

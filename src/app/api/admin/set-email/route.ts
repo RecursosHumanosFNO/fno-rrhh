@@ -1,24 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { serviceClient, getRequester } from '@/lib/serverAuth'
 
 export const runtime = 'nodejs'
 
-function getSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !key) return null
-  return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } })
-}
-
 // POST /api/admin/set-email
-// Body: { empleadoId: string, newEmail: string, requesterId: string }
+// Body: { empleadoId: string, newEmail: string }
 // Cambia el email de login (Supabase Auth) + fno_users + fno_empleados.
-// Solo lo puede llamar un admin.
+// El requester se valida por JWT. Solo un admin puede hacerlo.
 export async function POST(req: NextRequest) {
   try {
-    const { empleadoId, newEmail, requesterId } = await req.json()
+    const { empleadoId, newEmail } = await req.json().catch(() => ({}))
 
-    if (!empleadoId || !newEmail || !requesterId) {
+    if (!empleadoId || !newEmail) {
       return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 })
     }
 
@@ -28,19 +21,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'El email no tiene un formato válido' }, { status: 400 })
     }
 
-    const sb = getSupabase()
+    const sb = serviceClient()
     if (!sb) return NextResponse.json({ error: 'Servidor no configurado' }, { status: 503 })
 
-    // Verificar que quien hace el request es admin
-    const { data: requester } = await sb
-      .from('fno_users')
-      .select('role')
-      .eq('empleado_id', requesterId)
-      .maybeSingle()
-
-    if (requester?.role !== 'admin') {
-      return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
-    }
+    const requester = await getRequester(req, sb)
+    if (!requester) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+    if (requester.role !== 'admin') return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
 
     // Buscar el usuario destino y su auth_id
     const { data: targetUser } = await sb
@@ -69,10 +55,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 2. Actualizar fno_users.email
+    // 2. Actualizar fno_users.email  3. Actualizar fno_empleados.email
     await sb.from('fno_users').update({ email }).eq('id', targetUser.id as string)
-
-    // 3. Actualizar fno_empleados.email
     await sb.from('fno_empleados').update({ email }).eq('id', empleadoId)
 
     return NextResponse.json({ ok: true, email })

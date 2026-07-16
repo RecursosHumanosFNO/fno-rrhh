@@ -1,23 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { serviceClient, getRequester } from '@/lib/serverAuth'
 
 export const runtime = 'nodejs'
 
-function getSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !key) return null
-  return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } })
-}
-
 // POST /api/admin/create-auth-user
-// Crea un usuario en Supabase Auth y su registro en fno_users
-// Solo lo puede llamar un admin verificado (requesterId debe ser admin en DB)
+// Crea un usuario en Supabase Auth y su registro en fno_users.
+// El requester se valida por JWT. Solo lo puede llamar un admin.
 export async function POST(req: NextRequest) {
   try {
-    const { email, password, userId, empleadoId, role, requesterId } = await req.json()
+    const { email, password, userId, empleadoId, role } = await req.json().catch(() => ({}))
 
-    if (!email || !userId || !empleadoId || !role || !requesterId) {
+    if (!email || !userId || !empleadoId || !role) {
       return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 })
     }
 
@@ -26,35 +19,12 @@ export async function POST(req: NextRequest) {
     // "Olvidé mi contraseña" para acceder la primera vez.
     const effectivePassword = password || crypto.randomUUID().replace(/-/g, '') + 'Aa1!'
 
-    const sb = getSupabase()
+    const sb = serviceClient()
     if (!sb) return NextResponse.json({ error: 'Servidor no configurado' }, { status: 503 })
 
-    // Verificar que quien hace el request es admin en la DB
-    // 1er intento: lookup por auth_id (flujo normal)
-    let { data: requester } = await sb
-      .from('fno_users')
-      .select('role')
-      .eq('auth_id', requesterId)
-      .maybeSingle()
-
-    // Fallback: auth_id puede no estar seteado en cuentas legacy →
-    // verificar usando el email que devuelve Supabase Auth
-    if (!requester && requesterId) {
-      const { data: authUser } = await sb.auth.admin.getUserById(requesterId)
-      if (authUser?.user?.email) {
-        const { data: byEmail } = await sb
-          .from('fno_users').select('role').eq('email', authUser.user.email).maybeSingle()
-        requester = byEmail
-        // Aprovechar para setear el auth_id que faltaba
-        if (byEmail) {
-          await sb.from('fno_users').update({ auth_id: requesterId }).eq('email', authUser.user.email)
-        }
-      }
-    }
-
-    if (requester?.role !== 'admin') {
-      return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
-    }
+    const requester = await getRequester(req, sb)
+    if (!requester) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+    if (requester.role !== 'admin') return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
 
     // 1. Crear usuario en Supabase Auth (contraseña encriptada automáticamente)
     const { data: authData, error: authErr } = await sb.auth.admin.createUser({

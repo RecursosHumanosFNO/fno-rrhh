@@ -1,40 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { serviceClient, getRequester } from '@/lib/serverAuth'
 
 export const runtime = 'nodejs'
 
-function getSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !key) return null
-  return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } })
-}
-
 // POST /api/perfil
-// Permite que un empleado autenticado actualice sus propios datos en fno_empleados.
+// Permite que un empleado autenticado actualice sus propios datos en fno_empleados
+// (o que un admin edite cualquiera). El requester se valida por JWT.
 // Usa service role key para bypassear RLS.
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json()
-    const { authId, empleadoId, data } = body
+    const { empleadoId, data } = await req.json().catch(() => ({}))
 
-    if (!authId || !empleadoId || !data) {
+    if (!empleadoId || !data) {
       return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 })
     }
 
-    const sb = getSupabase()
+    const sb = serviceClient()
     if (!sb) return NextResponse.json({ error: 'Servidor no configurado' }, { status: 503 })
 
-    // Verificar que el authId corresponde al empleadoId (o es admin)
-    const { data: userRow } = await sb
-      .from('fno_users')
-      .select('role, empleado_id')
-      .eq('auth_id', authId)
-      .maybeSingle()
-
-    if (!userRow) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 403 })
-    const esAdmin = userRow.role === 'admin'
-    if (!esAdmin && userRow.empleado_id !== empleadoId) {
+    const requester = await getRequester(req, sb)
+    if (!requester) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+    const esAdmin = requester.role === 'admin'
+    if (!esAdmin && requester.empleadoId !== empleadoId) {
       return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
     }
 

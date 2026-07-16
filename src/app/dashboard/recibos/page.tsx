@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { formatFecha, formatMes, hoyAR } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
+import { authFetch } from '@/lib/authFetch'
 import * as XLSX from 'xlsx'
 import {
   FileText, Download, Upload, Search, X, CheckCircle2,
@@ -185,7 +186,7 @@ export default function RecibosPage() {
       if (supabase) {
         const { data: { user: authUser } } = await supabase.auth.getUser()
         if (authUser) {
-          fetch('/api/recibo-firmar-pdf', {
+          authFetch('/api/recibo-firmar-pdf', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ reciboId: firmaModal.id, empleadoId: user.empleadoId, authId: authUser.id }),
@@ -443,7 +444,7 @@ export default function RecibosPage() {
     }
     setDownloadingId(r.id)
     try {
-      const res = await fetch('/api/recibo-url', {
+      const res = await authFetch('/api/recibo-url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path: r.archivoUrl, empleadoId: user?.empleadoId ?? '' }),
