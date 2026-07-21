@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/cron/reporte-diario",
-      "schedule": "0 11 * * *"
+      "schedule": "0 11 * * 1"
     },
     {
       "path": "/api/cron/solicitudes-pendientes",

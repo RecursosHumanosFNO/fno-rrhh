@@ -32,11 +32,11 @@ function base(titulo: string, content: string) {
   <div style="font-family:Arial,sans-serif;max-width:680px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;">
     <div style="background:${BRAND};padding:24px 32px;">
       <h2 style="color:#fff;margin:0;font-size:20px;">Fundación Neuquén Oeste</h2>
-      <p style="color:#93c5fd;margin:4px 0 0 0;font-size:13px;">Reporte diario — Portal de Recursos Humanos</p>
+      <p style="color:#93c5fd;margin:4px 0 0 0;font-size:13px;">Reporte semanal — Portal de Recursos Humanos</p>
     </div>
     <div style="padding:28px 32px;">
       <h1 style="color:${BRAND};font-size:22px;margin:0 0 8px 0;">${titulo}</h1>
-      <p style="color:#64748b;font-size:13px;margin:0 0 28px 0;">Resumen generado automáticamente del día anterior.</p>
+      <p style="color:#64748b;font-size:13px;margin:0 0 28px 0;">Resumen generado automáticamente de la última semana.</p>
       ${content}
     </div>
     <div style="background:#f8fafc;padding:16px 32px;border-top:1px solid #e2e8f0;">
@@ -103,7 +103,7 @@ const LABELS_TICKET: Record<string, string> = {
   actualizacion_datos: 'Act. datos', reclamo: 'Reclamo', otro: 'Otro',
 }
 
-// GET /api/cron/reporte-diario — lo invoca Vercel Cron todos los días a las 8am ARG (11:00 UTC)
+// GET /api/cron/reporte-diario — lo invoca Vercel Cron los lunes a las 8am ARG (11:00 UTC)
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET
   if (!cronSecret) {
@@ -130,9 +130,11 @@ export async function GET(req: NextRequest) {
   const ahora = ahoraAR()
   const hoy = fechaARString(ahora)
 
-  // Ayer en Argentina
-  const ayerDate = new Date(ahora.getTime() - 24 * 60 * 60 * 1000)
+  // Inicio de la ventana semanal: hace 7 días (en Argentina)
+  const ayerDate = new Date(ahora.getTime() - 7 * 24 * 60 * 60 * 1000)
   const ayer = fechaARString(ayerDate)
+  // Fin de la ventana (día anterior a hoy) para las etiquetas del rango
+  const finVentana = fechaARString(new Date(ahora.getTime() - 24 * 60 * 60 * 1000))
 
   // ─── Consultas en paralelo ────────────────────────────────────────────────
 
@@ -225,7 +227,7 @@ export async function GET(req: NextRequest) {
     'No hay solicitudes pendientes. ✔',
   )
 
-  // 2. Solicitudes resueltas ayer
+  // 2. Solicitudes resueltas esta semana
   const filassolAyer = (solAyer ?? []).map((s: { empleado_id: string; tipo: string; estado: string; fecha_resolucion: string; comentario_admin?: string }, i: number) => fila([
     nombreEmp(s.empleado_id),
     LABELS_SOLICITUD[s.tipo] ?? s.tipo,
@@ -236,13 +238,13 @@ export async function GET(req: NextRequest) {
   ], i % 2 === 1))
 
   const secSolAyer = seccion(
-    'Solicitudes resueltas ayer',
+    'Solicitudes resueltas esta semana',
     '✅',
     '#22c55e',
     filassolAyer.length > 0
       ? [thead(['Empleado', 'Tipo', 'Resolución', 'Comentario']), ...filassolAyer]
       : [],
-    'No se resolvieron solicitudes ayer.',
+    'No se resolvieron solicitudes esta semana.',
   )
 
   // 3. Tickets sin respuesta
@@ -267,7 +269,7 @@ export async function GET(req: NextRequest) {
     'No hay tickets pendientes. ✔',
   )
 
-  // 4. Actividad de ayer: recibos subidos
+  // 4. Actividad de la semana: recibos subidos
   const filasRecibos = (recibosAyer ?? []).map((r: { id: string; empleado_id: string; mes: number; anio: number; concepto?: string; monto?: number }, i: number) => {
     const firmado = (firmasAyer ?? []).some((f: { recibo_id: string }) => f.recibo_id === r.id)
     const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
@@ -281,43 +283,43 @@ export async function GET(req: NextRequest) {
   })
 
   const secRecibos = seccion(
-    'Recibos subidos ayer',
+    'Recibos subidos esta semana',
     '💰',
     '#6366f1',
     filasRecibos.length > 0
       ? [thead(['Empleado', 'Período', 'Concepto', 'Monto', 'Estado']), ...filasRecibos]
       : [],
-    'No se subieron recibos ayer.',
+    'No se subieron recibos esta semana.',
   )
 
-  // 5. Novedades publicadas ayer
+  // 5. Novedades publicadas esta semana
   const filasNovedades = (novedadesAyer ?? []).map((n: { titulo: string; categoria: string; autor: string }, i: number) =>
     fila([n.titulo, n.categoria, n.autor], i % 2 === 1)
   )
 
   const secNovedades = seccion(
-    'Novedades publicadas ayer',
+    'Novedades publicadas esta semana',
     '📢',
     '#0ea5e9',
     filasNovedades.length > 0
       ? [thead(['Título', 'Categoría', 'Autor']), ...filasNovedades]
       : [],
-    'No se publicaron novedades ayer.',
+    'No se publicaron novedades esta semana.',
   )
 
-  // 6. Registros internos de ayer
+  // 6. Registros internos de esta semana
   const filasRegistros = (registrosAyer ?? []).map((r: { empleado_nombre: string; categoria: string; descripcion: string }, i: number) =>
     fila([r.empleado_nombre, r.categoria.replace(/_/g, ' '), r.descripcion.slice(0, 80) + (r.descripcion.length > 80 ? '…' : '')], i % 2 === 1)
   )
 
   const secRegistros = seccion(
-    'Registros internos de ayer',
+    'Registros internos de esta semana',
     '📝',
     '#8b5cf6',
     filasRegistros.length > 0
       ? [thead(['Empleado', 'Categoría', 'Descripción']), ...filasRegistros]
       : [],
-    'No se registraron novedades internas ayer.',
+    'No se registraron novedades internas esta semana.',
   )
 
   // 7. Estado general del plantel
@@ -388,7 +390,7 @@ export async function GET(req: NextRequest) {
   const btnPortal = `<div style="text-align:center;margin-top:24px;"><a href="${PORTAL_URL}/dashboard" style="display:inline-block;background:${BRAND};color:#fff;padding:12px 32px;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600;">Ir al portal →</a></div>`
 
   const html = base(
-    `Reporte del ${fechaLegible(ayer)}`,
+    `Reporte semanal · ${fechaLegible(ayer)} – ${fechaLegible(finVentana)}`,
     alertasHtml +
     resumenPlantel +
     secSolPend +
@@ -415,7 +417,7 @@ export async function GET(req: NextRequest) {
 
   const solPend = (solPendientes ?? []).length
   const tickPend = (ticketsSinRespuesta ?? []).length
-  const subject = `📊 Reporte RRHH — ${fechaLegible(ayer)}${solPend > 0 ? ` · ${solPend} sol. pendiente${solPend > 1 ? 's' : ''}` : ''}${tickPend > 0 ? ` · ${tickPend} ticket${tickPend > 1 ? 's' : ''} abierto${tickPend > 1 ? 's' : ''}` : ''}`
+  const subject = `📊 Reporte RRHH semanal — ${fechaLegible(ayer)} al ${fechaLegible(finVentana)}${solPend > 0 ? ` · ${solPend} sol. pendiente${solPend > 1 ? 's' : ''}` : ''}${tickPend > 0 ? ` · ${tickPend} ticket${tickPend > 1 ? 's' : ''} abierto${tickPend > 1 ? 's' : ''}` : ''}`
 
   await transporter.sendMail({
     from: `"RRHH — Fundación Neuquén Oeste" <${gmailUser}>`,
