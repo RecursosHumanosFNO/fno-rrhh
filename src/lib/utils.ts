@@ -320,3 +320,20 @@ export function getInitials(nombre: string, apellido: string): string {
 export function uid(): string {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
 }
+
+/**
+ * Le pone techo a una promesa que puede no resolver nunca.
+ *
+ * Varias APIs de push se cuelgan en silencio en vez de fallar: si el service
+ * worker queda instalado pero no llega a activarse, `serviceWorker.ready` no
+ * resuelve jamás. Sin techo, el botón se queda en "Activando..." para siempre.
+ */
+export function conTimeout<T>(promesa: Promise<T>, ms: number, mensaje: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const id = setTimeout(() => reject(new Error(mensaje)), ms)
+    promesa.then(
+      v => { clearTimeout(id); resolve(v) },
+      e => { clearTimeout(id); reject(e) },
+    )
+  })
+}
