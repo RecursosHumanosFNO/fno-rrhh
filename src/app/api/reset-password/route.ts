@@ -5,6 +5,12 @@ export const runtime = 'nodejs'
 
 const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL ?? 'https://portalfundacion.vercel.app'
 
+const TOKEN_TTL_MS = 30 * 60 * 1000 // 30 minutos
+// Ventana mínima entre dos pedidos de reset para el mismo email. Sin esto,
+// cualquiera puede disparar el endpoint en bucle y bombardear la casilla de
+// un empleado (y de paso quemar la cuota de envío de Gmail).
+const REENVIO_MIN_MS = 60 * 1000
+
 function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY // service role para bypasear RLS
@@ -22,11 +28,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'Base de datos no configurada' }, { status: 503 })
   }
 
+  const emailNorm = String(email).toLowerCase().trim()
+
   // Verificar que el usuario existe
   const { data: users } = await supabase
     .from('fno_users')
     .select('id, email, empleado_id')
-    .eq('email', email.toLowerCase().trim())
+    .eq('email', emailNorm)
     .limit(1)
 
   if (!users || users.length === 0) {
@@ -35,6 +43,24 @@ export async function POST(req: NextRequest) {
   }
 
   const user = users[0]
+
+  // Throttle por email. La tabla guarda una fila por email (upsert), así que
+  // deducimos cuándo se creó el token vigente a partir de su vencimiento en
+  // vez de sumar una columna nueva.
+  const { data: previos } = await supabase
+    .from('fno_password_resets')
+    .select('expires_at, used')
+    .eq('email', emailNorm)
+    .limit(1)
+
+  const previo = previos?.[0]
+  if (previo && !previo.used) {
+    const creadoHace = TOKEN_TTL_MS - (new Date(previo.expires_at).getTime() - Date.now())
+    if (creadoHace < REENVIO_MIN_MS) {
+      // Mismo cuerpo que el caso normal: no delatamos que hubo throttling.
+      return NextResponse.json({ ok: true })
+    }
+  }
 
   // Obtener nombre del empleado
   const { data: empData } = await supabase
@@ -47,11 +73,11 @@ export async function POST(req: NextRequest) {
 
   // Crear token con entropía criptográfica (no Math.random, que es predecible)
   const token = (crypto.randomUUID() + crypto.randomUUID()).replace(/-/g, '')
-  const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString() // 30 minutos
+  const expiresAt = new Date(Date.now() + TOKEN_TTL_MS).toISOString()
 
   // Guardar token en Supabase (tabla fno_password_resets)
   await supabase.from('fno_password_resets').upsert({
-    email: email.toLowerCase().trim(),
+    email: emailNorm,
     token,
     expires_at: expiresAt,
     used: false,
@@ -67,7 +93,7 @@ export async function POST(req: NextRequest) {
     },
     body: JSON.stringify({
       type: 'reset_password',
-      data: { email: email.toLowerCase().trim(), nombre, token },
+      data: { email: emailNorm, nombre, token },
     }),
   }).catch(() => null)
 
