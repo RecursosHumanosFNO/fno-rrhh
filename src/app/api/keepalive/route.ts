@@ -21,10 +21,14 @@ export async function GET() {
     // Consulta mínima: solo cuenta filas, no trae datos
     const { error } = await sb.from('fno_users').select('id', { count: 'exact', head: true })
     if (error) {
-      return NextResponse.json({ ok: false, error: error.message }, { status: 500 })
+      // El detalle va al log del server: la ruta es pública y el mensaje crudo
+      // de Postgres delata estructura de la base.
+      console.error('[keepalive] error de consulta:', error.message)
+      return NextResponse.json({ ok: false }, { status: 500 })
     }
     return NextResponse.json({ ok: true, ts: new Date().toISOString() })
   } catch (err) {
-    return NextResponse.json({ ok: false, error: String(err) }, { status: 500 })
+    console.error('[keepalive] error inesperado:', err)
+    return NextResponse.json({ ok: false }, { status: 500 })
   }
 }

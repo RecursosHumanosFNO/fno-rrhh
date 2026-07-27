@@ -1,11 +1,7 @@
 name: CI
 
-# Verifica que el código compile antes de mergear. Sin esto, un error de
-# TypeScript sólo se descubre cuando ya está en producción.
-#
-# Nota: no corre `npm run lint` porque el repo no tiene configuración de ESLint
-# todavía (`next lint` abre un prompt interactivo y colgaría el job). Cuando se
-# agregue la config, sumar el paso acá.
+# Verifica que el código compile y pase el linter antes de mergear. Sin esto,
+# un error de TypeScript sólo se descubre cuando ya está en producción.
 
 on:
   pull_request:
@@ -14,7 +10,7 @@ on:
 
 jobs:
   build:
-    name: Build
+    name: Build y lint
     runs-on: ubuntu-latest
 
     steps:
@@ -29,6 +25,9 @@ jobs:
 
       - name: Instalar dependencias
         run: npm ci
+
+      - name: Lint
+        run: npm run lint
 
       - name: Build
         # Las claves NEXT_PUBLIC_ se leen en tiempo de build. Son valores de

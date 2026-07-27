@@ -1,0 +1,10 @@
+{
+  "extends": "next/core-web-vitals",
+  "plugins": ["@typescript-eslint"],
+  "ignorePatterns": ["public/**", ".next/**", "node_modules/**", "scripts/**"],
+  "rules": {
+    "react/no-unescaped-entities": "off",
+    "@next/next/no-img-element": "warn",
+    "@typescript-eslint/no-explicit-any": "warn"
+  }
+}

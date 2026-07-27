@@ -27,8 +27,6 @@ export default function EstadisticasPage() {
     if (user && user.role !== 'admin' && user.role !== 'rrhh') router.replace('/dashboard')
   }, [user, router])
 
-  if (!user || (user.role !== 'admin' && user.role !== 'rrhh')) return null
-
   const totalEmpleados = empleados.length
   const activos = empleados.filter(e => e.estado === 'activo').length
   const pendientes = solicitudes.filter(s => s.estado === 'pendiente').length
@@ -125,7 +123,12 @@ export default function EstadisticasPage() {
 
       return { mes, empleados: empActivos, solicitudes: solMes, ausencias: ausenciasMes }
     })
-  }, [empleados, solicitudes])
+  }, [empleados, solicitudes, currentYear])
+
+  // El corte de acceso va DESPUÉS de todos los hooks: si retorna antes, React
+  // ve distinta cantidad de hooks entre renders (al resolverse el rol) y la
+  // página crashea con "Rendered more hooks than during the previous render".
+  if (!user || (user.role !== 'admin' && user.role !== 'rrhh')) return null
 
   // ── Helpers de estilo Excel ────────────────────────────────────────────────
   // ── Paleta FNO ────────────────────────────────────────────────────────────
