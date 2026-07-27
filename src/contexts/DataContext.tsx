@@ -76,9 +76,11 @@ interface DataContextType {
 const DataContext = createContext<DataContextType | null>(null)
 
 function sendEmail(type: string, data: Record<string, string>) {
-  fetch('/api/notify', {
+  // authFetch adjunta el token de sesión: /api/notify lo exige para todo lo que
+  // no sea un tipo público. Si no hay sesión (registro) va sin header y la ruta
+  // lo resuelve por su cuenta.
+  authFetch('/api/notify', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ type, data }),
   }).catch(() => { /* email failure is non-fatal */ })
 }

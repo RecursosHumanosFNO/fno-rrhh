@@ -14,6 +14,7 @@ import {
   hoyAR,
 } from '@/lib/utils'
 import type { RegistroNovedad, RegistroNovedadCategoria, Empleado } from '@/types'
+import { authFetch } from '@/lib/authFetch'
 import {
   Plus, Search, Trash2, Pencil, X, Upload, Image as ImageIcon,
   User, Calendar, Clock, FileText, Tag, Building2, Briefcase,
@@ -63,9 +64,8 @@ const emptyForm: FormState = {
 }
 
 function sendEmail(type: string, data: Record<string, string>) {
-  fetch('/api/notify', {
+  authFetch('/api/notify', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ type, data }),
   }).catch(() => {})
 }
