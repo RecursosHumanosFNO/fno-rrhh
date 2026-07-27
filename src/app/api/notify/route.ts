@@ -1,7 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import nodemailer from 'nodemailer'
+import { serviceClient, getRequester } from '@/lib/serverAuth'
 
 export const runtime = 'nodejs'
+
+/* ── Quién puede disparar cada tipo de email ────────────────────────────────
+ * Sin esta tabla la ruta era un relay abierto: cualquiera podía POSTear y
+ * mandar mails con la identidad de la Fundación al destinatario que quisiera.
+ *
+ *  PUBLICOS  → los manda alguien sin sesión (se está registrando). El
+ *              destinatario está fijo en ADMIN_EMAIL, así que no hay relay.
+ *  INTERNOS  → los dispara otra ruta server (no hay usuario logueado); se
+ *              autentican con x-internal-key.
+ *  El resto  → exigen sesión válida, y los que escriben a un destinatario
+ *              arbitrario exigen además rol de administración.
+ */
+const TIPOS_PUBLICOS = new Set(['new_registration'])
+const TIPOS_INTERNOS = new Set(['reset_password'])
+const TIPOS_CUALQUIER_USUARIO = new Set(['new_solicitud', 'password_changed'])
+const TIPOS_COMUNICACIONES = new Set(['evento_notificacion', 'novedad_publicada'])
 
 const ADMIN_EMAIL = 'rrhhfundacionnqnoeste@gmail.com'
 const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL ?? 'https://portalfno.com'
@@ -50,6 +67,33 @@ export async function POST(req: NextRequest) {
   }
 
   const { type, data } = body
+
+  // ── Autorización ─────────────────────────────────────────────────────────
+  const internalKey = process.env.CRON_SECRET
+  const esInterno = !!internalKey && req.headers.get('x-internal-key') === internalKey
+
+  if (!TIPOS_PUBLICOS.has(type) && !esInterno) {
+    if (TIPOS_INTERNOS.has(type)) {
+      // Solo se dispara server-to-server; un cliente nunca debe poder pedirlo.
+      return NextResponse.json({ ok: false, reason: 'No autorizado' }, { status: 401 })
+    }
+    const sb = serviceClient()
+    const requester = sb ? await getRequester(req, sb) : null
+    if (!requester) {
+      return NextResponse.json({ ok: false, reason: 'No autorizado' }, { status: 401 })
+    }
+    const esAdmin = requester.role === 'admin'
+    const puedeComunicar = esAdmin || requester.role === 'comunicaciones'
+    const permitido = TIPOS_CUALQUIER_USUARIO.has(type)
+      ? true
+      : TIPOS_COMUNICACIONES.has(type)
+        ? puedeComunicar
+        : esAdmin
+    if (!permitido) {
+      return NextResponse.json({ ok: false, reason: 'Permisos insuficientes' }, { status: 403 })
+    }
+  }
+
   const from = `"RRHH — Fundación Neuquén Oeste" <${gmailUser}>`
 
   const transporter = nodemailer.createTransport({

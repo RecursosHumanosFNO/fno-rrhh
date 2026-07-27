@@ -10,6 +10,7 @@ import {
   hoyAR,
 } from '@/lib/utils'
 import type { SolicitudTipo, TicketTipo, TicketEstado, Solicitud, Empleado } from '@/types'
+import { authFetch } from '@/lib/authFetch'
 import {
   ClipboardList, Plus, Search, X, CheckCircle2, XCircle, Clock,
   ChevronDown, ChevronUp, Send, Hourglass, Save, Edit2, Loader2,
@@ -434,9 +435,8 @@ export default function SolicitudesPage() {
     // Email al empleado — registramos si realmente se envió para no prometer de más
     let emailOk = false
     if (emp?.email) {
-      emailOk = await fetch('/api/notify', {
+      emailOk = await authFetch('/api/notify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'mensaje_rrhh', data: { email: emp.email, nombre: emp.nombre, asunto: mensajeForm.asunto, mensaje: mensajeForm.mensaje } }),
       }).then(r => r.ok).catch(() => false)
     }

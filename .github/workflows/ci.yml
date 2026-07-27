@@ -1,0 +1,39 @@
+name: CI
+
+# Verifica que el código compile antes de mergear. Sin esto, un error de
+# TypeScript sólo se descubre cuando ya está en producción.
+#
+# Nota: no corre `npm run lint` porque el repo no tiene configuración de ESLint
+# todavía (`next lint` abre un prompt interactivo y colgaría el job). Cuando se
+# agregue la config, sumar el paso acá.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Build
+        # Las claves NEXT_PUBLIC_ se leen en tiempo de build. Son valores de
+        # relleno: acá sólo nos interesa que compile, no conectarse a Supabase.
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+        run: npm run build

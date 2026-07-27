@@ -278,9 +278,8 @@ export default function PerfilPage() {
       }
 
       // 3. Avisar por email (sin incluir la contraseña)
-      fetch('/api/notify', {
+      authFetch('/api/notify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'password_changed', data: { nombre: empleado.nombre, email: empleado.email } }),
       }).catch(() => { /* el email es no crítico */ })
 

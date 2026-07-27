@@ -60,7 +60,11 @@ export async function POST(req: NextRequest) {
   // Enviar email
   await fetch(`${PORTAL_URL}/api/notify`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      // Llamada server-to-server: no hay usuario logueado (olvidó la contraseña).
+      ...(process.env.CRON_SECRET ? { 'x-internal-key': process.env.CRON_SECRET } : {}),
+    },
     body: JSON.stringify({
       type: 'reset_password',
       data: { email: email.toLowerCase().trim(), nombre, token },
