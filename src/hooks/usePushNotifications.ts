@@ -16,6 +16,21 @@ function urlBase64ToUint8Array(base64String: string) {
 
 export type PushStatus = 'unsupported' | 'denied' | 'subscribed' | 'unsubscribed' | 'loading'
 
+// En iPhone/iPad el push web sólo existe si el portal está agregado a la
+// pantalla de inicio; en una pestaña de Safari el navegador ni expone la API.
+// Sin este chequeo el usuario sólo ve "no compatible" y no sabe qué hacer.
+export function esIOSSinInstalar(): boolean {
+  if (typeof window === 'undefined') return false
+  const ua = navigator.userAgent
+  const esIOS = /iPad|iPhone|iPod/.test(ua)
+    // iPadOS se hace pasar por Mac; se lo detecta por el soporte táctil.
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  if (!esIOS) return false
+  const instalado = window.matchMedia('(display-mode: standalone)').matches
+    || (window.navigator as { standalone?: boolean }).standalone === true
+  return !instalado
+}
+
 export function usePushNotifications(empleadoId: string | undefined) {
   const [status, setStatus] = useState<PushStatus>('loading')
   const [error, setError] = useState<string | null>(null)
@@ -49,14 +64,29 @@ export function usePushNotifications(empleadoId: string | undefined) {
     setError(null)
     try {
       if (!VAPID_PUBLIC_KEY) throw new Error('VAPID key no configurada. Contactá a RRHH.')
-      // Obtener el SW registrado; si no hay uno activo en 5s, abortar con error claro
+
+      // El permiso se pide PRIMERO y sin ningún await por delante: Safari exige
+      // que la llamada salga del gesto del usuario, y si la precede un await
+      // considera que ya no lo es y la rechaza.
+      const permiso = await Notification.requestPermission()
+      if (permiso !== 'granted') {
+        setStatus(permiso === 'denied' ? 'denied' : 'unsubscribed')
+        return
+      }
+
+      // Registrar el SW si todavía no lo está en vez de sólo esperarlo: en la
+      // primera visita puede no haber terminado de instalarse.
       let reg = await navigator.serviceWorker.getRegistration()
+      if (!reg) reg = await navigator.serviceWorker.register('/sw.js').catch(() => undefined)
       if (!reg) {
         const timeout = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Service worker no disponible. Intentá recargar la página.')), 5000)
+          setTimeout(() => reject(new Error('No se pudo iniciar el service worker. Probá recargar la página.')), 15000)
         )
         reg = await Promise.race([navigator.serviceWorker.ready, timeout])
       }
+      // pushManager sólo aparece cuando el SW está activo.
+      await navigator.serviceWorker.ready
+
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),

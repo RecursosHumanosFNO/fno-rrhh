@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Bell, BellOff, BellRing, Loader2 } from 'lucide-react'
-import { usePushNotifications } from '@/hooks/usePushNotifications'
+import { Bell, BellOff, BellRing, Loader2, Share } from 'lucide-react'
+import { usePushNotifications, esIOSSinInstalar } from '@/hooks/usePushNotifications'
 
 export function PushToggle({ empleadoId }: { empleadoId: string }) {
   const { status, error, subscribe, unsubscribe } = usePushNotifications(empleadoId)
@@ -12,6 +12,20 @@ export function PushToggle({ empleadoId }: { empleadoId: string }) {
     setSubscribing(true)
     await subscribe()
     setSubscribing(false)
+  }
+
+  // En iPhone la API no existe hasta que el portal se agrega a la pantalla de
+  // inicio. Explicamos cómo hacerlo en vez de ocultar la sección sin más.
+  if (status === 'unsupported' && esIOSSinInstalar()) {
+    return (
+      <div className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400">
+        <Share className="w-4 h-4 mt-0.5 shrink-0 text-brand-600" />
+        <span>
+          Para recibir notificaciones en iPhone hay que agregar el portal a la pantalla de inicio:
+          tocá <strong>Compartir</strong> y después <strong>&quot;Agregar a inicio&quot;</strong>. Abrilo desde ahí y volvé a esta pantalla.
+        </span>
+      </div>
+    )
   }
 
   if (status === 'unsupported') return null

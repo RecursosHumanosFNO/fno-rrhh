@@ -18,7 +18,11 @@ export function normDni(d: string) { return d.replace(/\D/g, '') }
 
 export function extractDniFromFilename(name: string): string {
   const base = name.replace(/\.[^.]+$/, '')
-  // Busca secuencia de 7 u 8 dígitos en el nombre (DNI argentino)
-  const m = base.match(/\b(\d{7,8})\b/)
-  return m ? m[1] : ''
+  // Busca una secuencia de 7 u 8 dígitos (DNI argentino) separada del resto.
+  //
+  // Se parte por no-dígitos en vez de usar \b: el guión bajo cuenta como
+  // carácter de palabra, así que "recibo_30123456_julio" no tenía límite de
+  // palabra alrededor del número y quedaba sin detectar.
+  const grupos = base.split(/\D+/).filter(Boolean)
+  return grupos.find(g => g.length === 7 || g.length === 8) ?? ''
 }

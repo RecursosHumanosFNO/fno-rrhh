@@ -10,7 +10,7 @@ on:
 
 jobs:
   build:
-    name: Build y lint
+    name: Build, lint y tests
     runs-on: ubuntu-latest
 
     steps:
@@ -28,6 +28,9 @@ jobs:
 
       - name: Lint
         run: npm run lint
+
+      - name: Tests
+        run: npm test
 
       - name: Build
         # Las claves NEXT_PUBLIC_ se leen en tiempo de build. Son valores de
