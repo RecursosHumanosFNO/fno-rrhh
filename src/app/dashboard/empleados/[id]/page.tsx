@@ -18,9 +18,14 @@ import {
   ArrowLeft, Edit2, Mail, Phone, MapPin, Calendar, Building2,
   FileText, ClipboardList, Clock, Download, User, Save, X, Plus,
   Shield, CheckCircle2, AlertTriangle, Lock, Eye, EyeOff,
-  Camera, AlertCircle, Loader2, Trash2, UserX, UserCheck, BriefcaseBusiness,
+  Camera, AlertCircle, Loader2, Trash2, UserX, UserCheck,
 } from 'lucide-react'
 import Link from 'next/link'
+import { EditField } from './components/EditField'
+import { PdfViewerOverlay } from './components/PdfViewerOverlay'
+import { DesactivarModal } from './components/DesactivarModal'
+import { ReactivarModal, EliminarModal, ConfirmarRolModal } from './components/ConfirmModals'
+import { HistorialTab } from './components/HistorialTab'
 
 const TABS = ['Personal', 'Laboral', 'Documentos', 'Solicitudes', 'Historial']
 
@@ -45,16 +50,6 @@ export default function EmpleadoDetailPage() {
   // ── Desactivar / Reactivar ─────────────────────────────────────────────────
   const [showDesactivar, setShowDesactivar] = useState(false)
   const [showReactivar, setShowReactivar] = useState(false)
-  const DESVINCULACION_MOTIVO_LABEL: Record<DesvinculacionMotivo, string> = {
-    renuncia_voluntaria: 'Renuncia voluntaria',
-    despido_sin_causa: 'Despido sin causa',
-    despido_con_causa: 'Despido con causa',
-    jubilacion: 'Jubilación',
-    vencimiento_contrato: 'Vencimiento de contrato',
-    acuerdo_mutuo: 'Acuerdo mutuo',
-    fallecimiento: 'Fallecimiento',
-    otro: 'Otro',
-  }
   const [desactivarForm, setDesactivarForm] = useState({
     fecha: hoyAR(),
     motivo: 'renuncia_voluntaria' as DesvinculacionMotivo,
@@ -392,6 +387,24 @@ export default function EmpleadoDetailPage() {
       setRoleStatus('error')
       setTimeout(() => setRoleStatus('idle'), 4000)
     }
+  }
+
+  function handleDesactivar() {
+    const registrador = empleados.find(e => e.id === user?.empleadoId)
+    const info: DesvinculacionInfo = {
+      fecha: desactivarForm.fecha,
+      motivo: desactivarForm.motivo,
+      motivoDetalle: desactivarForm.motivoDetalle || undefined,
+      telegramaEntregado: desactivarForm.telegramaEntregado,
+      fechaTelegrama: desactivarForm.fechaTelegrama || undefined,
+      preaviso: desactivarForm.preaviso,
+      liquidacionFinal: desactivarForm.liquidacionFinal,
+      observaciones: desactivarForm.observaciones || undefined,
+      registradoPor: `${registrador?.nombre ?? ''} ${registrador?.apellido ?? ''}`.trim() || undefined,
+      fechaRegistro: hoyAR(),
+    }
+    desactivarEmpleado(id, info)
+    setShowDesactivar(false)
   }
 
   async function handleDelete() {
@@ -981,393 +994,55 @@ export default function EmpleadoDetailPage() {
 
       {/* Tab: Historial */}
       {tab === 4 && (
-        <div className="space-y-4">
-        {/* Datos de desvinculación — solo si está inactivo */}
-        {emp.estado === 'inactivo' && emp.desvinculacion && (
-          <div className="card border-l-4 border-red-400 dark:border-red-500 overflow-hidden">
-            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
-              <BriefcaseBusiness className="w-5 h-5 text-red-500 shrink-0" />
-              <p className="section-title text-red-700 dark:text-red-400">Registro de desvinculación</p>
-            </div>
-            <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Fecha efectiva</p>
-                <p className="text-slate-700 dark:text-slate-200 font-medium">{formatFecha(emp.desvinculacion.fecha)}</p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Motivo</p>
-                <p className="text-slate-700 dark:text-slate-200 font-medium">
-                  {DESVINCULACION_MOTIVO_LABEL[emp.desvinculacion.motivo]}
-                  {emp.desvinculacion.motivoDetalle && ` — ${emp.desvinculacion.motivoDetalle}`}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Telegrama</p>
-                <p className={`font-medium ${emp.desvinculacion.telegramaEntregado ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                  {emp.desvinculacion.telegramaEntregado
-                    ? `Entregado${emp.desvinculacion.fechaTelegrama ? ` el ${formatFecha(emp.desvinculacion.fechaTelegrama)}` : ''}`
-                    : 'No entregado'}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Preaviso</p>
-                <p className="text-slate-700 dark:text-slate-200 font-medium capitalize">
-                  {emp.desvinculacion.preaviso === 'cumplido' ? '✅ Cumplido'
-                    : emp.desvinculacion.preaviso === 'no_cumplido' ? '❌ No cumplido'
-                    : '— No aplica'}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Liquidación final</p>
-                <p className={`font-medium ${emp.desvinculacion.liquidacionFinal === 'entregada' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                  {emp.desvinculacion.liquidacionFinal === 'entregada' ? '✅ Entregada' : '⏳ Pendiente'}
-                </p>
-              </div>
-              {emp.desvinculacion.registradoPor && (
-                <div>
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Registrado por</p>
-                  <p className="text-slate-700 dark:text-slate-200">{emp.desvinculacion.registradoPor} · {formatFecha(emp.desvinculacion.fechaRegistro)}</p>
-                </div>
-              )}
-              {emp.desvinculacion.observaciones && (
-                <div className="sm:col-span-2">
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Observaciones</p>
-                  <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{emp.desvinculacion.observaciones}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Historial de desvinculaciones anteriores — solo admin, preservadas al reactivar */}
-        {isAdmin && emp.historialDesvinculaciones && emp.historialDesvinculaciones.length > 0 && (
-          <div className="card overflow-hidden">
-            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
-              <BriefcaseBusiness className="w-4 h-4 text-slate-400 shrink-0" />
-              <p className="section-title">Bajas anteriores ({emp.historialDesvinculaciones.length})</p>
-            </div>
-            <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {[...emp.historialDesvinculaciones].reverse().map((baja, i) => (
-                <div key={i} className="p-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-                  <div>
-                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Fecha</p>
-                    <p className="text-slate-700 dark:text-slate-200">{formatFecha(baja.fecha)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Motivo</p>
-                    <p className="text-slate-700 dark:text-slate-200">
-                      {DESVINCULACION_MOTIVO_LABEL[baja.motivo]}
-                      {baja.motivoDetalle ? ` — ${baja.motivoDetalle}` : ''}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Liquidación</p>
-                    <p className={baja.liquidacionFinal === 'entregada' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-500'}>
-                      {baja.liquidacionFinal === 'entregada' ? '✅ Entregada' : '⏳ Pendiente'}
-                    </p>
-                  </div>
-                  {baja.observaciones && (
-                    <div className="sm:col-span-3">
-                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Observaciones</p>
-                      <p className="text-slate-500 dark:text-slate-400 italic">{baja.observaciones}</p>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="card p-5">
-          <p className="section-title mb-4">Historial de Actividad</p>
-          {misSolicitudes.length === 0 && misRecibos.length === 0 ? (
-            <p className="text-slate-400 text-sm text-center py-4">Sin actividad registrada aún.</p>
-          ) : (
-            <div className="space-y-4">
-              {[
-                ...misRecibos.slice(0, 3).map(r => ({
-                  fecha: r.fechaSubida,
-                  desc: `Recibo de ${formatMes(r.mes, r.anio)} disponible`,
-                })),
-                ...misSolicitudes.slice(0, 4).map(s => ({
-                  fecha: s.fechaCreacion,
-                  desc: `Solicitud de ${SOLICITUD_TIPO_LABEL[s.tipo]}: ${SOLICITUD_ESTADO_LABEL[s.estado]}`,
-                })),
-              ].sort((a, b) => b.fecha.localeCompare(a.fecha)).map((item, i) => (
-                <div key={i} className="flex items-start gap-3">
-                  <div className="w-2 h-2 rounded-full bg-brand-700 mt-1.5 shrink-0" />
-                  <div>
-                    <p className="text-sm text-slate-700 dark:text-slate-300">{item.desc}</p>
-                    <p className="text-xs text-slate-400 mt-0.5">{formatFecha(item.fecha)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-        </div>
+        <HistorialTab
+          empleado={emp}
+          isAdmin={isAdmin}
+          misSolicitudes={misSolicitudes}
+          misRecibos={misRecibos}
+        />
       )}
 
-      {/* ── Visor de PDF integrado ──────────────────────────────────────── */}
       {pdfViewer && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex flex-col" onClick={() => setPdfViewer(null)}>
-          <div className="flex items-center justify-between px-4 py-3 bg-slate-900 shrink-0" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-2 min-w-0">
-              <FileText className="w-4 h-4 text-slate-400 shrink-0" />
-              <p className="text-sm font-medium text-white truncate">{pdfViewer.label}</p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0 ml-3">
-              <a href={pdfViewer.url} download className="text-xs text-slate-300 hover:text-white flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 transition-colors" onClick={e => e.stopPropagation()}>
-                <Download className="w-3.5 h-3.5" /> Descargar
-              </a>
-              <button onClick={() => setPdfViewer(null)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white transition-colors">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-          <div className="flex-1 overflow-hidden" onClick={e => e.stopPropagation()}>
-            <iframe src={pdfViewer.url} className="w-full h-full border-0" title="Visor de recibo" />
-          </div>
-        </div>
+        <PdfViewerOverlay viewer={pdfViewer} onClose={() => setPdfViewer(null)} />
       )}
 
-      {/* ── Modal DESACTIVAR empleado ──────────────────────────────────── */}
       {showDesactivar && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center sm:justify-center sm:p-4">
-          <div className="card w-full sm:max-w-lg max-h-[90vh] overflow-y-auto animate-scale-in rounded-t-2xl rounded-b-none sm:rounded-2xl" onClick={e => e.stopPropagation()}>
-            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <UserX className="w-5 h-5 text-amber-500" />
-                <p className="section-title">Desactivar a {emp.nombre} {emp.apellido}</p>
-              </div>
-              <button onClick={() => setShowDesactivar(false)}><X className="w-5 h-5 text-slate-400" /></button>
-            </div>
-            <div className="p-5 space-y-4">
-              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 text-sm text-amber-700 dark:text-amber-400">
-                ⚠️ El empleado perderá el acceso al portal de inmediato. Podrás reactivarlo cuando quieras.
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="form-label">Fecha de desvinculación *</label>
-                  <input type="date" className="form-input" value={desactivarForm.fecha}
-                    onChange={e => setDesactivarForm(f => ({ ...f, fecha: e.target.value }))} />
-                </div>
-                <div>
-                  <label className="form-label">Motivo *</label>
-                  <select className="form-select" value={desactivarForm.motivo}
-                    onChange={e => setDesactivarForm(f => ({ ...f, motivo: e.target.value as DesvinculacionMotivo }))}>
-                    {(Object.entries(DESVINCULACION_MOTIVO_LABEL) as [DesvinculacionMotivo, string][]).map(([k, v]) => (
-                      <option key={k} value={k}>{v}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              {desactivarForm.motivo === 'otro' && (
-                <div>
-                  <label className="form-label">Especificá el motivo</label>
-                  <input className="form-input" placeholder="Describí el motivo..." value={desactivarForm.motivoDetalle}
-                    onChange={e => setDesactivarForm(f => ({ ...f, motivoDetalle: e.target.value }))} />
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="form-label">Preaviso</label>
-                  <select className="form-select" value={desactivarForm.preaviso}
-                    onChange={e => setDesactivarForm(f => ({ ...f, preaviso: e.target.value as typeof desactivarForm.preaviso }))}>
-                    <option value="no_aplica">No aplica</option>
-                    <option value="cumplido">Cumplido</option>
-                    <option value="no_cumplido">No cumplido</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="form-label">Liquidación final</label>
-                  <select className="form-select" value={desactivarForm.liquidacionFinal}
-                    onChange={e => setDesactivarForm(f => ({ ...f, liquidacionFinal: e.target.value as 'pendiente' | 'entregada' }))}>
-                    <option value="pendiente">Pendiente</option>
-                    <option value="entregada">Entregada</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="flex items-center gap-2.5 cursor-pointer">
-                  <input type="checkbox" checked={desactivarForm.telegramaEntregado}
-                    onChange={e => setDesactivarForm(f => ({ ...f, telegramaEntregado: e.target.checked, fechaTelegrama: e.target.checked ? f.fechaTelegrama : '' }))}
-                    className="w-4 h-4 accent-teal-600" />
-                  <span className="form-label !mb-0">Telegrama de desvinculación entregado</span>
-                </label>
-                {desactivarForm.telegramaEntregado && (
-                  <div className="mt-2">
-                    <label className="form-label">Fecha de entrega del telegrama</label>
-                    <input type="date" className="form-input" value={desactivarForm.fechaTelegrama}
-                      onChange={e => setDesactivarForm(f => ({ ...f, fechaTelegrama: e.target.value }))} />
-                  </div>
-                )}
-              </div>
-              <div>
-                <label className="form-label">Observaciones <span className="font-normal text-slate-400">(opcional)</span></label>
-                <textarea className="form-input resize-none" rows={3} placeholder="Notas adicionales..."
-                  value={desactivarForm.observaciones}
-                  onChange={e => setDesactivarForm(f => ({ ...f, observaciones: e.target.value }))} />
-              </div>
-              <div className="flex gap-2 justify-end pt-1">
-                <button onClick={() => setShowDesactivar(false)} className="btn-secondary">Cancelar</button>
-                <button
-                  disabled={!desactivarForm.fecha || !desactivarForm.motivo}
-                  className="btn-primary bg-amber-600 hover:bg-amber-500 disabled:opacity-50"
-                  onClick={() => {
-                    const info: DesvinculacionInfo = {
-                      fecha: desactivarForm.fecha,
-                      motivo: desactivarForm.motivo,
-                      motivoDetalle: desactivarForm.motivoDetalle || undefined,
-                      telegramaEntregado: desactivarForm.telegramaEntregado,
-                      fechaTelegrama: desactivarForm.fechaTelegrama || undefined,
-                      preaviso: desactivarForm.preaviso,
-                      liquidacionFinal: desactivarForm.liquidacionFinal,
-                      observaciones: desactivarForm.observaciones || undefined,
-                      registradoPor: `${empleados.find(e => e.id === user?.empleadoId)?.nombre ?? ''} ${empleados.find(e => e.id === user?.empleadoId)?.apellido ?? ''}`.trim() || undefined,
-                      fechaRegistro: hoyAR(),
-                    }
-                    desactivarEmpleado(id, info)
-                    setShowDesactivar(false)
-                  }}
-                >
-                  <UserX className="w-4 h-4" /> Confirmar desvinculación
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <DesactivarModal
+          nombreCompleto={`${emp.nombre} ${emp.apellido}`}
+          form={desactivarForm}
+          setForm={setDesactivarForm}
+          onClose={() => setShowDesactivar(false)}
+          onConfirm={handleDesactivar}
+        />
       )}
 
-      {/* ── Modal REACTIVAR empleado ────────────────────────────────────── */}
       {showReactivar && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowReactivar(false)}>
-          <div className="card w-full max-w-sm animate-scale-in" onClick={e => e.stopPropagation()}>
-            <div className="p-6 text-center">
-              <div className="w-14 h-14 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                <UserCheck className="w-7 h-7 text-emerald-600" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">¿Reactivar a {emp.nombre} {emp.apellido}?</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-                El empleado volverá a tener acceso al portal con sus credenciales anteriores. Se borrarán los datos de desvinculación.
-              </p>
-              <div className="flex gap-3">
-                <button onClick={() => setShowReactivar(false)} className="btn-secondary flex-1 justify-center">Cancelar</button>
-                <button
-                  onClick={() => { reactivarEmpleado(id); setShowReactivar(false) }}
-                  className="flex-1 justify-center px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-500 transition-colors inline-flex items-center gap-2"
-                >
-                  <UserCheck className="w-4 h-4" /> Reactivar
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ReactivarModal
+          nombreCompleto={`${emp.nombre} ${emp.apellido}`}
+          onClose={() => setShowReactivar(false)}
+          onConfirm={() => { reactivarEmpleado(id); setShowReactivar(false) }}
+        />
       )}
 
-      {/* ── Modal confirmación eliminar empleado ────────────────────────── */}
       {showDelete && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-          onClick={() => { if (!deleting) setShowDelete(false) }}>
-          <div className="card w-full max-w-sm animate-scale-in" onClick={e => e.stopPropagation()}>
-            <div className="p-6 text-center">
-              <div className="w-14 h-14 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Trash2 className="w-7 h-7 text-red-500" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">¿Eliminar a {emp.nombre} {emp.apellido}?</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                Se eliminará su cuenta de acceso y su perfil de forma permanente. No podrá volver a iniciar sesión. Esta acción no se puede deshacer.
-              </p>
-              {deleteErr && (
-                <div className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-lg px-3 py-2 text-sm mb-3">{deleteErr}</div>
-              )}
-              <div className="flex gap-3">
-                <button onClick={() => setShowDelete(false)} disabled={deleting} className="btn-secondary flex-1 justify-center disabled:opacity-50">
-                  Cancelar
-                </button>
-                <button onClick={handleDelete} disabled={deleting}
-                  className="flex-1 justify-center px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors disabled:opacity-50 inline-flex items-center gap-2">
-                  {deleting
-                    ? <><Loader2 className="w-4 h-4 animate-spin" /> Eliminando...</>
-                    : <>Sí, eliminar</>}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <EliminarModal
+          nombreCompleto={`${emp.nombre} ${emp.apellido}`}
+          deleting={deleting}
+          error={deleteErr}
+          onClose={() => setShowDelete(false)}
+          onConfirm={handleDelete}
+        />
       )}
 
-      {/* ── Modal confirmación cambio de rol ────────────────────────────── */}
       {confirmRole && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-          onClick={() => setConfirmRole(null)}>
-          <div className="card w-full max-w-sm animate-scale-in" onClick={e => e.stopPropagation()}>
-            <div className="p-6 text-center">
-              <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 ${
-                confirmRole === 'admin' ? 'bg-amber-100 dark:bg-amber-900/30'
-                : confirmRole === 'comunicaciones' ? 'bg-blue-100 dark:bg-blue-900/30'
-                : confirmRole === 'rrhh' ? 'bg-emerald-100 dark:bg-emerald-900/30'
-                : 'bg-slate-100 dark:bg-slate-800'
-              }`}>
-                <Shield className={`w-7 h-7 ${
-                  confirmRole === 'admin' ? 'text-amber-500'
-                  : confirmRole === 'comunicaciones' ? 'text-blue-500'
-                  : confirmRole === 'rrhh' ? 'text-emerald-500'
-                  : 'text-slate-400'
-                }`} />
-              </div>
-              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">
-                {confirmRole === 'admin' ? '¿Hacer administrador?'
-                  : confirmRole === 'comunicaciones' ? '¿Asignar rol Comunicaciones?'
-                  : confirmRole === 'rrhh' ? '¿Asignar rol Gestión de Personal?'
-                  : '¿Volver a empleado?'}
-              </h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-                {confirmRole === 'admin'
-                  ? `${emp.nombre} tendrá acceso completo al portal: empleados, recibos, estadísticas y configuración.`
-                  : confirmRole === 'comunicaciones'
-                  ? `${emp.nombre} podrá crear y editar comunicados y eventos, pero no verá empleados, recibos ni datos administrativos.`
-                  : confirmRole === 'rrhh'
-                  ? `${emp.nombre} tendrá acceso a empleados, solicitudes, novedades internas y estadísticas, pero no a recibos de sueldo.`
-                  : `${emp.nombre} pasará a ser empleado regular y solo verá sus propios datos.`}
-              </p>
-              <div className="flex gap-3">
-                <button onClick={() => setConfirmRole(null)} className="btn-secondary flex-1 justify-center">
-                  Cancelar
-                </button>
-                <button
-                  onClick={() => handleSetRole(confirmRole!)}
-                  className={`flex-1 justify-center px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors ${
-                    confirmRole === 'admin' ? 'bg-amber-500 hover:bg-amber-600'
-                    : confirmRole === 'comunicaciones' ? 'bg-blue-600 hover:bg-blue-700'
-                    : confirmRole === 'rrhh' ? 'bg-emerald-600 hover:bg-emerald-700'
-                    : 'bg-slate-500 hover:bg-slate-600'
-                  }`}
-                >
-                  Confirmar
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ConfirmarRolModal
+          rol={confirmRole}
+          nombre={emp.nombre}
+          onClose={() => setConfirmRole(null)}
+          onConfirm={() => handleSetRole(confirmRole)}
+        />
       )}
 
-    </div>
-  )
-}
-
-function EditField({ label, value, editMode, editor }: {
-  label: string
-  value: string
-  editMode: boolean
-  editor: React.ReactNode
-}) {
-  return (
-    <div className="py-2.5 border-b border-slate-100 dark:border-slate-800">
-      <span className="text-xs font-medium text-slate-500 dark:text-slate-400 block mb-1">{label}</span>
-      {editMode && editor ? editor : (
-        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{value}</span>
-      )}
     </div>
   )
 }
