@@ -33,7 +33,14 @@ Order matters: DataContext must exist before AuthContext (auth reads/writes empl
 3. `onAuthStateChange` watches for session changes and keeps state in sync
 4. Inactive employees (`estado === 'inactivo'`) are signed out immediately after login check
 
-Three roles: `'admin' | 'employee' | 'comunicaciones'`
+Four roles: `'admin' | 'employee' | 'comunicaciones' | 'rrhh'`
+
+`rrhh` ("Gestión de Personal") comparte con `admin` las tareas de RRHH del día a día
+—empleados, solicitudes, tickets, registros internos, estadísticas— pero **no** accede
+a recibos de sueldo ni a la administración de cuentas (`set-role`, `set-email`,
+`delete-user`). Del lado del server el criterio está en `esGestionPersonal()`
+(`src/lib/serverAuth.ts`); no compares contra `'admin'` a mano si la acción también
+corresponde a `rrhh`.
 
 ### State Management
 

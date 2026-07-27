@@ -22,6 +22,17 @@ export interface Requester {
   userId: string
 }
 
+/**
+ * Gestión de Personal: 'admin' y 'rrhh' comparten las tareas de RRHH del día a
+ * día (empleados, solicitudes, tickets, registros internos).
+ *
+ * Lo que NO entra acá y queda sólo para 'admin': recibos de sueldo y la
+ * administración de cuentas (roles, emails, borrado de usuarios).
+ */
+export function esGestionPersonal(r: Requester | null): boolean {
+  return r?.role === 'admin' || r?.role === 'rrhh'
+}
+
 // Identifica al que hace el request validando su JWT de Supabase (NO un id que
 // manda el cliente, que sería falsificable). Devuelve su fila de fno_users o null.
 export async function getRequester(req: NextRequest, sb: SupabaseClient): Promise<Requester | null> {
