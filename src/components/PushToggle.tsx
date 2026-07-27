@@ -10,8 +10,14 @@ export function PushToggle({ empleadoId }: { empleadoId: string }) {
 
   const handleSubscribe = async () => {
     setSubscribing(true)
-    await subscribe()
-    setSubscribing(false)
+    // finally: si subscribe() llegara a romper de una forma no contemplada, el
+    // botón tiene que volver igual. Quedarse en "Activando..." para siempre es
+    // peor que mostrar un error.
+    try {
+      await subscribe()
+    } finally {
+      setSubscribing(false)
+    }
   }
 
   // En iPhone la API no existe hasta que el portal se agrega a la pantalla de

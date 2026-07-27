@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { hoyAR, formatFecha, formatMes, calcularEdad, calcularAntiguedad } from './utils'
+import { hoyAR, formatFecha, formatMes, calcularEdad, calcularAntiguedad, conTimeout } from './utils'
 
 afterEach(() => vi.useRealTimers())
 
@@ -93,5 +93,27 @@ describe('calcularAntiguedad', () => {
   it('omite los meses cuando son exactos', () => {
     reloj('2026-07-20T12:00:00Z')
     expect(calcularAntiguedad('2025-07-01')).toBe('1 año')
+  })
+})
+
+describe('conTimeout', () => {
+  it('devuelve el valor si la promesa resuelve a tiempo', async () => {
+    await expect(conTimeout(Promise.resolve('ok'), 1000, 'tarde')).resolves.toBe('ok')
+  })
+
+  it('propaga el rechazo original en vez de taparlo con el timeout', async () => {
+    const err = new Error('falló de verdad')
+    await expect(conTimeout(Promise.reject(err), 1000, 'tarde')).rejects.toThrow('falló de verdad')
+  })
+
+  it('rechaza con el mensaje dado si la promesa nunca resuelve', async () => {
+    vi.useFakeTimers()
+    // Este es el caso que colgaba el botón en "Activando...": serviceWorker.ready
+    // puede no resolver nunca si el SW no llega a activarse.
+    const nuncaResuelve = new Promise<string>(() => {})
+    const p = conTimeout(nuncaResuelve, 5000, 'se colgó')
+    const assertion = expect(p).rejects.toThrow('se colgó')
+    await vi.advanceTimersByTimeAsync(5000)
+    await assertion
   })
 })

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { authFetch } from '@/lib/authFetch'
+import { conTimeout } from '@/lib/utils'
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!
 
@@ -78,24 +79,34 @@ export function usePushNotifications(empleadoId: string | undefined) {
       // primera visita puede no haber terminado de instalarse.
       let reg = await navigator.serviceWorker.getRegistration()
       if (!reg) reg = await navigator.serviceWorker.register('/sw.js').catch(() => undefined)
-      if (!reg) {
-        const timeout = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('No se pudo iniciar el service worker. Probá recargar la página.')), 15000)
-        )
-        reg = await Promise.race([navigator.serviceWorker.ready, timeout])
-      }
-      // pushManager sólo aparece cuando el SW está activo.
-      await navigator.serviceWorker.ready
 
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-      })
-      const res = await authFetch('/api/push/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subscription: sub.toJSON(), empleadoId }),
-      })
+      // pushManager sólo funciona con el SW activo, y la activación es el paso
+      // que más se cuelga (sobre todo en iOS la primera vez).
+      const listo = await conTimeout(
+        navigator.serviceWorker.ready,
+        20000,
+        'El service worker no terminó de activarse. Cerrá y volvé a abrir el portal, y probá de nuevo.',
+      )
+      reg = reg ?? listo
+
+      const sub = await conTimeout(
+        reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        }),
+        20000,
+        'El navegador no respondió al pedido de suscripción. Probá de nuevo.',
+      )
+
+      const res = await conTimeout(
+        authFetch('/api/push/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subscription: sub.toJSON(), empleadoId }),
+        }),
+        20000,
+        'No se pudo guardar la suscripción (sin respuesta del servidor).',
+      )
       if (!res.ok) throw new Error(`Error al guardar suscripción (${res.status})`)
       setStatus('subscribed')
     } catch (err) {
