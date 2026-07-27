@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import nodemailer from 'nodemailer'
-import { serviceClient, getRequester } from '@/lib/serverAuth'
+import { serviceClient, getRequester, esGestionPersonal } from '@/lib/serverAuth'
 
 export const runtime = 'nodejs'
 
@@ -19,6 +19,8 @@ const TIPOS_PUBLICOS = new Set(['new_registration'])
 const TIPOS_INTERNOS = new Set(['reset_password'])
 const TIPOS_CUALQUIER_USUARIO = new Set(['new_solicitud', 'password_changed'])
 const TIPOS_COMUNICACIONES = new Set(['evento_notificacion', 'novedad_publicada'])
+// Los recibos de sueldo son la excepción: Gestión de Personal no los maneja.
+const TIPOS_SOLO_ADMIN = new Set(['recibo_disponible'])
 
 const ADMIN_EMAIL = 'rrhhfundacionnqnoeste@gmail.com'
 const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL ?? 'https://portalfno.com'
@@ -83,12 +85,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, reason: 'No autorizado' }, { status: 401 })
     }
     const esAdmin = requester.role === 'admin'
+    const gestionPersonal = esGestionPersonal(requester)
     const puedeComunicar = esAdmin || requester.role === 'comunicaciones'
     const permitido = TIPOS_CUALQUIER_USUARIO.has(type)
       ? true
       : TIPOS_COMUNICACIONES.has(type)
         ? puedeComunicar
-        : esAdmin
+        : TIPOS_SOLO_ADMIN.has(type)
+          ? esAdmin
+          : gestionPersonal
     if (!permitido) {
       return NextResponse.json({ ok: false, reason: 'Permisos insuficientes' }, { status: 403 })
     }

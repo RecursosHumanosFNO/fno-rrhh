@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { serviceClient, getRequester } from '@/lib/serverAuth'
+import { serviceClient, getRequester, esGestionPersonal } from '@/lib/serverAuth'
 
 export const runtime = 'nodejs'
 
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
 
     const requester = await getRequester(req, sb)
     if (!requester) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
-    if (requester.role !== 'admin') return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
+    if (!esGestionPersonal(requester)) return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
 
     // 1. Crear usuario en Supabase Auth (contraseña encriptada automáticamente)
     const { data: authData, error: authErr } = await sb.auth.admin.createUser({

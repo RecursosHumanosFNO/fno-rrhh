@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { serviceClient, getRequester } from '@/lib/serverAuth'
+import { serviceClient, getRequester, esGestionPersonal } from '@/lib/serverAuth'
 
 export const runtime = 'nodejs'
 
@@ -20,7 +20,8 @@ export async function POST(req: NextRequest) {
 
     const requester = await getRequester(req, sb)
     if (!requester) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
-    const esAdmin = requester.role === 'admin'
+    // Gestión de Personal edita fichas de otros; un empleado solo la propia.
+    const esAdmin = esGestionPersonal(requester)
     if (!esAdmin && requester.empleadoId !== empleadoId) {
       return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
     }

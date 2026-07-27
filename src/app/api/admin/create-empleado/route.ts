@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { serviceClient, getRequester } from '@/lib/serverAuth'
+import { serviceClient, getRequester, esGestionPersonal } from '@/lib/serverAuth'
 
 export const runtime = 'nodejs'
 
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
 
     const requester = await getRequester(req, sb)
     if (!requester) return NextResponse.json({ ok: false, error: 'No autenticado' }, { status: 401 })
-    if (requester.role !== 'admin') return NextResponse.json({ ok: false, error: 'Acceso denegado' }, { status: 403 })
+    if (!esGestionPersonal(requester)) return NextResponse.json({ ok: false, error: 'Acceso denegado' }, { status: 403 })
 
     // Mapear a columnas de fno_empleados (snake_case)
     const row: Record<string, unknown> = {
