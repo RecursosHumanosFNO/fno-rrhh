@@ -337,3 +337,17 @@ export function conTimeout<T>(promesa: Promise<T>, ms: number, mensaje: string):
     )
   })
 }
+
+/**
+ * Día de la semana en Argentina (UTC-3): 0 = domingo, 1 = lunes, … 6 = sábado.
+ *
+ * `getUTCDay()` a secas se equivoca entre las 21 y las 24 hs de Argentina,
+ * porque en UTC ya es el día siguiente.
+ */
+export function diaSemanaAR(d: Date): number {
+  return new Date(d.getTime() - 3 * 60 * 60 * 1000).getUTCDay()
+}
+
+export function esLunesEnAR(d: Date): boolean {
+  return diaSemanaAR(d) === 1
+}

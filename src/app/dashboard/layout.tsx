@@ -7,6 +7,7 @@ import { useData } from '@/contexts/DataContext'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 import PullToRefresh from '@/components/PullToRefresh'
+import { PushPrompt } from '@/components/PushPrompt'
 import { cn } from '@/lib/utils'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -54,6 +55,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className={cn('sidebar-main min-h-screen flex flex-col', collapsed && 'sidebar-collapsed')}>
         <Header onMenuToggle={() => setMobileOpen(!mobileOpen)} />
         <main className="flex-1 [overflow-x:clip]">
+          <div className="px-4 sm:px-6 lg:px-8 pt-4">
+            <PushPrompt empleadoId={empleado?.id} />
+          </div>
           {children}
         </main>
       </div>
