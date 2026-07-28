@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import nodemailer from 'nodemailer'
+import { esLunesEnAR } from '@/lib/utils'
 
 export const runtime = 'nodejs'
 
@@ -41,12 +42,22 @@ const TIPO_LABEL: Record<string, string> = {
   pedido_administrativo: 'Pedido Administrativo', otro: 'Otro',
 }
 
-// GET /api/cron/solicitudes-pendientes — Vercel Cron, cada lunes a las 9am
+// GET /api/cron/solicitudes-pendientes — Vercel Cron lo invoca todos los días
+// a las 9am ARG, pero el aviso sólo se manda los lunes.
+//
+// El cron es diario por el mismo motivo que el del reporte: las expresiones
+// semanales no dispararon, así que el día lo decide el código. Con ?force=1
+// se envía cualquier día.
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET
   if (!cronSecret) return NextResponse.json({ error: 'CRON_SECRET no configurado' }, { status: 401 })
   const auth = req.headers.get('authorization')
   if (auth !== `Bearer ${cronSecret}`) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const forzado = req.nextUrl.searchParams.get('force') === '1'
+  if (!forzado && !esLunesEnAR(new Date())) {
+    return NextResponse.json({ ok: true, skipped: 'sólo se envía los lunes' })
+  }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY

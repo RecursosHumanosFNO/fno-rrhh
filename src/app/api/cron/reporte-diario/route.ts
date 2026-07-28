@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import nodemailer from 'nodemailer'
+import { esLunesEnAR } from '@/lib/utils'
 
 export const runtime = 'nodejs'
 
@@ -103,7 +104,17 @@ const LABELS_TICKET: Record<string, string> = {
   actualizacion_datos: 'Act. datos', reclamo: 'Reclamo', otro: 'Otro',
 }
 
-// GET /api/cron/reporte-diario — lo invoca Vercel Cron los lunes a las 8am ARG (11:00 UTC)
+// GET /api/cron/reporte-diario — lo invoca Vercel Cron todos los días a las
+// 8am ARG (11:00 UTC), pero el reporte sólo se envía los lunes.
+//
+// El cron es diario a propósito. Estuvo configurado como semanal (`0 11 * * 1`)
+// y no disparó ninguno de los lunes, mientras que los crons diarios del mismo
+// proyecto siguieron andando sin fallar. En vez de seguir dependiendo de que
+// la plataforma respete la expresión semanal, el día lo decide este código.
+//
+// Con ?force=1 se envía aunque no sea lunes (sirve para recuperar un reporte
+// que no salió). Requiere el mismo CRON_SECRET, así que no lo puede disparar
+// cualquiera.
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET
   if (!cronSecret) {
@@ -112,6 +123,11 @@ export async function GET(req: NextRequest) {
   const auth = req.headers.get('authorization')
   if (auth !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const forzado = req.nextUrl.searchParams.get('force') === '1'
+  if (!forzado && !esLunesEnAR(new Date())) {
+    return NextResponse.json({ ok: true, skipped: 'sólo se envía los lunes' })
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL

@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { hoyAR, formatFecha, formatMes, calcularEdad, calcularAntiguedad, conTimeout } from './utils'
+import { hoyAR, formatFecha, formatMes, calcularEdad, calcularAntiguedad, conTimeout, esLunesEnAR } from './utils'
 
 afterEach(() => vi.useRealTimers())
 
@@ -115,5 +115,34 @@ describe('conTimeout', () => {
     const assertion = expect(p).rejects.toThrow('se colgó')
     await vi.advanceTimersByTimeAsync(5000)
     await assertion
+  })
+})
+
+describe('esLunesEnAR', () => {
+  it('reconoce el lunes al mediodía', () => {
+    // 2026-07-27 fue lunes.
+    expect(esLunesEnAR(new Date('2026-07-27T15:00:00Z'))).toBe(true)
+  })
+
+  it('no confunde el domingo a la noche con lunes', () => {
+    // 21:00 del domingo en Argentina ya es lunes 00:00 en UTC: con getUTCDay()
+    // a secas el reporte saldría un día antes.
+    expect(esLunesEnAR(new Date('2026-07-27T00:30:00Z'))).toBe(false)
+  })
+
+  it('sigue siendo lunes a las 23 hs de Argentina', () => {
+    // 23:00 del lunes ARG = 02:00 del martes UTC.
+    expect(esLunesEnAR(new Date('2026-07-28T02:00:00Z'))).toBe(true)
+  })
+
+  it('rechaza el resto de los días', () => {
+    expect(esLunesEnAR(new Date('2026-07-28T15:00:00Z'))).toBe(false) // martes
+    expect(esLunesEnAR(new Date('2026-07-26T15:00:00Z'))).toBe(false) // domingo
+  })
+
+  it('coincide con la hora a la que corre el cron', () => {
+    // El cron dispara 11:00 UTC = 8am ARG. Ese es el caso que importa.
+    expect(esLunesEnAR(new Date('2026-07-27T11:00:00Z'))).toBe(true)
+    expect(esLunesEnAR(new Date('2026-07-28T11:00:00Z'))).toBe(false)
   })
 })

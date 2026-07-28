@@ -77,6 +77,8 @@ export default function ComunicacionesPage() {
 
   const [showPush, setShowPush] = useState(false)
   const [pushForm, setPushForm] = useState({ title: '', body: '', url: '' })
+  const [pushModo, setPushModo] = useState<'todos' | 'algunos'>('todos')
+  const [pushDestinatarios, setPushDestinatarios] = useState<string[]>([])
   const [pushSending, setPushSending] = useState(false)
   const [pushResult, setPushResult] = useState<string | null>(null)
 
@@ -258,11 +260,19 @@ export default function ComunicacionesPage() {
       const res = await authFetch('/api/push/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-empleado-id': user?.empleadoId ?? '' },
-        body: JSON.stringify({ title: pushForm.title, body: pushForm.body, url: pushForm.url || '/dashboard' }),
+        body: JSON.stringify({
+          title: pushForm.title,
+          body: pushForm.body,
+          url: pushForm.url || '/dashboard',
+          // La ruta interpreta la lista vacía como "todos".
+          empleadoIds: pushModo === 'algunos' ? pushDestinatarios : [],
+        }),
       })
       const data = await res.json()
       setPushResult(`Enviado a ${data.sent} dispositivo${data.sent !== 1 ? 's' : ''}.`)
       setPushForm({ title: '', body: '', url: '' })
+      setPushDestinatarios([])
+      setPushModo('todos')
     } catch {
       setPushResult('Error al enviar. Intentá de nuevo.')
     } finally {
@@ -752,9 +762,57 @@ export default function ComunicacionesPage() {
               </button>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              La notificación llegará a todos los dispositivos que tengan activadas las notificaciones push.
+              Sólo llega a quienes tengan las notificaciones activadas en su dispositivo.
             </p>
             <div className="space-y-3">
+              <div>
+                <label className="form-label">Destinatarios</label>
+                <div className="flex gap-2 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => setPushModo('todos')}
+                    className={`flex-1 px-3 py-2 rounded-xl text-xs font-semibold border transition-colors ${
+                      pushModo === 'todos'
+                        ? 'bg-brand-600 text-white border-brand-600'
+                        : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                    }`}
+                  >
+                    Todo el equipo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPushModo('algunos')}
+                    className={`flex-1 px-3 py-2 rounded-xl text-xs font-semibold border transition-colors ${
+                      pushModo === 'algunos'
+                        ? 'bg-brand-600 text-white border-brand-600'
+                        : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                    }`}
+                  >
+                    Elegir personas
+                  </button>
+                </div>
+
+                {pushModo === 'algunos' && (
+                  <div className="border border-slate-200 dark:border-slate-700 rounded-xl max-h-48 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+                    {empleadosActivos.map(e => (
+                      <label key={e.id} className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 accent-teal-600"
+                          checked={pushDestinatarios.includes(e.id)}
+                          onChange={ev => setPushDestinatarios(d =>
+                            ev.target.checked ? [...d, e.id] : d.filter(id => id !== e.id)
+                          )}
+                        />
+                        <span className="text-sm text-slate-700 dark:text-slate-300">
+                          {e.apellido}, {e.nombre}
+                          {e.sector && <span className="text-slate-400 text-xs ml-1.5">· {e.sector}</span>}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
               <div>
                 <label className="form-label">Título *</label>
                 <input
@@ -793,11 +851,16 @@ export default function ComunicacionesPage() {
               <button onClick={() => { setShowPush(false); setPushResult(null) }} className="btn-secondary">Cancelar</button>
               <button
                 onClick={handleEnviarPush}
-                disabled={pushSending || !pushForm.title.trim() || !pushForm.body.trim()}
+                disabled={pushSending || !pushForm.title.trim() || !pushForm.body.trim()
+                  || (pushModo === 'algunos' && pushDestinatarios.length === 0)}
                 className="btn-primary disabled:opacity-50"
               >
                 {pushSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                {pushSending ? 'Enviando...' : 'Enviar a todos'}
+                {pushSending
+                  ? 'Enviando...'
+                  : pushModo === 'algunos'
+                    ? `Enviar a ${pushDestinatarios.length}`
+                    : 'Enviar a todos'}
               </button>
             </div>
           </div>
