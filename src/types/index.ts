@@ -253,6 +253,7 @@ export interface AppNotification {
   empleadoId?: string
   soloAdmin?: boolean     // Si es true, solo visible para admin
   soloEmpleado?: boolean  // Si es true, solo visible para el empleado destino (no el admin)
+  url?: string            // Ruta interna a la que lleva al tocarla (opcional)
 }
 
 export interface AuthState {

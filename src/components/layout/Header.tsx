@@ -281,7 +281,9 @@ export default function Header({ onMenuToggle }: HeaderProps) {
                 ) : visibleNotifications.slice(0, 10).map(n => (
                   <Link
                     key={n.id}
-                    href={notifHref(n.tipo)}
+                    // La URL propia de la notificación gana sobre el destino
+                    // genérico por tipo: una push puede apuntar a algo puntual.
+                    href={n.url ?? notifHref(n.tipo)}
                     onClick={() => { markNotificationRead(n.id); setShowNotifs(false) }}
                     className={`p-3 hover:bg-[#e5f4fa] dark:hover:bg-teal-900/20 transition-colors cursor-pointer flex items-start gap-2.5 ${!n.leida ? 'bg-sky-50/80 dark:bg-teal-900/20' : ''}`}
                   >

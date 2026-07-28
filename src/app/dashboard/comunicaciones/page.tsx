@@ -66,7 +66,7 @@ const FORM_INICIAL = {
 
 export default function ComunicacionesPage() {
   const { user } = useAuth()
-  const { novedades, eventos, empleados, addNovedad, updateNovedad, deleteNovedad, addEvento, forceSync } = useData()
+  const { novedades, eventos, empleados, addNovedad, updateNovedad, deleteNovedad, addEvento, addNotification, forceSync } = useData()
   useEffect(() => { forceSync() }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const isAdmin = user?.role === 'admin' || user?.role === 'comunicaciones'
 
@@ -269,6 +269,20 @@ export default function ComunicacionesPage() {
         }),
       })
       const data = await res.json()
+
+      // La push sólo llega a quien la tenga activada y se pierde si el aviso
+      // pasa desapercibido. Dejamos además una notificación en la campanita,
+      // que le queda a todo el mundo y no depende de ningún permiso.
+      const destino = pushForm.url || '/dashboard'
+      const texto = `${pushForm.title}: ${pushForm.body}`
+      if (pushModo === 'algunos') {
+        pushDestinatarios.forEach(empleadoId => {
+          addNotification({ texto, tipo: 'novedad', empleadoId, soloEmpleado: true, url: destino })
+        })
+      } else {
+        addNotification({ texto, tipo: 'novedad', url: destino })
+      }
+
       setPushResult(`Enviado a ${data.sent} dispositivo${data.sent !== 1 ? 's' : ''}.`)
       setPushForm({ title: '', body: '', url: '' })
       setPushDestinatarios([])
