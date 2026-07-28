@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
 /**
  * Registra el service worker que genera next-pwa.
@@ -11,6 +12,29 @@ import { useEffect } from 'react'
  * resuelve nunca y las notificaciones push no se pueden activar.
  */
 export function ServiceWorkerRegister() {
+  const router = useRouter()
+
+  // Cuando el usuario toca una notificación y ya hay una ventana abierta, el
+  // service worker no siempre puede navegarla (client.navigate no existe en
+  // iOS). En ese caso nos avisa por postMessage y navegamos desde acá.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return
+
+    const onMessage = (ev: MessageEvent) => {
+      if (ev.data?.tipo !== 'navegar' || typeof ev.data.url !== 'string') return
+      try {
+        const destino = new URL(ev.data.url)
+        // Sólo rutas del propio portal: el mensaje no deja de ser una entrada
+        // externa y no queremos que empuje a otro sitio.
+        if (destino.origin !== window.location.origin) return
+        router.push(destino.pathname + destino.search)
+      } catch { /* URL inválida: se ignora */ }
+    }
+
+    navigator.serviceWorker.addEventListener('message', onMessage)
+    return () => navigator.serviceWorker.removeEventListener('message', onMessage)
+  }, [router])
+
   useEffect(() => {
     if (typeof window === 'undefined') return
     if (!('serviceWorker' in navigator)) return

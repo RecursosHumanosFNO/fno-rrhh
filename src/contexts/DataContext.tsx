@@ -249,6 +249,7 @@ function mapSupabaseToNotif(row: Record<string, unknown>): AppNotification {
     empleadoId: (row.empleado_id as string) || undefined,
     soloAdmin: (row.solo_admin as boolean) ?? false,
     soloEmpleado: (row.solo_empleado as boolean) ?? false,
+    url: (row.url as string) || undefined,
   }
 }
 function mapNotifToSupabase(n: AppNotification, baseOnly = false) {
@@ -261,6 +262,7 @@ function mapNotifToSupabase(n: AppNotification, baseOnly = false) {
     ...base,
     solo_admin: n.soloAdmin ?? false,
     solo_empleado: n.soloEmpleado ?? false,
+    url: n.url ?? null,
   }
 }
 
