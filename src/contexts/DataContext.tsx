@@ -1,13 +1,13 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import type {
   Empleado, Solicitud, Recibo, Novedad, Ticket, User, Evento,
   AppNotification, PendingRegistration, TicketEstado, UserRole, EmpleadoEstado,
   ReciboFirma, DesvinculacionInfo, RegistroNovedad,
 } from '@/types'
 import * as initial from '@/lib/mockData'
-import { uid, hoyAR, SOLICITUD_TIPO_LABEL } from '@/lib/utils'
+import { uid, hoyAR } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import { authFetch } from '@/lib/authFetch'
 import {
@@ -17,7 +17,6 @@ import {
   mapNovedadToSupabase,
   mapReciboToSupabase,
   mapRegistroNovedadToSupabase,
-  mapSolicitudToSupabase,
   mapSupabaseToEmpleado,
   mapSupabaseToEvento,
   mapSupabaseToNotif,
@@ -29,6 +28,8 @@ import {
   mapTicketToSupabase,
 } from './mappers'
 import { upsert, upsertHead } from './listas'
+import { sendEmail } from './email'
+import { useSolicitudesCrud } from './useSolicitudesCrud'
 
 interface DataContextType {
   empleados: Empleado[]
@@ -93,15 +94,6 @@ interface DataContextType {
 
 const DataContext = createContext<DataContextType | null>(null)
 
-function sendEmail(type: string, data: Record<string, string>) {
-  // authFetch adjunta el token de sesión: /api/notify lo exige para todo lo que
-  // no sea un tipo público. Si no hay sesión (registro) va sin header y la ruta
-  // lo resuelve por su cuenta.
-  authFetch('/api/notify', {
-    method: 'POST',
-    body: JSON.stringify({ type, data }),
-  }).catch(() => { /* email failure is non-fatal */ })
-}
 
 
 // IDs de los eventos institucionales fijos (feriados, actos, jornadas) que viven
@@ -145,6 +137,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = useState<AppNotification[]>([])
   const [registrosNovedad, setRegistrosNovedad] = useState<RegistroNovedad[]>([])
   const [synced, setSynced] = useState(false) // true cuando el primer sync de Supabase terminó
+
+  // Espejo de `empleados` para leer la lista al día dentro de callbacks sin
+  // volverlos a crear en cada cambio ni depender del valor capturado.
+  const empleadosRef = useRef(empleados)
+  useEffect(() => { empleadosRef.current = empleados }, [empleados])
 
   // ── Sync completo desde Supabase — todas las tablas ────────────────────────
   const syncFromSupabase = useCallback(async () => {
@@ -462,103 +459,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   // ── Solicitudes ────────────────────────────────────────────────────────────
-  const addSolicitud = useCallback((s: Omit<Solicitud, 'id' | 'fechaCreacion' | 'estado'>) => {
-    const nueva: Solicitud = { ...s, id: uid(), estado: 'pendiente', fechaCreacion: hoyAR() }
-    const tipoLabel = SOLICITUD_TIPO_LABEL[s.tipo] ?? s.tipo
-    setSolicitudes(prev => [nueva, ...prev])
-    // Confirmación al empleado
-    addNotification({ texto: `Tu solicitud de ${tipoLabel} fue enviada y está pendiente de revisión`, tipo: 'solicitud', empleadoId: s.empleadoId, soloEmpleado: true })
-    // Alerta al admin + email
-    setEmpleados(prev => {
-      const emp = prev.find(e => e.id === s.empleadoId)
-      const nombreEmp = emp ? `${emp.nombre} ${emp.apellido}` : 'Empleado'
-      addNotification({ texto: `Nueva solicitud de ${nombreEmp}: ${tipoLabel}`, tipo: 'solicitud', soloAdmin: true })
-      sendEmail('new_solicitud', {
-        nombre: nombreEmp,
-        cargo: emp?.cargo ?? '',
-        sector: emp?.sector ?? '',
-        tipo: tipoLabel,
-        fechaInicio: s.fechaInicio,
-        fechaFin: s.fechaFin ?? '',
-        horarioDesde: s.horarioDesde ?? '',
-        horarioHasta: s.horarioHasta ?? '',
-        descripcion: s.descripcion,
-      })
-      return prev
-    })
-    if (supabase) supabase.from('fno_solicitudes').insert(mapSolicitudToSupabase(nueva)).then(({ error }) => {
-      if (error) console.error('[supabase] insert fno_solicitudes:', error)
-    })
-  }, [addNotification])
-
-  const approveSolicitud = useCallback((id: string, comment: string) => {
-    const fechaRes = hoyAR()
-    setSolicitudes(prev => prev.map(s => s.id === id
-      ? { ...s, estado: 'aprobado', fechaResolucion: fechaRes, comentarioAdmin: comment }
-      : s
-    ))
-    if (supabase) supabase.from('fno_solicitudes').update({ estado: 'aprobado', fecha_resolucion: fechaRes, comentario_admin: comment }).eq('id', id).then()
-    const sol = solicitudes.find(s => s.id === id)
-    if (sol) {
-      // Notificación al empleado
-      addNotification({ texto: 'Tu solicitud fue aprobada ✓', tipo: 'solicitud', empleadoId: sol.empleadoId, soloEmpleado: true })
-      setEmpleados(prev => {
-        const emp = prev.find(e => e.id === sol.empleadoId)
-        const nombreEmp = emp ? `${emp.nombre} ${emp.apellido}` : 'el empleado'
-        // Confirmación para el admin
-        addNotification({ texto: `Solicitud de ${nombreEmp} aprobada y notificada`, tipo: 'solicitud', soloAdmin: true })
-        if (emp?.email) sendEmail('solicitud_resuelta', { email: emp.email, nombre: nombreEmp, tipo: SOLICITUD_TIPO_LABEL[sol.tipo as keyof typeof SOLICITUD_TIPO_LABEL] ?? sol.tipo, estado: 'aprobado', comentario: comment })
-        return prev
-      })
-    }
-  }, [solicitudes, addNotification])
-
-  const editSolicitud = useCallback((id: string, estado: 'aprobado' | 'rechazado', comment: string) => {
-    const fechaRes = hoyAR()
-    setSolicitudes(prev => prev.map(s => s.id === id
-      ? { ...s, estado, fechaResolucion: fechaRes, comentarioAdmin: comment }
-      : s
-    ))
-    if (supabase) supabase.from('fno_solicitudes').update({ estado, fecha_resolucion: fechaRes, comentario_admin: comment }).eq('id', id).then()
-    const sol = solicitudes.find(s => s.id === id)
-    if (sol) {
-      const textoEmp = estado === 'aprobado' ? 'Tu solicitud fue actualizada: aprobada ✓' : 'Tu solicitud fue actualizada: rechazada'
-      addNotification({ texto: textoEmp, tipo: 'solicitud', empleadoId: sol.empleadoId, soloEmpleado: true })
-      setEmpleados(prev => {
-        const emp = prev.find(e => e.id === sol.empleadoId)
-        const nombreEmp = emp ? `${emp.nombre} ${emp.apellido}` : 'el empleado'
-        if (emp?.email) sendEmail('solicitud_resuelta', { email: emp.email, nombre: nombreEmp, tipo: SOLICITUD_TIPO_LABEL[sol.tipo as keyof typeof SOLICITUD_TIPO_LABEL] ?? sol.tipo, estado, comentario: comment })
-        return prev
-      })
-    }
-  }, [solicitudes, addNotification])
-
-  const cancelSolicitud = useCallback((id: string) => {
-    setSolicitudes(prev => prev.filter(s => s.id !== id))
-    if (supabase) supabase.from('fno_solicitudes').delete().eq('id', id).then()
-  }, [])
-
-  const rejectSolicitud = useCallback((id: string, comment: string) => {
-    const fechaRes = hoyAR()
-    setSolicitudes(prev => prev.map(s => s.id === id
-      ? { ...s, estado: 'rechazado', fechaResolucion: fechaRes, comentarioAdmin: comment }
-      : s
-    ))
-    if (supabase) supabase.from('fno_solicitudes').update({ estado: 'rechazado', fecha_resolucion: fechaRes, comentario_admin: comment }).eq('id', id).then()
-    const sol = solicitudes.find(s => s.id === id)
-    if (sol) {
-      // Notificación al empleado
-      addNotification({ texto: 'Tu solicitud fue rechazada', tipo: 'solicitud', empleadoId: sol.empleadoId, soloEmpleado: true })
-      setEmpleados(prev => {
-        const emp = prev.find(e => e.id === sol.empleadoId)
-        const nombreEmp = emp ? `${emp.nombre} ${emp.apellido}` : 'el empleado'
-        // Confirmación para el admin
-        addNotification({ texto: `Solicitud de ${nombreEmp} rechazada y notificada`, tipo: 'solicitud', soloAdmin: true })
-        if (emp?.email) sendEmail('solicitud_resuelta', { email: emp.email, nombre: nombreEmp, tipo: SOLICITUD_TIPO_LABEL[sol.tipo as keyof typeof SOLICITUD_TIPO_LABEL] ?? sol.tipo, estado: 'rechazado', comentario: comment })
-        return prev
-      })
-    }
-  }, [solicitudes, addNotification])
+  const {
+    addSolicitud, approveSolicitud, rejectSolicitud, editSolicitud, cancelSolicitud,
+  } = useSolicitudesCrud({ solicitudes, setSolicitudes, empleadosRef, addNotification })
 
   // ── Novedades ──────────────────────────────────────────────────────────────
   // Notifica una novedad respetando destinatarios: si es privada va solo a esos
