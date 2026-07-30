@@ -612,7 +612,7 @@ export default function RecibosPage() {
                             <td className="table-cell">
                               <div className="flex items-center gap-2">
                                 <div className="w-7 h-7 rounded-full bg-brand-700 flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden">
-                                  {emp?.foto ? <img src={emp.foto} alt="" className="w-7 h-7 object-cover" /> : emp ? `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}` : '?'}
+                                  {emp?.foto ? <img loading="lazy" width={28} height={28} src={emp.foto} alt="" className="w-7 h-7 object-cover" /> : emp ? `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}` : '?'}
                                 </div>
                                 <span className="font-medium text-slate-700 dark:text-slate-200">{emp ? `${emp.apellido}, ${emp.nombre}` : f.empleadoId}</span>
                               </div>
@@ -686,7 +686,7 @@ export default function RecibosPage() {
                       <td className="table-cell max-w-[180px]">
                         <div className="flex items-center gap-2.5">
                           <Link href={emp ? `/dashboard/empleados/${emp.id}` : '#'} className="w-8 h-8 rounded-full bg-brand-700 flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden ring-0 hover:ring-2 hover:ring-brand-400 hover:scale-110 transition-all duration-200">
-                            {emp?.foto ? <img src={emp.foto} alt="" className="w-8 h-8 object-cover" /> : emp ? `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}` : '?'}
+                            {emp?.foto ? <img loading="lazy" width={32} height={32} src={emp.foto} alt="" className="w-8 h-8 object-cover" /> : emp ? `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}` : '?'}
                           </Link>
                           <div className="min-w-0">
                             <Link href={emp ? `/dashboard/empleados/${emp.id}` : '#'} className="text-sm font-medium text-slate-700 dark:text-slate-200 relative inline-block font-medium text-slate-700 dark:text-slate-200 hover:text-brand-700 dark:hover:text-brand-300 transition-colors duration-200 after:absolute after:bottom-0 after:left-0 after:h-[1.5px] after:w-0 hover:after:w-full after:bg-brand-600 dark:after:bg-brand-400 after:transition-all after:duration-200 truncate">{emp ? `${emp.apellido}, ${emp.nombre}` : 'N/A'}</Link>

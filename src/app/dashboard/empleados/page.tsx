@@ -92,7 +92,7 @@ function EmpleadoCard({ emp, foto }: { emp: Empleado; foto?: string }) {
       <div className="flex items-start justify-between">
         <div className="w-12 h-12 rounded-xl bg-brand-700 flex items-center justify-center text-white font-bold text-base overflow-hidden">
           {fotoSrc
-            ? <img src={fotoSrc} alt="" className="w-12 h-12 object-cover" />
+            ? <img loading="lazy" width={48} height={48} src={fotoSrc} alt="" className="w-12 h-12 object-cover" />
             : `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}`
           }
         </div>
@@ -462,7 +462,7 @@ function EmpleadosContent() {
                       <td className="table-cell max-w-[180px]">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-full bg-slate-300 dark:bg-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-300 text-xs font-bold shrink-0 overflow-hidden">
-                            {emp.foto ? <img src={emp.foto} alt="" className="w-9 h-9 object-cover" /> : `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}`}
+                            {emp.foto ? <img loading="lazy" width={36} height={36} src={emp.foto} alt="" className="w-9 h-9 object-cover" /> : `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}`}
                           </div>
                           <div className="min-w-0">
                             <p className="font-semibold text-slate-700 dark:text-slate-200 truncate">{emp.apellido}, {emp.nombre}</p>
@@ -664,7 +664,7 @@ function EmpleadosContent() {
                   <td className="table-cell max-w-[180px]">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full bg-brand-700 flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden">
-                        {emp.foto ? <img src={emp.foto} alt="" className="w-9 h-9 object-cover" /> : `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}`}
+                        {emp.foto ? <img loading="lazy" width={36} height={36} src={emp.foto} alt="" className="w-9 h-9 object-cover" /> : `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}`}
                       </div>
                       <div className="min-w-0">
                         <p className="font-semibold text-slate-700 dark:text-slate-200 truncate">{emp.apellido}, {emp.nombre}</p>

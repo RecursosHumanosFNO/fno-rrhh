@@ -360,7 +360,7 @@ export default function ComunicacionesPage() {
                     {e.imagen ? (
                       <div className="mt-3 flex flex-col sm:flex-row gap-4 items-start">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
+                        <img loading="lazy"
                           src={e.imagen} alt=""
                           onClick={() => setLightbox(e.imagen!)}
                           className="rounded-xl border border-slate-200 dark:border-slate-700 w-full sm:w-72 sm:shrink-0 cursor-zoom-in hover:opacity-90 transition-opacity"
@@ -432,7 +432,7 @@ export default function ComunicacionesPage() {
                   {n.imagen && (
                     <div className="mt-3">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
+                      <img loading="lazy"
                         src={n.imagen} alt=""
                         onClick={ev => { ev.stopPropagation(); setLightbox(n.imagen!) }}
                         className="rounded-xl border border-slate-200 dark:border-slate-700 w-full max-w-lg cursor-zoom-in hover:opacity-90 transition-opacity"

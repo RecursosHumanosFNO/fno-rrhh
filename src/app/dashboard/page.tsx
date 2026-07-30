@@ -359,7 +359,7 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
                       return (
                         <div key={emp.id} className="flex items-center gap-2.5 bg-pink-50 dark:bg-pink-900/10 rounded-xl px-3 py-2 mb-1">
                           <div className="w-8 h-8 rounded-full bg-pink-200 dark:bg-pink-900/40 flex items-center justify-center text-pink-700 dark:text-pink-300 text-xs font-bold shrink-0 overflow-hidden">
-                            {emp.foto ? <img src={emp.foto} alt="" className="w-8 h-8 object-cover" />
+                            {emp.foto ? <img loading="lazy" width={32} height={32} src={emp.foto} alt="" className="w-8 h-8 object-cover" />
                               : `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}`}
                           </div>
                           <div className="flex-1 min-w-0">
@@ -383,7 +383,7 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
                     {cumpleProximo.slice(0, 3).map(({ emp, cumple }) => (
                       <div key={emp.id} className="flex items-center gap-2.5 py-1.5">
                         <div className="w-7 h-7 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center text-pink-600 dark:text-pink-400 text-xs font-bold shrink-0 overflow-hidden">
-                          {emp.foto ? <img src={emp.foto} alt="" className="w-7 h-7 object-cover" />
+                          {emp.foto ? <img loading="lazy" width={28} height={28} src={emp.foto} alt="" className="w-7 h-7 object-cover" />
                             : `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}`}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -453,7 +453,7 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
               <div key={l.id} className="p-4 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                 <div className="w-9 h-9 rounded-full bg-brand-700 flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden">
                   {emp?.foto
-                    ? <img src={emp.foto} alt="" className="w-9 h-9 object-cover" />
+                    ? <img loading="lazy" width={36} height={36} src={emp.foto} alt="" className="w-9 h-9 object-cover" />
                     : l.nombre.split(' ').slice(0, 2).map(n => n[0]).join('')
                   }
                 </div>
@@ -492,7 +492,7 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
               return (
                 <div key={sol.id} className="px-4 py-3 flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-brand-700 flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden">
-                    {emp?.foto ? <img src={emp.foto} alt="" className="w-8 h-8 object-cover" />
+                    {emp?.foto ? <img loading="lazy" width={32} height={32} src={emp.foto} alt="" className="w-8 h-8 object-cover" />
                       : emp ? `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}` : '?'}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -794,7 +794,7 @@ function EmployeeDashboard({ saludo, fechaStr, empleadoId }: { saludo: string, f
             {proxCumples.map(({ e, diff }) => (
               <div key={e.id} className="px-4 py-3 flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center text-pink-600 text-sm font-bold overflow-hidden shrink-0">
-                  {e.foto ? <img src={e.foto} alt="" className="w-8 h-8 object-cover" /> : `${e.nombre[0]}${e.apellido[0]}`}
+                  {e.foto ? <img loading="lazy" width={32} height={32} src={e.foto} alt="" className="w-8 h-8 object-cover" /> : `${e.nombre[0]}${e.apellido[0]}`}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{e.nombre} {e.apellido}</p>

@@ -213,7 +213,7 @@ export default function FundacionPage() {
           </div>
         </div>
         <div className="relative">
-          <img
+          <img loading="lazy"
             src="/sede.jpg"
             alt="Sede Fundación Neuquén Oeste"
             className="w-full object-cover max-h-[480px]"
