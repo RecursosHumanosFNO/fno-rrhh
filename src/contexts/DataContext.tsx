@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import type {
   Empleado, Solicitud, Recibo, Novedad, Ticket, User, Evento,
   AppNotification, PendingRegistration, TicketEstado, UserRole, EmpleadoEstado,
@@ -12,10 +12,7 @@ import { supabase } from '@/lib/supabase'
 import { authFetch } from '@/lib/authFetch'
 import {
   mapEmpleadoToSupabase,
-  mapEventoToSupabase,
   mapNotifToSupabase,
-  mapNovedadToSupabase,
-  mapReciboToSupabase,
   mapRegistroNovedadToSupabase,
   mapSupabaseToEmpleado,
   mapSupabaseToEvento,
@@ -25,11 +22,16 @@ import {
   mapSupabaseToRegistroNovedad,
   mapSupabaseToSolicitud,
   mapSupabaseToTicket,
-  mapTicketToSupabase,
 } from './mappers'
 import { upsert, upsertHead } from './listas'
 import { sendEmail } from './email'
 import { useSolicitudesCrud } from './useSolicitudesCrud'
+import { useRecibosCrud } from './useRecibosCrud'
+import { useTicketsCrud } from './useTicketsCrud'
+import { useRefEspejo } from './useRefEspejo'
+import { useAviso } from './useAviso'
+import { useNovedadesCrud } from './useNovedadesCrud'
+import { useEventosCrud, EVENTOS_FIJOS_IDS } from './useEventosCrud'
 
 interface DataContextType {
   empleados: Empleado[]
@@ -96,9 +98,6 @@ const DataContext = createContext<DataContextType | null>(null)
 
 
 
-// IDs de los eventos institucionales fijos (feriados, actos, jornadas) que viven
-// en el código (mockData) y NO en la base. Sirve para no duplicarlos al sincronizar.
-const EVENTOS_FIJOS_IDS = new Set(initial.eventos.map(e => e.id))
 
 // Persiste cambios de un empleado vía service role (/api/perfil), bypaseando RLS.
 // Los upserts client-side con anon key se bloquean silenciosamente, así que las
@@ -138,10 +137,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [registrosNovedad, setRegistrosNovedad] = useState<RegistroNovedad[]>([])
   const [synced, setSynced] = useState(false) // true cuando el primer sync de Supabase terminó
 
-  // Espejo de `empleados` para leer la lista al día dentro de callbacks sin
-  // volverlos a crear en cada cambio ni depender del valor capturado.
-  const empleadosRef = useRef(empleados)
-  useEffect(() => { empleadosRef.current = empleados }, [empleados])
+  // Espejos para leer la lista al día dentro de callbacks (ver useRefEspejo).
+  const empleadosRef = useRefEspejo(empleados)
+  const ticketsRef = useRefEspejo(tickets)
+  const novedadesRef = useRefEspejo(novedades)
+  const eventosRef = useRefEspejo(eventos)
 
   // ── Sync completo desde Supabase — todas las tablas ────────────────────────
   const syncFromSupabase = useCallback(async () => {
@@ -463,282 +463,30 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     addSolicitud, approveSolicitud, rejectSolicitud, editSolicitud, cancelSolicitud,
   } = useSolicitudesCrud({ solicitudes, setSolicitudes, empleadosRef, addNotification })
 
+  // Notificador compartido por novedades y eventos (mismo formato de aviso).
+  const aviso = useAviso({ empleadosRef, addNotification })
+
   // ── Novedades ──────────────────────────────────────────────────────────────
-  // Notifica una novedad respetando destinatarios: si es privada va solo a esos
-  // empleados; si no hay destinatarios, la notif es global y el mail a todos los activos.
-  const notifyNovedad = useCallback((n: Novedad, notifyChannels: ('app' | 'email')[], esEdicion = false) => {
-    if (notifyChannels.length === 0) return
-    const dest = n.destinatarios ?? []
-    const verbo = esEdicion ? 'Novedad actualizada' : 'Nueva novedad publicada'
+  const { addNovedad, updateNovedad, deleteNovedad } = useNovedadesCrud({
+    setNovedades, novedadesRef, aviso,
+  })
 
-    if (notifyChannels.includes('app')) {
-      if (dest.length > 0) {
-        dest.forEach(empleadoId => addNotification({
-          texto: `${verbo}: ${n.titulo}`,
-          tipo: 'novedad', empleadoId, soloEmpleado: true,
-        }))
-      } else {
-        addNotification({ texto: `${verbo}: ${n.titulo}`, tipo: 'novedad' })
-      }
-    }
-
-    if (notifyChannels.includes('email')) {
-      const targets = dest.length > 0
-        ? empleados.filter(e => dest.includes(e.id))
-        : empleados.filter(e => e.estado === 'activo')
-      const emails = targets.map(e => e.email).filter(Boolean)
-      if (emails.length > 0) {
-        sendEmail('novedad_publicada', {
-          titulo: n.titulo, contenido: n.contenido, autor: n.autor,
-          imagen: n.imagen ?? '', emails: emails.join(','),
-        })
-      }
-    }
-
-    // Confirmación para el admin: a quién se le envió el aviso
-    const nombresDest = dest.length > 0
-      ? empleados.filter(e => dest.includes(e.id)).map(e => `${e.nombre} ${e.apellido}`).join(', ') || `${dest.length} empleado(s)`
-      : 'todo el equipo'
-    const canales = notifyChannels.map(c => c === 'app' ? 'app' : 'mail').join(' + ')
-    addNotification({
-      texto: `✓ Aviso de "${n.titulo}" enviado a ${nombresDest} (${canales})`,
-      tipo: 'sistema', soloAdmin: true,
-    })
-  }, [empleados, addNotification])
-
-  const addNovedad = useCallback((n: Omit<Novedad, 'id'>, notifyChannels: ('app' | 'email')[] = []) => {
-    const nueva: Novedad = { ...n, id: uid() }
-    setNovedades(prev => [nueva, ...prev])
-    notifyNovedad(nueva, notifyChannels)
-    if (supabase) {
-      const sb = supabase
-      sb.from('fno_novedades').insert(mapNovedadToSupabase(nueva)).then(({ error }) => {
-        if (error) {
-          console.warn('[supabase] insert fno_novedades (full):', error.message, error.code)
-          // Retry sin columnas nuevas (por si la migración SQL de destinatarios no se corrió)
-          sb.from('fno_novedades').insert(mapNovedadToSupabase(nueva, true)).then(({ error: e2 }) => {
-            if (e2) console.error('[supabase] insert fno_novedades (base):', e2.message, e2.code)
-          })
-        }
-      })
-    }
-  }, [notifyNovedad])
-
-  const updateNovedad = useCallback((id: string, data: Partial<Omit<Novedad, 'id'>>, notifyChannels: ('app' | 'email')[] = []) => {
-    setNovedades(prev => {
-      const updated = prev.map(n => n.id === id ? { ...n, ...data } : n)
-      const full = updated.find(n => n.id === id)
-      if (full) {
-        notifyNovedad(full, notifyChannels, true)
-        if (supabase) {
-          const sb = supabase
-          sb.from('fno_novedades').upsert(mapNovedadToSupabase(full)).then(({ error }) => {
-            if (error) {
-              console.warn('[supabase] upsert fno_novedades (full):', error.message, error.code)
-              sb.from('fno_novedades').upsert(mapNovedadToSupabase(full, true)).then(({ error: e2 }) => {
-                if (e2) console.error('[supabase] upsert fno_novedades (base):', e2.message, e2.code)
-              })
-            }
-          })
-        }
-      }
-      return updated
-    })
-  }, [notifyNovedad])
-
-  const deleteNovedad = useCallback((id: string) => {
-    setNovedades(prev => prev.filter(n => n.id !== id))
-    if (supabase) supabase.from('fno_novedades').delete().eq('id', id).then()
-  }, [])
 
   // ── Eventos (CRUD) ─────────────────────────────────────────────────────────
-  // Notifica un evento respetando destinatarios: si el evento es privado va
-  // solo a esos empleados; si es público, la notif es global y el mail a todos.
-  const notifyEvento = useCallback((ev: Evento, notifyChannels: ('app' | 'email')[], esEdicion = false) => {
-    if (notifyChannels.length === 0) return
-    const dest = ev.destinatarios ?? []
-    const verbo = esEdicion ? 'Evento actualizado' : 'Nuevo evento'
+  const { addEvento, updateEvento, deleteEvento } = useEventosCrud({
+    setEventos, eventosRef, aviso,
+  })
 
-    if (notifyChannels.includes('app')) {
-      if (dest.length > 0) {
-        dest.forEach(empleadoId => addNotification({
-          texto: `📅 ${verbo}: ${ev.titulo} — ${ev.fecha}`,
-          tipo: 'novedad', empleadoId, soloEmpleado: true,
-        }))
-      } else {
-        addNotification({ texto: `📅 ${verbo}: ${ev.titulo} — ${ev.fecha}`, tipo: 'novedad' })
-      }
-    }
-
-    if (notifyChannels.includes('email')) {
-      const targets = dest.length > 0
-        ? empleados.filter(e => dest.includes(e.id))
-        : empleados.filter(e => e.estado === 'activo')
-      const emails = targets.map(e => e.email).filter(Boolean)
-      if (emails.length > 0) {
-        sendEmail('evento_notificacion', {
-          emails: emails.join(','),
-          titulo: ev.titulo, descripcion: ev.descripcion ?? '',
-          fecha: ev.fecha, imagen: ev.imagen ?? '',
-          esEdicion: esEdicion ? '1' : '',
-        })
-      }
-    }
-
-    // Confirmación para el admin: a quién se le envió el aviso
-    const nombresDest = dest.length > 0
-      ? empleados.filter(e => dest.includes(e.id)).map(e => `${e.nombre} ${e.apellido}`).join(', ') || `${dest.length} empleado(s)`
-      : 'todo el equipo'
-    const canales = notifyChannels.map(c => c === 'app' ? 'app' : 'mail').join(' + ')
-    addNotification({
-      texto: `✓ Aviso de "${ev.titulo}" enviado a ${nombresDest} (${canales})`,
-      tipo: 'sistema', soloAdmin: true,
-    })
-  }, [empleados, addNotification])
-
-  const addEvento = useCallback((e: Omit<Evento, 'id'>, notifyChannels: ('app' | 'email')[] = []) => {
-    const nuevo: Evento = { ...e, id: uid() }
-    setEventos(prev => [...prev, nuevo].sort((a, b) => a.fecha.localeCompare(b.fecha)))
-    notifyEvento(nuevo, notifyChannels)
-    if (supabase) {
-      const sb = supabase
-      sb.from('fno_eventos').insert(mapEventoToSupabase(nuevo)).then(({ error }) => {
-        if (error) {
-          console.warn('[supabase] insert fno_eventos (full):', error.message, error.code)
-          // Retry sin columnas nuevas (por si la migración SQL todavía no se corrió)
-          sb.from('fno_eventos').insert(mapEventoToSupabase(nuevo, true)).then(({ error: e2 }) => {
-            if (e2) console.error('[supabase] insert fno_eventos (base):', e2.message, e2.code)
-          })
-        }
-      })
-    }
-  }, [notifyEvento])
-
-  const updateEvento = useCallback((id: string, data: Partial<Omit<Evento, 'id'>>, notifyChannels: ('app' | 'email')[] = []) => {
-    const existing = eventos.find(e => e.id === id)
-    const full: Evento | undefined = existing ? { ...existing, ...data } : undefined
-    setEventos(prev => prev
-      .map(e => e.id === id ? { ...e, ...data } : e)
-      .sort((a, b) => a.fecha.localeCompare(b.fecha))
-    )
-    if (!full) return
-    notifyEvento(full, notifyChannels, true)
-    // Solo persisten los eventos custom (los fijos viven en el código)
-    if (supabase && !EVENTOS_FIJOS_IDS.has(id)) {
-      const sb = supabase
-      sb.from('fno_eventos').upsert(mapEventoToSupabase(full)).then(({ error }) => {
-        if (error) {
-          console.warn('[supabase] upsert fno_eventos (full):', error.message, error.code)
-          sb.from('fno_eventos').upsert(mapEventoToSupabase(full, true)).then(({ error: e2 }) => {
-            if (e2) console.error('[supabase] upsert fno_eventos (base):', e2.message, e2.code)
-          })
-        }
-      })
-    }
-  }, [eventos, notifyEvento])
-
-  const deleteEvento = useCallback((id: string) => {
-    setEventos(prev => prev.filter(e => e.id !== id))
-    if (supabase && !EVENTOS_FIJOS_IDS.has(id)) {
-      supabase.from('fno_eventos').delete().eq('id', id).then(({ error }) => {
-        if (error) {
-          console.error('[supabase] delete fno_eventos:', error.message, error.code)
-          alert(`No se pudo eliminar el evento de la base de datos: ${error.message}`)
-        }
-      })
-    }
-  }, [])
 
   // ── Recibos ────────────────────────────────────────────────────────────────
-  const addRecibo = useCallback((r: Omit<Recibo, 'id'>) => {
-    const nuevo = { ...r, id: uid() }
-    setRecibos(prev => [nuevo, ...prev])
-    addNotification({ texto: 'Nuevo recibo de sueldo disponible — verificá tu sección de recibos', tipo: 'recibo', empleadoId: r.empleadoId, soloEmpleado: true })
-    if (supabase) supabase.from('fno_recibos').insert(mapReciboToSupabase(nuevo)).then(({ error }) => {
-      if (error) console.error('[supabase] insert fno_recibos:', error)
-    })
-    // Notificar por email al empleado
-    setEmpleados(prev => {
-      const emp = prev.find(e => e.id === r.empleadoId)
-      if (emp?.email) {
-        const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
-        sendEmail('recibo_disponible', {
-          email: emp.email,
-          nombre: `${emp.nombre} ${emp.apellido}`,
-          periodo: `${meses[r.mes - 1]} ${r.anio}`,
-        })
-      }
-      return prev
-    })
-  }, [addNotification])
-
-  const deleteRecibo = useCallback((id: string) => {
-    setRecibos(prev => prev.filter(r => r.id !== id))
-    if (supabase) supabase.from('fno_recibos').delete().eq('id', id).then(({ error }) => {
-      if (error) console.error('[supabase] delete fno_recibos:', error)
-    })
-  }, [])
-
-  const firmarRecibo = useCallback(async (reciboId: string, empleadoId: string): Promise<boolean> => {
-    if (!supabase) return false
-    const firma: ReciboFirma = {
-      id: uid(),
-      reciboId,
-      empleadoId,
-      firmadoEn: new Date().toISOString(),
-      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
-    }
-    const { error } = await supabase.from('fno_recibo_firmas').insert({
-      id: firma.id,
-      recibo_id: firma.reciboId,
-      empleado_id: firma.empleadoId,
-      firmado_en: firma.firmadoEn,
-      user_agent: firma.userAgent ?? null,
-    })
-    if (error) {
-      console.error('[firmarRecibo] error:', error.message)
-      return false
-    }
-    setFirmas(prev => [...prev, firma])
-    return true
-  }, [])
+  const { addRecibo, deleteRecibo, firmarRecibo } = useRecibosCrud({
+    setRecibos, setFirmas, empleadosRef, addNotification,
+  })
 
   // ── Tickets ────────────────────────────────────────────────────────────────
-  const addTicket = useCallback((t: Omit<Ticket, 'id' | 'fechaCreacion' | 'fechaActualizacion' | 'estado'>) => {
-    const hoy = hoyAR()
-    const nuevo: Ticket = { ...t, id: uid(), estado: 'abierto', fechaCreacion: hoy, fechaActualizacion: hoy }
-    setTickets(prev => [nuevo, ...prev])
-    addNotification({ texto: `Nuevo ticket de RRHH: ${t.asunto}`, tipo: 'ticket', empleadoId: t.empleadoId })
-    if (supabase) supabase.from('fno_tickets').insert(mapTicketToSupabase(nuevo)).then(({ error }) => {
-      if (error) console.error('[supabase] insert fno_tickets:', error)
-    })
-  }, [addNotification])
-
-  const respondTicket = useCallback((id: string, respuesta: string, estado: TicketEstado) => {
-    const hoy = hoyAR()
-    setTickets(prev => {
-      const ticket = prev.find(t => t.id === id)
-      if (ticket) {
-        // Notificar por email al empleado
-        setEmpleados(emps => {
-          const emp = emps.find(e => e.id === ticket.empleadoId)
-          if (emp?.email) {
-            sendEmail('ticket_respondido', {
-              email: emp.email,
-              nombre: `${emp.nombre} ${emp.apellido}`,
-              asunto: ticket.asunto,
-              respuesta,
-              estado,
-            })
-          }
-          return emps
-        })
-        addNotification({ texto: `Tu pedido "${ticket.asunto}" recibió una respuesta de RRHH`, tipo: 'ticket', empleadoId: ticket.empleadoId, soloEmpleado: true })
-      }
-      return prev.map(t => t.id === id ? { ...t, respuesta, estado, fechaActualizacion: hoy } : t)
-    })
-    if (supabase) supabase.from('fno_tickets').update({ respuesta, estado, fecha_actualizacion: hoy }).eq('id', id).then()
-  }, [addNotification])
+  const { addTicket, respondTicket } = useTicketsCrud({
+    setTickets, ticketsRef, empleadosRef, addNotification,
+  })
 
   // ── Usuarios ───────────────────────────────────────────────────────────────
   const setUserRole = useCallback((empleadoId: string, role: UserRole) => {
