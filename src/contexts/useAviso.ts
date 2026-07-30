@@ -1,6 +1,24 @@
 import { useCallback } from 'react'
 import type { Empleado, AppNotification } from '@/types'
+import { authFetch } from '@/lib/authFetch'
 import { sendEmail } from './email'
+
+/**
+ * Aviso push a los dispositivos de los destinatarios.
+ *
+ * Va junto con la notificación in-app: marcar "notificación en la app" tiene que
+ * hacer sonar el celular de quien tenga las push activadas, no sólo poner un
+ * punto en la campanita que hay que entrar a mirar.
+ *
+ * Lista vacía = todo el equipo (la ruta lo interpreta así). El fallo no
+ * interrumpe nada: la novedad ya se publicó.
+ */
+function enviarPush(titulo: string, cuerpo: string, url: string, empleadoIds: string[]) {
+  authFetch('/api/push/send', {
+    method: 'POST',
+    body: JSON.stringify({ title: titulo, body: cuerpo, url, empleadoIds }),
+  }).catch(() => { /* el push es no crítico */ })
+}
 
 export type Canal = 'app' | 'email'
 
@@ -24,10 +42,12 @@ export function useAviso({ empleadosRef, addNotification }: {
     destinatarios?: string[]
     canales: Canal[]
     textoApp: string
+    /** Contenido del aviso push; viaja con el canal 'app'. */
+    push: { titulo: string; cuerpo: string; url: string }
     emailType: string
     emailData: (emails: string[]) => Record<string, string>
   }) => {
-    const { titulo, canales, textoApp, emailType, emailData } = opciones
+    const { titulo, canales, textoApp, push, emailType, emailData } = opciones
     if (canales.length === 0) return
 
     const dest = opciones.destinatarios ?? []
@@ -41,6 +61,7 @@ export function useAviso({ empleadosRef, addNotification }: {
       } else {
         addNotification({ texto: textoApp, tipo: 'novedad' })
       }
+      enviarPush(push.titulo, push.cuerpo, push.url, dest)
     }
 
     if (canales.includes('email')) {
