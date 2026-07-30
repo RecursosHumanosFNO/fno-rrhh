@@ -3,17 +3,14 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import type {
   Empleado, Solicitud, Recibo, Novedad, Ticket, User, Evento,
-  AppNotification, PendingRegistration, TicketEstado, UserRole, EmpleadoEstado,
+  AppNotification, PendingRegistration, TicketEstado, UserRole,
   ReciboFirma, DesvinculacionInfo, RegistroNovedad,
 } from '@/types'
 import * as initial from '@/lib/mockData'
 import { uid, hoyAR } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
-import { authFetch } from '@/lib/authFetch'
 import {
-  mapEmpleadoToSupabase,
   mapNotifToSupabase,
-  mapRegistroNovedadToSupabase,
   mapSupabaseToEmpleado,
   mapSupabaseToEvento,
   mapSupabaseToNotif,
@@ -24,7 +21,6 @@ import {
   mapSupabaseToTicket,
 } from './mappers'
 import { upsert, upsertHead } from './listas'
-import { sendEmail } from './email'
 import { useSolicitudesCrud } from './useSolicitudesCrud'
 import { useRecibosCrud } from './useRecibosCrud'
 import { useTicketsCrud } from './useTicketsCrud'
@@ -32,6 +28,9 @@ import { useRefEspejo } from './useRefEspejo'
 import { useAviso } from './useAviso'
 import { useNovedadesCrud } from './useNovedadesCrud'
 import { useEventosCrud, EVENTOS_FIJOS_IDS } from './useEventosCrud'
+import { useEmpleadosCrud } from './useEmpleadosCrud'
+import { usePendingRegistrationsCrud } from './usePendingRegistrationsCrud'
+import { useRegistrosNovedadCrud } from './useRegistrosNovedadCrud'
 
 interface DataContextType {
   empleados: Empleado[]
@@ -99,27 +98,6 @@ const DataContext = createContext<DataContextType | null>(null)
 
 
 
-// Persiste cambios de un empleado vía service role (/api/perfil), bypaseando RLS.
-// Los upserts client-side con anon key se bloquean silenciosamente, así que las
-// escrituras importantes (estado, desvinculación) deben ir por el endpoint.
-// Devuelve true si el server confirmó el guardado. Los callers pueden avisar/revertir
-// si devuelve false, en vez de dejar el estado local desincronizado en silencio.
-async function persistEmpleadoViaApi(empleadoId: string, data: Record<string, unknown>): Promise<boolean> {
-  if (!supabase) return false
-  try {
-    const { data: { user: authUser } } = await supabase.auth.getUser()
-    const res = await authFetch('/api/perfil', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ authId: authUser?.id, empleadoId, data }),
-    })
-    if (!res.ok) console.error('[perfil] persistEmpleadoViaApi falló:', res.status)
-    return res.ok
-  } catch (err) {
-    console.error('[perfil] persistEmpleadoViaApi error de red:', err)
-    return false
-  }
-}
 
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
@@ -142,6 +120,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const ticketsRef = useRefEspejo(tickets)
   const novedadesRef = useRefEspejo(novedades)
   const eventosRef = useRefEspejo(eventos)
+  const pendingRef = useRefEspejo(pendingRegistrations)
+  const registrosRef = useRefEspejo(registrosNovedad)
 
   // ── Sync completo desde Supabase — todas las tablas ────────────────────────
   const syncFromSupabase = useCallback(async () => {
@@ -375,88 +355,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   // ── Empleados ──────────────────────────────────────────────────────────────
-  const addEmpleado = useCallback((e: Omit<Empleado, 'id'>): string => {
-    const id = uid()
-    const newEmp = { ...e, id }
-    setEmpleados(prev => [...prev, newEmp])
-    addNotification({ texto: `Nuevo empleado registrado: ${e.nombre} ${e.apellido}`, tipo: 'sistema', soloAdmin: true })
-    if (supabase) supabase.from('fno_empleados').insert(mapEmpleadoToSupabase(newEmp)).then(({ error }) => {
-      if (error) console.error('[supabase] insert fno_empleados:', error)
-    })
-    return id
-  }, [addNotification])
+  const {
+    addEmpleado, updateEmpleado, desactivarEmpleado, reactivarEmpleado, deleteEmpleado,
+  } = useEmpleadosCrud({ setEmpleados, setUsers, empleadosRef, addNotification })
 
-  const updateEmpleado = useCallback((id: string, data: Partial<Empleado>) => {
-    setEmpleados(prev => {
-      const updated = prev.map(e => e.id === id ? { ...e, ...data } : e)
-      if (supabase) {
-        const full = updated.find(e => e.id === id)
-        if (full) supabase.from('fno_empleados').upsert(mapEmpleadoToSupabase(full)).then()
-      }
-      return updated
-    })
-  }, [])
-
-  // Desactiva al empleado: guarda el registro de desvinculación + pone estado=inactivo
-  const desactivarEmpleado = useCallback((id: string, info: DesvinculacionInfo) => {
-    let prevEmp: Empleado | undefined
-    setEmpleados(prev => {
-      prevEmp = prev.find(e => e.id === id)
-      return prev.map(e => e.id === id
-        ? { ...e, estado: 'inactivo' as EmpleadoEstado, desvinculacion: info }
-        : e
-      )
-    })
-    // Persistir vía service role (RLS bloquea upserts client-side). Si falla, revertir.
-    persistEmpleadoViaApi(id, { estado: 'inactivo', desvinculacion: info }).then(ok => {
-      if (!ok && prevEmp) {
-        setEmpleados(prev => prev.map(e => e.id === id ? prevEmp! : e))
-        if (typeof window !== 'undefined') window.alert('No se pudo desactivar al empleado en el servidor. Intentá de nuevo.')
-      }
-    })
-  }, [])
-
-  // Reactiva al empleado: mueve la baja actual al historial (no se borra) + estado=activo
-  const reactivarEmpleado = useCallback((id: string) => {
-    let prevEmp: Empleado | undefined
-    let full: Empleado | undefined
-    setEmpleados(prev => {
-      prevEmp = prev.find(e => e.id === id)
-      const updated = prev.map(e => {
-        if (e.id !== id) return e
-        const historial = [
-          ...(e.historialDesvinculaciones ?? []),
-          ...(e.desvinculacion ? [e.desvinculacion] : []),  // preservar la baja actual
-        ]
-        return {
-          ...e,
-          estado: 'activo' as EmpleadoEstado,
-          desvinculacion: undefined,
-          historialDesvinculaciones: historial.length > 0 ? historial : undefined,
-        }
-      })
-      full = updated.find(e => e.id === id)
-      return updated
-    })
-    // Persistir vía service role (RLS bloquea upserts client-side). Si falla, revertir.
-    persistEmpleadoViaApi(id, {
-      estado: 'activo',
-      desvinculacion: null,                              // limpiar baja activa
-      historial_desvinculaciones: full?.historialDesvinculaciones ?? null,
-    }).then(ok => {
-      if (!ok && prevEmp) {
-        setEmpleados(prev => prev.map(e => e.id === id ? prevEmp! : e))
-        if (typeof window !== 'undefined') window.alert('No se pudo reactivar al empleado en el servidor. Intentá de nuevo.')
-      }
-    })
-  }, [])
-
-  // Solo actualiza el estado local. El borrado real (Auth + tablas) lo hace
-  // /api/admin/delete-user de forma server-side y verificada.
-  const deleteEmpleado = useCallback((id: string) => {
-    setEmpleados(prev => prev.filter(e => e.id !== id))
-    setUsers(prev => prev.filter(u => u.empleadoId !== id))
-  }, [])
 
   // ── Solicitudes ────────────────────────────────────────────────────────────
   const {
@@ -500,138 +402,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     pendingRegistrations.find(p => p.email === email.toLowerCase().trim()), [pendingRegistrations])
 
   // ── Registro pendiente ─────────────────────────────────────────────────────
-  const addPendingRegistration = useCallback((reg: Omit<PendingRegistration, 'id' | 'fechaSolicitud'>) => {
-    const newReg: PendingRegistration = { ...reg, id: uid(), fechaSolicitud: hoyAR() }
-    setPending(prev => [...prev, newReg])
-    addNotification({ texto: `Nueva solicitud de acceso: ${reg.nombre} ${reg.apellido}`, tipo: 'registro', soloAdmin: true })
-    if (supabase) {
-      // password se guarda temporalmente hasta que el admin apruebe y se cree en Auth.
-      // Se borra de fno_pending al aprobar (el hash queda solo en Supabase Auth).
-      supabase.from('fno_pending').insert({
-        id: newReg.id, nombre: reg.nombre, apellido: reg.apellido, dni: reg.dni,
-        email: reg.email, password: reg.password, sector: reg.sector,
-        cargo: reg.cargo, telefono: reg.telefono || '', fecha_solicitud: newReg.fechaSolicitud,
-      }).then(({ error }) => { if (error) console.error('[supabase] insert fno_pending:', error) })
-    }
-    sendEmail('new_registration', { nombre: reg.nombre, apellido: reg.apellido, dni: reg.dni, email: reg.email, sector: reg.sector, cargo: reg.cargo, telefono: reg.telefono || '' })
-  }, [addNotification])
+  const {
+    addPendingRegistration, approvePendingRegistration,
+    rejectPendingRegistration, refreshPending,
+  } = usePendingRegistrationsCrud({
+    setPending, pendingRef, setEmpleados, setUsers, addNotification,
+  })
 
-  const approvePendingRegistration = useCallback(async (id: string) => {
-    const reg = pendingRegistrations.find(p => p.id === id)
-    if (!reg) return
-    const empleadoId = uid()
-    const hoy = hoyAR()
-    const nuevoEmpleado: Empleado = {
-      id: empleadoId, nombre: reg.nombre, apellido: reg.apellido, dni: reg.dni,
-      fechaNacimiento: '', email: reg.email, telefono: reg.telefono,
-      direccion: '', foto: '', fotoCover: '', cuil: '',
-      contactoEmergencia: { nombre: '', telefono: '', relacion: '' },
-      sector: reg.sector, cargo: reg.cargo, cargosExtra: [], fechaIngreso: hoy,
-      tipoContrato: 'Contrato', jornada: 'Full Time', supervisor: '',
-      estado: 'activo',
-    }
-    const userId = uid()
-    const nuevoUser: User = { id: userId, email: reg.email, role: 'employee', empleadoId }
-    // Update optimista
-    setEmpleados(prev => [...prev, nuevoEmpleado])
-    setUsers(prev => [...prev, nuevoUser])
-    setPending(prev => prev.filter(p => p.id !== id))
-
-    if (supabase) {
-      const { data: { session } } = await supabase.auth.getSession()
-      const requesterId = session?.user?.id ?? ''
-
-      // 1. Crear el empleado vía service role (evita que RLS bloquee el insert
-      //    client-side en silencio y deje un login huérfano sin empleado)
-      const empRes = await authFetch('/api/admin/create-empleado', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requesterId, empleado: nuevoEmpleado }),
-      }).then(r => r.json()).catch(() => ({ ok: false, error: 'Error de conexión' }))
-
-      if (!empRes.ok) {
-        // Revertir el optimista: el registro sigue pendiente para reintentar
-        console.error('[approve] create-empleado falló:', empRes.error)
-        setEmpleados(prev => prev.filter(e => e.id !== empleadoId))
-        setUsers(prev => prev.filter(u => u.id !== userId))
-        setPending(prev => prev.some(p => p.id === id) ? prev : [reg, ...prev])
-        addNotification({ texto: `No se pudo aprobar a ${reg.nombre} ${reg.apellido}: ${empRes.error}`, tipo: 'sistema', soloAdmin: true })
-        return
-      }
-
-      // 2. Crear la cuenta de login (Supabase Auth + fno_users, contraseña encriptada)
-      await authFetch('/api/admin/create-auth-user', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: reg.email, password: reg.password, userId, empleadoId, role: 'employee', requesterId }),
-      }).then(async r => {
-        if (!r.ok) {
-          const err = await r.json().catch(() => ({}))
-          console.error('[auth] create-auth-user falló:', r.status, err)
-          addNotification({ texto: `${reg.nombre} se creó como empleado, pero no se pudo crear su cuenta de login. Usá "Crear cuenta de acceso" en su ficha.`, tipo: 'sistema', soloAdmin: true })
-        }
-      }).catch(err => console.error('[auth] create-auth-user error de red:', err))
-
-      // 3. Quitar de pendientes en la base (recién ahora que el empleado sí persistió)
-      supabase.from('fno_pending').delete().eq('id', id).then()
-    }
-
-    addNotification({ texto: `Acceso aprobado para ${reg.nombre} ${reg.apellido}`, tipo: 'registro', soloAdmin: true })
-    sendEmail('registration_approved', { nombre: reg.nombre, email: reg.email })
-  }, [pendingRegistrations, addNotification])
-
-  const refreshPending = useCallback(async () => {
-    if (!supabase) return
-    try {
-      const { data } = await supabase.from('fno_pending').select('*')
-      if (data) {
-        setPending(data.map((p: Record<string, string>) => ({
-          id: p.id, nombre: p.nombre, apellido: p.apellido, dni: p.dni,
-          email: p.email, password: p.password, sector: p.sector,
-          cargo: p.cargo, telefono: p.telefono ?? '', fechaSolicitud: p.fecha_solicitud,
-        })))
-      }
-    } catch (e) { console.error('[sync] refreshPending error:', e) }
-  }, [])
-
-  const rejectPendingRegistration = useCallback((id: string) => {
-    const reg = pendingRegistrations.find(p => p.id === id)
-    setPending(prev => prev.filter(p => p.id !== id))
-    if (reg) {
-      addNotification({ texto: `Solicitud de acceso rechazada: ${reg.nombre} ${reg.apellido}`, tipo: 'registro', soloAdmin: true })
-      if (supabase) supabase.from('fno_pending').delete().eq('id', id).then()
-      sendEmail('registration_rejected', { nombre: reg.nombre, email: reg.email })
-    }
-  }, [pendingRegistrations, addNotification])
 
   // ── Registros de Novedad (solo admin) ─────────────────────────────────────
-  const addRegistroNovedad = useCallback(async (r: Omit<RegistroNovedad, 'id' | 'creadoEn'>): Promise<string> => {
-    const nuevo: RegistroNovedad = { ...r, id: uid(), creadoEn: new Date().toISOString() }
-    setRegistrosNovedad(prev => [nuevo, ...prev])
-    if (supabase) {
-      const { error } = await supabase.from('fno_registros_novedad').insert(mapRegistroNovedadToSupabase(nuevo))
-      if (error) console.error('[supabase] insert fno_registros_novedad:', error.message)
-    }
-    return nuevo.id
-  }, [])
+  const {
+    addRegistroNovedad, updateRegistroNovedad, deleteRegistroNovedad,
+  } = useRegistrosNovedadCrud({ setRegistrosNovedad, registrosRef })
 
-  const updateRegistroNovedad = useCallback((id: string, data: Partial<Omit<RegistroNovedad, 'id' | 'creadoEn'>>) => {
-    setRegistrosNovedad(prev => {
-      const updated = prev.map(r => r.id === id ? { ...r, ...data } : r)
-      if (supabase) {
-        const full = updated.find(r => r.id === id)
-        if (full) supabase.from('fno_registros_novedad').upsert(mapRegistroNovedadToSupabase(full)).then()
-      }
-      return updated
-    })
-  }, [])
-
-  const deleteRegistroNovedad = useCallback((id: string) => {
-    setRegistrosNovedad(prev => prev.filter(r => r.id !== id))
-    if (supabase) supabase.from('fno_registros_novedad').delete().eq('id', id).then(({ error }) => {
-      if (error) console.error('[supabase] delete fno_registros_novedad:', error.message)
-    })
-  }, [])
 
   // ── Notificaciones ─────────────────────────────────────────────────────────
   const markNotificationRead = useCallback((id: string) => {
