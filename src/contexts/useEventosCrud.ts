@@ -1,10 +1,11 @@
 import { useCallback } from 'react'
 import type { Evento } from '@/types'
-import { uid } from '@/lib/utils'
+import { uid, formatFecha } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import * as initial from '@/lib/mockData'
 import { mapEventoToSupabase } from './mappers'
 import type { Canal } from './useAviso'
+import { recortar } from './texto'
 
 type Aviso = ReturnType<typeof import('./useAviso').useAviso>
 
@@ -43,6 +44,11 @@ export function useEventosCrud({ setEventos, eventosRef, aviso }: {
       destinatarios: ev.destinatarios,
       canales,
       textoApp: `📅 ${verbo}: ${ev.titulo} — ${ev.fecha}`,
+      push: {
+        titulo: esEdicion ? `${ev.titulo} (actualizado)` : ev.titulo,
+        cuerpo: recortar([`📅 ${formatFecha(ev.fecha)}`, ev.descripcion].filter(Boolean).join(' — ')),
+        url: '/dashboard/comunicaciones',
+      },
       emailType: 'evento_notificacion',
       emailData: emails => ({
         emails: emails.join(','),

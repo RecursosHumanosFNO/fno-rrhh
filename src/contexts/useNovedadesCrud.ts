@@ -4,6 +4,7 @@ import { uid } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import { mapNovedadToSupabase } from './mappers'
 import type { Canal } from './useAviso'
+import { recortar } from './texto'
 
 type Aviso = ReturnType<typeof import('./useAviso').useAviso>
 
@@ -37,6 +38,13 @@ export function useNovedadesCrud({ setNovedades, novedadesRef, aviso }: {
       destinatarios: n.destinatarios,
       canales,
       textoApp: `${verbo}: ${n.titulo}`,
+      // En el push el título va como título del aviso y el contenido como
+      // cuerpo: es lo que se lee en la pantalla bloqueada.
+      push: {
+        titulo: esEdicion ? `${n.titulo} (actualizada)` : n.titulo,
+        cuerpo: recortar(n.contenido),
+        url: '/dashboard/comunicaciones',
+      },
       emailType: 'novedad_publicada',
       emailData: emails => ({
         titulo: n.titulo, contenido: n.contenido, autor: n.autor,

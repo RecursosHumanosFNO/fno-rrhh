@@ -686,7 +686,7 @@ export default function ComunicacionesPage() {
                       <Bell className="w-4 h-4 text-brand-600 dark:text-brand-400" />
                       <div>
                         <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Notificación en la app</p>
-                        <p className="text-xs text-slate-400">Aparece en el ícono de campana del portal</p>
+                        <p className="text-xs text-slate-400">Aparece en la campana del portal y llega al celular de quien tenga las notificaciones activadas</p>
                       </div>
                     </div>
                   </label>
