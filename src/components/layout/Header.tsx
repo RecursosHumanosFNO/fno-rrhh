@@ -310,7 +310,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
           >
             <div className="w-8 h-8 rounded-full bg-brand-700 flex items-center justify-center text-white text-xs font-bold overflow-hidden">
               {empleado?.foto
-                ? <img src={empleado.foto} alt="" className="w-8 h-8 object-cover" />
+                ? <img width={32} height={32} src={empleado.foto} alt="" className="w-8 h-8 object-cover" />
                 : empleado ? `${empleado.nombre.charAt(0)}${empleado.apellido.charAt(0)}` : 'U'
               }
             </div>

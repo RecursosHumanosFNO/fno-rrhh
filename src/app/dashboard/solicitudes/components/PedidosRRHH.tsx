@@ -202,7 +202,7 @@ export function PedidosRRHH({ isAdmin, user, filteredTickets, baseTickets, ticke
                     {isAdmin && emp && (
                       <div className="flex items-center gap-2.5 p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800">
                         <Link href={`/dashboard/empleados/${emp.id}`} className="w-8 h-8 rounded-full bg-brand-700 flex items-center justify-center text-white text-xs font-bold overflow-hidden ring-0 hover:ring-2 hover:ring-brand-400 hover:scale-110 transition-all duration-200 shrink-0">
-                          {emp.foto ? <img src={emp.foto} alt="" className="w-8 h-8 object-cover" /> : `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}`}
+                          {emp.foto ? <img loading="lazy" width={32} height={32} src={emp.foto} alt="" className="w-8 h-8 object-cover" /> : `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}`}
                         </Link>
                         <div>
                           <Link href={`/dashboard/empleados/${emp.id}`} className="text-sm font-medium text-slate-700 dark:text-slate-200 relative inline-block font-medium hover:text-brand-700 dark:hover:text-brand-300 transition-colors duration-200 after:absolute after:bottom-0 after:left-0 after:h-[1.5px] after:w-0 hover:after:w-full after:bg-brand-600 dark:after:bg-brand-400 after:transition-all after:duration-200">{emp.nombre} {emp.apellido}</Link>

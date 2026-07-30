@@ -593,7 +593,7 @@ function NovedadesInternasContent() {
             >
               <div className="flex items-start gap-4">
                 {r.fotoUrl && (
-                  <img
+                  <img loading="lazy" width={64} height={64}
                     src={r.fotoUrl}
                     alt=""
                     className="w-16 h-16 rounded-lg object-cover shrink-0 border border-gray-200 dark:border-gray-600 cursor-pointer"

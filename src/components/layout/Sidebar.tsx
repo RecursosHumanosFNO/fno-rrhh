@@ -175,7 +175,7 @@ export default function Sidebar({ collapsed, mobileOpen, onToggle }: SidebarProp
             <div className="flex items-center gap-2.5 px-2 py-2 mb-1">
               <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white text-xs font-bold shrink-0">
                 {empleado.foto ? (
-                  <img src={empleado.foto} alt="" className="w-8 h-8 rounded-full object-cover" />
+                  <img width={32} height={32} src={empleado.foto} alt="" className="w-8 h-8 rounded-full object-cover" />
                 ) : (
                   `${empleado.nombre.charAt(0)}${empleado.apellido.charAt(0)}`
                 )}

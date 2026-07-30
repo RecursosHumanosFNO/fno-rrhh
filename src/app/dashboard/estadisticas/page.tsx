@@ -760,7 +760,7 @@ export default function EstadisticasPage() {
                       <td className="table-cell max-w-[180px]">
                         <div className="flex items-center gap-2.5">
                           <div className="w-8 h-8 rounded-full bg-brand-700 flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden">
-                            {emp.foto ? <img src={emp.foto} alt="" className="w-8 h-8 object-cover" /> : `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}`}
+                            {emp.foto ? <img loading="lazy" width={32} height={32} src={emp.foto} alt="" className="w-8 h-8 object-cover" /> : `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}`}
                           </div>
                           <span className="font-medium text-slate-700 dark:text-slate-200 truncate">{emp.apellido}, {emp.nombre}</span>
                         </div>

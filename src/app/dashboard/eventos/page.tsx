@@ -488,7 +488,7 @@ export default function EventosPage() {
                           <p className="text-base font-bold text-pink-600 dark:text-pink-400">{parseInt(d)}</p>
                         </div>
                         <div className="w-7 h-7 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center text-pink-600 text-xs font-bold overflow-hidden shrink-0">
-                          {e.foto ? <img src={e.foto} alt="" className="w-7 h-7 object-cover" /> : `${e.nombre.charAt(0)}${e.apellido.charAt(0)}`}
+                          {e.foto ? <img loading="lazy" width={28} height={28} src={e.foto} alt="" className="w-7 h-7 object-cover" /> : `${e.nombre.charAt(0)}${e.apellido.charAt(0)}`}
                         </div>
                         <p className="text-sm font-medium text-slate-700 dark:text-slate-200 flex-1">
                           🎂 Cumpleaños de {e.nombre} {e.apellido}
@@ -552,7 +552,7 @@ export default function EventosPage() {
                       <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{ev.titulo}</p>
                       {ev.descripcion && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed"><Linkify text={ev.descripcion} /></p>}
                       {ev.imagen && (
-                        <img
+                        <img loading="lazy"
                           src={ev.imagen} alt=""
                           onClick={() => setLightbox(ev.imagen!)}
                           className="mt-2 rounded-lg border border-slate-200 dark:border-slate-700 w-full max-h-56 object-cover cursor-zoom-in hover:opacity-90 transition-opacity"
@@ -584,7 +584,7 @@ export default function EventosPage() {
                     {cumples.map(e => (
                       <div key={e.id} className="flex items-center gap-2.5 p-2.5 rounded-xl bg-pink-50 dark:bg-pink-900/10 border border-pink-100 dark:border-pink-900/20">
                         <div className="w-8 h-8 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center text-pink-600 text-xs font-bold overflow-hidden shrink-0">
-                          {e.foto ? <img src={e.foto} alt="" className="w-8 h-8 object-cover" /> : `${e.nombre.charAt(0)}${e.apellido.charAt(0)}`}
+                          {e.foto ? <img loading="lazy" width={32} height={32} src={e.foto} alt="" className="w-8 h-8 object-cover" /> : `${e.nombre.charAt(0)}${e.apellido.charAt(0)}`}
                         </div>
                         <div>
                           <p className="text-sm font-medium text-slate-700 dark:text-slate-200">🎂 Cumpleaños de {e.nombre} {e.apellido}</p>
@@ -613,7 +613,7 @@ export default function EventosPage() {
                   return (
                     <div key={e.id} className={`flex items-center gap-2.5 p-2.5 rounded-xl transition-colors ${esHoyBirth ? 'bg-pink-50 dark:bg-pink-900/20' : ''}`}>
                       <div className="w-9 h-9 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center text-pink-600 text-xs font-bold overflow-hidden shrink-0">
-                        {e.foto ? <img src={e.foto} alt="" className="w-9 h-9 object-cover" /> : `${e.nombre.charAt(0)}${e.apellido.charAt(0)}`}
+                        {e.foto ? <img loading="lazy" width={36} height={36} src={e.foto} alt="" className="w-9 h-9 object-cover" /> : `${e.nombre.charAt(0)}${e.apellido.charAt(0)}`}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{e.nombre} {e.apellido}</p>
@@ -759,7 +759,7 @@ export default function EventosPage() {
                             onChange={() => toggleDest(e.id)}
                             className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" />
                           <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold overflow-hidden shrink-0">
-                            {e.foto ? <img src={e.foto} alt="" className="w-6 h-6 object-cover" /> : `${e.nombre[0]}${e.apellido[0]}`}
+                            {e.foto ? <img loading="lazy" width={24} height={24} src={e.foto} alt="" className="w-6 h-6 object-cover" /> : `${e.nombre[0]}${e.apellido[0]}`}
                           </div>
                           <span className="text-sm text-slate-700 dark:text-slate-200">{e.nombre} {e.apellido}</span>
                           <span className="text-xs text-slate-400 ml-auto">{e.cargo}</span>

@@ -245,7 +245,7 @@ export function BulkUploadModal({
                             ) : (
                               <div className="flex items-center gap-2">
                                 <div className="w-6 h-6 rounded-full bg-brand-700 flex items-center justify-center text-white text-[10px] font-bold overflow-hidden shrink-0">
-                                  {emp?.foto ? <img src={emp.foto} alt="" className="w-6 h-6 object-cover" /> : <User className="w-3.5 h-3.5" />}
+                                  {emp?.foto ? <img loading="lazy" width={24} height={24} src={emp.foto} alt="" className="w-6 h-6 object-cover" /> : <User className="w-3.5 h-3.5" />}
                                 </div>
                                 <div>
                                   <p className="text-xs font-medium text-slate-700 dark:text-slate-200">{emp ? `${emp.apellido}, ${emp.nombre}` : '—'}</p>
