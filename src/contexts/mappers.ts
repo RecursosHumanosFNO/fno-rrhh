@@ -5,8 +5,31 @@ import type {
   Empleado, Solicitud, Recibo, Novedad, Ticket, AppNotification, Evento,
   RegistroNovedad, EmpleadoEstado, DesvinculacionInfo, SolicitudTipo,
   SolicitudEstado, NovedadCategoria, TicketTipo, TicketEstado,
-  RegistroNovedadCategoria,
+  RegistroNovedadCategoria, User, UserRole, PendingRegistration, ReciboFirma,
 } from '@/types'
+
+// ── Mappers de las tablas chicas ─────────────────────────────────────────────
+// Estas tres se mapeaban a mano, y por duplicado: una vez en el sync completo y
+// otra en el handler de Realtime. Duplicar el mapeo es justo el lugar donde una
+// columna nueva entra por una vía y no por la otra.
+export function mapSupabaseToUser(row: Record<string, string>): User {
+  return { id: row.id, email: row.email, role: row.role as UserRole, empleadoId: row.empleado_id }
+}
+
+export function mapSupabaseToPending(row: Record<string, string>): PendingRegistration {
+  return {
+    id: row.id, nombre: row.nombre, apellido: row.apellido, dni: row.dni,
+    email: row.email, password: row.password, sector: row.sector,
+    cargo: row.cargo, telefono: row.telefono ?? '', fechaSolicitud: row.fecha_solicitud,
+  }
+}
+
+export function mapSupabaseToFirma(row: Record<string, string>): ReciboFirma {
+  return {
+    id: row.id, reciboId: row.recibo_id, empleadoId: row.empleado_id,
+    firmadoEn: row.firmado_en, userAgent: row.user_agent ?? undefined,
+  }
+}
 
 // ── Mappers Supabase ↔ Empleado ──────────────────────────────────────────────
 export function mapSupabaseToEmpleado(row: Record<string, unknown>): Empleado {
