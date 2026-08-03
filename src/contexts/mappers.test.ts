@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   mapSupabaseToEmpleado, mapEmpleadoToSupabase,
   mapSupabaseToSolicitud, mapSupabaseToNotif, mapNotifToSupabase,
+  mapSupabaseToUser, mapSupabaseToPending, mapSupabaseToFirma,
 } from './mappers'
 import type { Empleado, AppNotification } from '@/types'
 
@@ -104,5 +105,35 @@ describe('mapSupabaseToNotif', () => {
     const n = mapSupabaseToNotif({ id: 'n1', texto: 'Hola', fecha: '2026-01-01', tipo: 'sistema' })
     expect(n.url).toBeUndefined()
     expect(n.leida).toBe(false)
+  })
+})
+
+// Estas tres estaban duplicadas a mano en el sync y en el handler de Realtime.
+// Los tests fijan el mapeo ahora que hay una sola copia.
+describe('mappers de las tablas chicas', () => {
+  it('mapSupabaseToUser pasa empleado_id a empleadoId', () => {
+    const u = mapSupabaseToUser({ id: 'u1', email: 'a@b.com', role: 'rrhh', empleado_id: 'e1' })
+    expect(u.empleadoId).toBe('e1')
+    expect(u.role).toBe('rrhh')
+  })
+
+  it('mapSupabaseToPending deja el telefono vacio si viene null', () => {
+    const p = mapSupabaseToPending({
+      id: 'p1', nombre: 'Ana', apellido: 'Diaz', dni: '30123456', email: 'a@b.com',
+      password: 'x', sector: 'Admin', cargo: 'Asistente',
+      telefono: null as unknown as string, fecha_solicitud: '2026-01-01',
+    })
+    expect(p.telefono).toBe('')
+    expect(p.fechaSolicitud).toBe('2026-01-01')
+  })
+
+  it('mapSupabaseToFirma deja userAgent en undefined si no vino', () => {
+    const f = mapSupabaseToFirma({
+      id: 'f1', recibo_id: 'r1', empleado_id: 'e1',
+      firmado_en: '2026-01-01T10:00:00Z', user_agent: null as unknown as string,
+    })
+    expect(f.reciboId).toBe('r1')
+    expect(f.empleadoId).toBe('e1')
+    expect(f.userAgent).toBeUndefined()
   })
 })
