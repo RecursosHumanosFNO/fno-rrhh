@@ -4,12 +4,17 @@ import { serviceClient, getRequester } from '@/lib/serverAuth'
 export const runtime = 'nodejs'
 
 // POST /api/recibo-url
-// Body: { path: string }
+// Body: { path: string, descargar?: string }
 // El solicitante se valida por JWT. Un empleado solo puede pedir la URL de sus
 // propios recibos; un admin, de cualquiera. Devuelve URL firmada por 10 minutos.
+//
+// Con `descargar` (el nombre de archivo deseado), la URL firmada viene con
+// Content-Disposition: attachment. Es lo que hace que el archivo se guarde en
+// vez de abrirse en el visor — imprescindible en iPhone, donde no alcanza con
+// el atributo download de un enlace porque el archivo es de otro dominio.
 export async function POST(req: NextRequest) {
   try {
-    const { path } = await req.json().catch(() => ({}))
+    const { path, descargar } = await req.json().catch(() => ({}))
 
     if (!path) {
       return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 })
@@ -45,9 +50,15 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Generar URL firmada válida por 10 minutos (600 segundos)
+    // El nombre se sanea: viaja en una cabecera HTTP y no puede traer comillas
+    // ni saltos de línea.
+    const nombreDescarga = typeof descargar === 'string' && descargar
+      ? descargar.replace(/[^\w.\- ]/g, '_').slice(0, 120)
+      : undefined
+
     const { data: signedData, error: signErr } = await sb.storage
       .from('fno-recibos')
-      .createSignedUrl(path, 600)
+      .createSignedUrl(path, 600, nombreDescarga ? { download: nombreDescarga } : undefined)
 
     if (signErr || !signedData?.signedUrl) {
       console.error('[recibo-url] signed URL error:', signErr?.message)
