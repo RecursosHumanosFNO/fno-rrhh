@@ -22,7 +22,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { EditField } from './components/EditField'
-import { PdfViewerOverlay } from './components/PdfViewerOverlay'
+import { PdfViewerOverlay } from '@/components/PdfViewerOverlay'
 import { DesactivarModal } from './components/DesactivarModal'
 import { ReactivarModal, EliminarModal, ConfirmarRolModal } from './components/ConfirmModals'
 import { HistorialTab } from './components/HistorialTab'

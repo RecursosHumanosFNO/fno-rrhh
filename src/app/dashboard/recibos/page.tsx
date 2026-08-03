@@ -17,6 +17,7 @@ import {
 import { MESES, normDni, extractDniFromFilename, type BulkRow, type BulkStep } from './lib'
 import { UploadReciboModal } from './components/UploadReciboModal'
 import { BulkUploadModal } from './components/BulkUploadModal'
+import { PdfViewerOverlay } from '@/components/PdfViewerOverlay'
 
 
 
@@ -35,6 +36,7 @@ export default function RecibosPage() {
   const [mesFilter, setMesFilter] = useState('')
   const [anioFilter, setAnioFilter] = useState('')
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
+  const [pdfViewer, setPdfViewer] = useState<{ url: string; label: string } | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; archivoUrl?: string; label: string } | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [firmaModal, setFirmaModal] = useState<{ id: string; label: string } | null>(null)
@@ -418,24 +420,58 @@ export default function RecibosPage() {
   }
 
   // ── Descargar recibo ───────────────────────────────────────────────────
-  async function handleDescargar(r: { id: string; archivo: string; archivoUrl?: string; empleadoId: string }) {
+  type ReciboLink = { id: string; archivo: string; archivoUrl?: string; mes: number; anio: number }
+
+  // Pide la URL firmada. `descargar` hace que venga con Content-Disposition:
+  // attachment, o sea que el archivo se guarda en vez de abrirse.
+  async function pedirUrl(r: ReciboLink, descargar?: string): Promise<string | null> {
     if (!r.archivoUrl) {
       alert(`El recibo "${r.archivo}" no tiene PDF adjunto.\n\nPedile a RRHH que lo vuelva a cargar.`)
-      return
+      return null
     }
-    setDownloadingId(r.id)
     try {
       const res = await authFetch('/api/recibo-url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: r.archivoUrl, empleadoId: user?.empleadoId ?? '' }),
+        body: JSON.stringify({ path: r.archivoUrl, descargar }),
       })
       const data = await res.json()
-      if (!res.ok || !data.url) { alert('No se pudo obtener el link del recibo.'); return }
-      // Abre en nueva pestaña: el visor nativo del browser tiene zoom, descargar e imprimir integrados
-      window.open(data.url, '_blank', 'noopener,noreferrer')
+      if (!res.ok || !data.url) { alert('No se pudo obtener el link del recibo.'); return null }
+      return data.url as string
     } catch {
       alert('Error de conexión.')
+      return null
+    }
+  }
+
+  /**
+   * Ver el recibo en el visor propio.
+   *
+   * Antes esto hacía window.open después del await que pide la URL. Safari
+   * bloquea esa apertura porque, con un await de por medio, deja de
+   * considerarla parte del gesto del usuario; y en la app instalada en iPhone
+   * directamente no abría nada. El visor propio no depende de ventanas nuevas.
+   */
+  async function handleVer(r: ReciboLink) {
+    setDownloadingId(r.id)
+    try {
+      const url = await pedirUrl(r)
+      if (url) setPdfViewer({ url, label: formatMes(r.mes, r.anio) })
+    } finally {
+      setDownloadingId(null)
+    }
+  }
+
+  // Guardar el archivo sin pasar por el visor.
+  async function handleDescargar(r: ReciboLink) {
+    setDownloadingId(r.id)
+    try {
+      const nombre = `recibo_${formatMes(r.mes, r.anio).replace(' ', '_').toLowerCase()}.pdf`
+      const url = await pedirUrl(r, nombre)
+      // Navegación directa en vez de un enlace con download: el archivo está en
+      // otro dominio, así que el atributo download no se respeta y es la
+      // cabecera de la URL firmada la que fuerza el guardado.
+      if (url) window.location.assign(url)
     } finally {
       setDownloadingId(null)
     }
@@ -651,7 +687,81 @@ export default function RecibosPage() {
           </p>
         </div>
       ) : (
-        <div className="card overflow-x-auto">
+        <>
+        {/* Móvil: tarjetas. La tabla obligaba a deslizar de costado para llegar
+            al botón, y mucha gente ni se enteraba de que estaba ahí. Acá el mes
+            y las dos acciones entran sin desplazarse. */}
+        <div className="sm:hidden space-y-2.5">
+          {filtered.map(r => {
+            const emp = empleados.find(e => e.id === r.empleadoId)
+            const tieneArchivo = !!r.archivoUrl
+            const ocupado = downloadingId === r.id
+            const firma = firmas.find(f => f.reciboId === r.id)
+            const esMio = r.empleadoId === user?.empleadoId
+            return (
+              <div key={r.id} className={`card p-4 ${firma ? 'border-l-4 border-emerald-400' : ''}`}>
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-center shrink-0">
+                    <FileText className="w-5 h-5 text-brand-700 dark:text-brand-400" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-base font-semibold text-slate-800 dark:text-slate-100">{formatMes(r.mes, r.anio)}</p>
+                    {viewAsAdmin && (
+                      <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                        {emp ? `${emp.apellido}, ${emp.nombre}` : 'N/A'}
+                      </p>
+                    )}
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+                      {r.concepto === 'Sueldo Anual Complementario' && (
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                          🎁 Aguinaldo (SAC)
+                        </span>
+                      )}
+                      {firma && (
+                        <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400">
+                          <ShieldCheck className="w-3 h-3" /> Firmado
+                        </span>
+                      )}
+                      {!tieneArchivo && (
+                        <span className="inline-flex items-center gap-1 text-[11px] text-slate-400">
+                          <HardDrive className="w-3 h-3" /> Sin archivo
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 mt-3">
+                  <button
+                    onClick={() => handleVer(r)}
+                    disabled={!tieneArchivo || ocupado}
+                    className="flex-1 justify-center inline-flex items-center gap-1.5 text-sm py-2.5 rounded-xl bg-brand-700 hover:bg-brand-600 text-white disabled:opacity-50 transition-colors"
+                  >
+                    {ocupado ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />} Ver
+                  </button>
+                  <button
+                    onClick={() => handleDescargar(r)}
+                    disabled={!tieneArchivo || ocupado}
+                    className="flex-1 justify-center inline-flex items-center gap-1.5 text-sm py-2.5 rounded-xl border border-brand-300 dark:border-brand-700 text-brand-700 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-900/20 disabled:opacity-50 transition-colors"
+                  >
+                    <Download className="w-4 h-4" /> Descargar
+                  </button>
+                </div>
+
+                {!viewAsAdmin && esMio && !firma && (
+                  <button
+                    onClick={() => { setFirmaModal({ id: r.id, label: formatMes(r.mes, r.anio) }); setFirmaAcepto(false) }}
+                    className="w-full justify-center inline-flex items-center gap-1.5 text-sm py-2.5 mt-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    <PenLine className="w-4 h-4" /> Firmar recibo
+                  </button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="card overflow-x-auto hidden sm:block">
           <table className="w-full min-w-[520px]">
             <thead>
               <tr>
@@ -778,6 +888,11 @@ export default function RecibosPage() {
             </tbody>
           </table>
         </div>
+        </>
+      )}
+
+      {pdfViewer && (
+        <PdfViewerOverlay viewer={pdfViewer} onClose={() => setPdfViewer(null)} />
       )}
 
       {/* Modal firma de recibo */}
