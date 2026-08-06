@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import type { Evento } from '@/types'
 import { uid, formatFecha } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
+import { borrarImagenMedia } from './storage'
 import * as initial from '@/lib/mockData'
 import { mapEventoToSupabase } from './mappers'
 import type { Canal } from './useAviso'
@@ -89,6 +90,7 @@ export function useEventosCrud({ setEventos, eventosRef, aviso }: {
       alert('Los feriados y actos institucionales están fijados en el sistema y no se pueden eliminar.')
       return
     }
+    borrarImagenMedia(eventosRef.current.find(e => e.id === id)?.imagen)
     setEventos(prev => prev.filter(e => e.id !== id))
     if (supabase) {
       supabase.from('fno_eventos').delete().eq('id', id).then(({ error }) => {

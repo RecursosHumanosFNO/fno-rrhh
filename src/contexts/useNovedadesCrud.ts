@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import type { Novedad } from '@/types'
 import { uid } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
+import { borrarImagenMedia } from './storage'
 import { mapNovedadToSupabase } from './mappers'
 import type { Canal } from './useAviso'
 import { recortar } from './texto'
@@ -72,9 +73,14 @@ export function useNovedadesCrud({ setNovedades, novedadesRef, aviso }: {
   }, [setNovedades, novedadesRef, avisar])
 
   const deleteNovedad = useCallback((id: string) => {
+    // La imagen se borra junto con la fila: antes quedaba en el bucket para
+    // siempre, sin nada que la referenciara.
+    borrarImagenMedia(novedadesRef.current.find(n => n.id === id)?.imagen)
     setNovedades(prev => prev.filter(n => n.id !== id))
-    if (supabase) supabase.from('fno_novedades').delete().eq('id', id).then()
-  }, [setNovedades])
+    if (supabase) supabase.from('fno_novedades').delete().eq('id', id).then(({ error }) => {
+      if (error) console.error('[supabase] delete fno_novedades:', error.message)
+    })
+  }, [setNovedades, novedadesRef])
 
   return { addNovedad, updateNovedad, deleteNovedad }
 }

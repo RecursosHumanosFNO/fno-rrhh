@@ -3,6 +3,7 @@ import type { RegistroNovedad } from '@/types'
 import { uid } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import { mapRegistroNovedadToSupabase } from './mappers'
+import { borrarFotoRegistro } from './storage'
 
 export function useRegistrosNovedadCrud({ setRegistrosNovedad, registrosRef }: {
   setRegistrosNovedad: React.Dispatch<React.SetStateAction<RegistroNovedad[]>>
@@ -31,11 +32,12 @@ export function useRegistrosNovedadCrud({ setRegistrosNovedad, registrosRef }: {
   }, [setRegistrosNovedad, registrosRef])
 
   const deleteRegistroNovedad = useCallback((id: string) => {
+    borrarFotoRegistro(registrosRef.current.find(r => r.id === id)?.fotoUrl)
     setRegistrosNovedad(prev => prev.filter(r => r.id !== id))
     if (supabase) supabase.from('fno_registros_novedad').delete().eq('id', id).then(({ error }) => {
       if (error) console.error('[supabase] delete fno_registros_novedad:', error.message)
     })
-  }, [setRegistrosNovedad])
+  }, [setRegistrosNovedad, registrosRef])
 
   return { addRegistroNovedad, updateRegistroNovedad, deleteRegistroNovedad }
 }
