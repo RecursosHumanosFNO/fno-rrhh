@@ -101,8 +101,8 @@ export function mapSupabaseToSolicitud(row: Record<string, unknown>): Solicitud 
     horarioHasta: (row.horario_hasta as string) || undefined,
   }
 }
-export function mapSolicitudToSupabase(s: Solicitud) {
-  return {
+export function mapSolicitudToSupabase(s: Solicitud, baseOnly = false) {
+  const base = {
     id: s.id, empleado_id: s.empleadoId, tipo: s.tipo,
     // Fechas opcionales: null (no ''), porque una columna date rechaza el string vacío
     // y haría fallar todo el insert en silencio.
@@ -110,9 +110,17 @@ export function mapSolicitudToSupabase(s: Solicitud) {
     descripcion: s.descripcion, estado: s.estado,
     fecha_creacion: s.fechaCreacion, fecha_resolucion: s.fechaResolucion || null,
     comentario_admin: s.comentarioAdmin ?? '', adjunto: s.adjunto ?? '',
-    // Faltaban en ambas direcciones: el formulario los pedía, el mail y el PDF
-    // los mostraban, pero nunca llegaban a la base. Un "permiso de 14 a 16" se
-    // veía bien hasta el siguiente sync y ahí perdía el horario para siempre.
+  }
+  if (baseOnly) return base
+  // Faltaban en ambas direcciones: el formulario los pedía, el mail y el PDF los
+  // mostraban, pero nunca llegaban a la base. Un "permiso de 14 a 16" se veía
+  // bien hasta el siguiente sync y ahí perdía el horario para siempre.
+  //
+  // baseOnly es el reintento por si la migración todavía no se corrió — mismo
+  // patrón que novedades y notifs. Sin eso, desplegar antes de la migración
+  // haría fallar todos los inserts de solicitudes.
+  return {
+    ...base,
     horario_desde: s.horarioDesde || null,
     horario_hasta: s.horarioHasta || null,
   }
