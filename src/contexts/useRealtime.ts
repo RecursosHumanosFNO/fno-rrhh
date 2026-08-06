@@ -134,7 +134,11 @@ export function useRealtime(setters: Setters, syncFromSupabase: () => Promise<vo
       setTimeout(() => {
         if (session) {
           setupChannel()
-          syncFromSupabase()
+          // INITIAL_SESSION es la sesión que ya estaba al cargar la página, y
+          // useSupabaseSync ya sincroniza al montar. Sincronizar acá también
+          // duplicaba la descarga de las once tablas —con las fotos adentro— en
+          // cada carga. Un login de verdad (SIGNED_IN) sí necesita el sync.
+          if (event !== 'INITIAL_SESSION') syncFromSupabase()
         } else if (channel) {
           sb.removeChannel(channel)
           channel = null
