@@ -23,6 +23,25 @@ import type { Setters } from './setters'
 // Supabase. Los cambios en vivo ya llegan por Realtime; esto es red de seguridad.
 const INTERVALO_SYNC_MS = 600_000
 
+// Tope por tabla para el sync completo.
+//
+// Antes seis tablas se traian con select('*') sin limite. Todas son append-only:
+// recibos crece a empleados x 12 por año, y solicitudes, tickets, firmas y
+// registros al ritmo de uso. Sin techo, el sync —que corre cada diez minutos por
+// pestaña— iba a repetir en cámara lenta el incidente de egress de 2026.
+//
+// 2000 está muy por encima del volumen actual justamente para que el tope no le
+// esconda datos a nadie hoy. El día que una tabla lo alcance hay que paginar de
+// verdad (traer el último año y cargar el histórico bajo demanda), y para eso
+// está el aviso.
+const TOPE = 2000
+
+function avisaMax(nombre: string, filas: unknown[] | null) {
+  if (filas && filas.length >= TOPE) {
+    console.warn(`[sync] ${nombre} llegó al tope de ${TOPE} filas: el sync está recortando datos. Hay que paginar.`)
+  }
+}
+
 /**
  * Trae todas las tablas de Supabase y las vuelca en el estado del contexto.
  *
@@ -50,14 +69,19 @@ export function useSupabaseSync(setters: Setters) {
         // Tiene que ser un literal: Supabase infiere el tipo de la fila a
         // partir del string, y con una constante devuelve GenericStringError.
         supabase.from('fno_empleados').select('id, nombre, apellido, dni, fecha_nacimiento, email, telefono, direccion, cuil, contacto_emergencia, sector, cargo, cargos_extra, fecha_ingreso, tipo_contrato, jornada, supervisor, estado, cbu, banco, desvinculacion, historial_desvinculaciones, foto, foto_cover'),
-        supabase.from('fno_solicitudes').select('*'),
-        supabase.from('fno_recibos').select('*'),
-        supabase.from('fno_novedades').select('*'),
-        supabase.from('fno_tickets').select('*'),
+        // Estas tablas son append-only y crecen para siempre. El tope es una
+        // red contra el crecimiento sin fin, no un recorte de lo que se ve: los
+        // números están holgados respecto del volumen actual a propósito, para
+        // no esconderle a nadie un recibo viejo. Si alguno se alcanza, avisaMax
+        // lo grita por consola — un recorte silencioso se lee como "está todo".
+        supabase.from('fno_solicitudes').select('*').order('fecha_creacion', { ascending: false }).limit(TOPE),
+        supabase.from('fno_recibos').select('*').order('fecha_subida', { ascending: false }).limit(TOPE),
+        supabase.from('fno_novedades').select('*').order('fecha_publicacion', { ascending: false }).limit(TOPE),
+        supabase.from('fno_tickets').select('*').order('fecha_creacion', { ascending: false }).limit(TOPE),
         supabase.from('fno_notifs').select('*').order('fecha', { ascending: false }).limit(200),
         supabase.from('fno_eventos').select('*'),
-        supabase.from('fno_recibo_firmas').select('*'),
-        supabase.from('fno_registros_novedad').select('*').order('creado_en', { ascending: false }),
+        supabase.from('fno_recibo_firmas').select('*').order('firmado_en', { ascending: false }).limit(TOPE),
+        supabase.from('fno_registros_novedad').select('*').order('creado_en', { ascending: false }).limit(TOPE),
       ])
 
       // Supabase es siempre la fuente de verdad — actualizar aunque el array
@@ -65,6 +89,13 @@ export function useSupabaseSync(setters: Setters) {
       if (usersRes.data) s.setUsers(usersRes.data.map(mapSupabaseToUser))
       if (pendingRes.data) s.setPending(pendingRes.data.map(mapSupabaseToPending))
       if (empRes.data) s.setEmpleados(empRes.data.map(r => mapSupabaseToEmpleado(r as Record<string, unknown>)))
+      avisaMax('fno_solicitudes', solRes.data)
+      avisaMax('fno_recibos', recRes.data)
+      avisaMax('fno_tickets', tickRes.data)
+      avisaMax('fno_recibo_firmas', firmasRes.data)
+      avisaMax('fno_registros_novedad', regNovRes.data)
+      avisaMax('fno_novedades', novRes.data)
+
       if (solRes.data) s.setSolicitudes(solRes.data.map(mapSupabaseToSolicitud))
       if (recRes.data) s.setRecibos(recRes.data.map(mapSupabaseToRecibo))
       if (novRes.data) s.setNovedades(novRes.data.map(mapSupabaseToNovedad))
