@@ -14,10 +14,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ping keepalive endpoint
+        env:
+          # Configurable por si cambia el dominio: la URL estaba hardcodeada.
+          PORTAL_URL: ${{ vars.PORTAL_URL }}
         run: |
           echo "Pinging keepalive endpoint..."
-          response=$(curl -s -o /dev/null -w "%{http_code}" https://portalfundacion.vercel.app/api/keepalive)
+          response=$(curl -s -o /dev/null -w "%{http_code}" ${PORTAL_URL:-https://portalfundacion.vercel.app}/api/keepalive)
           echo "HTTP status: $response"
           if [ "$response" != "200" ]; then
-            echo "::warning::Keepalive devolvió $response (esperado 200)"
+            # Antes esto era un ::warning:: y el job quedaba en verde igual, así
+            # que un keepalive roto no se distinguía de uno que anda — y el
+            # sentido del workflow es justamente que Supabase no se pause.
+            echo "::error::Keepalive devolvió $response (esperado 200)"
+            exit 1
           fi
