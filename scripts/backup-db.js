@@ -25,33 +25,52 @@ const dir = path.join('backup', fecha)
 fs.mkdirSync(dir, { recursive: true })
 
 // Tablas a respaldar (campos a excluir por privacidad)
+//
+// fno_recibo_firmas y fno_registros_novedad faltaban. Las firmas son
+// justamente la constancia de que el empleado recibió y conformó su recibo:
+// es lo último que debería faltar en un backup de RRHH.
 const TABLAS = [
-  { tabla: 'fno_empleados',   excluir: [] },
-  { tabla: 'fno_users',       excluir: ['password'] },
-  { tabla: 'fno_solicitudes', excluir: [] },
-  { tabla: 'fno_recibos',     excluir: [] },
-  { tabla: 'fno_novedades',   excluir: [] },
-  { tabla: 'fno_tickets',     excluir: [] },
-  { tabla: 'fno_pending',     excluir: ['password'] },
-  { tabla: 'fno_notifs',      excluir: [] },
-  { tabla: 'fno_eventos',     excluir: [] },
+  { tabla: 'fno_empleados',         excluir: [] },
+  { tabla: 'fno_users',             excluir: ['password'] },
+  { tabla: 'fno_solicitudes',       excluir: [] },
+  { tabla: 'fno_recibos',           excluir: [] },
+  { tabla: 'fno_recibo_firmas',     excluir: [] },
+  { tabla: 'fno_novedades',         excluir: [] },
+  { tabla: 'fno_tickets',           excluir: [] },
+  { tabla: 'fno_pending',           excluir: [] },
+  { tabla: 'fno_notifs',            excluir: [] },
+  { tabla: 'fno_eventos',           excluir: [] },
+  { tabla: 'fno_registros_novedad', excluir: [] },
 ]
 
-// Llama directamente a la REST API de Supabase (PostgREST)
+// Llama directamente a la REST API de Supabase (PostgREST).
+//
+// Pagina de a 1000. Antes pedía limit=10000 de una: hoy sobra, pero el día que
+// una tabla pase ese número el backup se cortaría sin decir nada y el recorte
+// se descubriría reciendo al intentar restaurar.
+const PAGINA = 1000
+
 async function fetchTabla(tabla) {
-  const url = `${SUPABASE_URL}/rest/v1/${tabla}?select=*&limit=10000`
-  const res = await fetch(url, {
-    headers: {
-      'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${SUPABASE_KEY}`,
-      'Accept': 'application/json',
-    },
-  })
-  if (!res.ok) {
-    const texto = await res.text()
-    throw new Error(`HTTP ${res.status}: ${texto}`)
+  const filas = []
+  for (let desde = 0; ; desde += PAGINA) {
+    const url = `${SUPABASE_URL}/rest/v1/${tabla}?select=*`
+    const res = await fetch(url, {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Accept': 'application/json',
+        'Range-Unit': 'items',
+        'Range': `${desde}-${desde + PAGINA - 1}`,
+      },
+    })
+    if (!res.ok) {
+      const texto = await res.text()
+      throw new Error(`HTTP ${res.status}: ${texto}`)
+    }
+    const pagina = await res.json()
+    filas.push(...pagina)
+    if (pagina.length < PAGINA) return filas
   }
-  return res.json()
 }
 
 async function exportarTabla({ tabla, excluir }) {

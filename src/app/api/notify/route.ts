@@ -16,7 +16,7 @@ export const runtime = 'nodejs'
  *              arbitrario exigen además rol de administración.
  */
 const TIPOS_PUBLICOS = new Set(['new_registration'])
-const TIPOS_INTERNOS = new Set(['reset_password'])
+const TIPOS_INTERNOS = new Set(['reset_password', 'alerta_sistema'])
 const TIPOS_CUALQUIER_USUARIO = new Set(['new_solicitud', 'password_changed'])
 const TIPOS_COMUNICACIONES = new Set(['evento_notificacion', 'novedad_publicada'])
 // Los recibos de sueldo son la excepción: Gestión de Personal no los maneja.
@@ -141,6 +141,24 @@ export async function POST(req: NextRequest) {
           <p style="color:#64748b;">Para entrar por primera vez tenés que <strong>crear tu contraseña</strong>: entrá a "Olvidé mi contraseña", poné este mismo email (<strong>${data.email}</strong>) y vas a recibir un link para definirla.</p>
           ${btn('Crear mi contraseña', `${PORTAL_URL}/login`)}
           <p style="color:#94a3b8;font-size:13px;margin-top:24px;">Si tenés alguna duda, respondé este email o comunicate con el área de RRHH.</p>
+        `),
+      })
+    }
+
+    /* ── Alerta de sistema (server-to-server) ──────────────────────── */
+    // La dispara un workflow de GitHub cuando un job programado falla. Sin
+    // esto, un backup que revienta deja sólo una cruz roja en la pestaña
+    // Actions que nadie mira, y se descubre el día que hace falta restaurar.
+    // Va a la casilla de RRHH y el texto lo arma el server, no el llamador.
+    else if (type === 'alerta_sistema') {
+      await transporter.sendMail({
+        from, to: ADMIN_EMAIL,
+        subject: `⚠️ Falló: ${data.trabajo}`,
+        html: base(`
+          <h3 style="color:#dc2626;margin-top:0;">Un proceso automático falló</h3>
+          <p style="color:#64748b;">El proceso <strong>${data.trabajo}</strong> terminó con error.</p>
+          <p style="color:#64748b;">Conviene revisarlo: si es el backup, la base se queda sin respaldo del día.</p>
+          ${data.url ? btn('Ver el detalle del error', data.url) : ''}
         `),
       })
     }

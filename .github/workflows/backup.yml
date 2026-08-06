@@ -41,3 +41,22 @@ jobs:
           path: backup/
           retention-days: 90    # Se conservan 90 días (~3 meses de historial)
           if-no-files-found: error
+
+      # Sin esto, un backup que revienta sólo deja una cruz roja en la pestaña
+      # Actions que nadie mira, y la falla se descubre el día que hace falta
+      # restaurar. El mail sale por la misma cuenta que usa el portal.
+      - name: Avisar por mail si el backup falló
+        if: failure()
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          PORTAL_URL: ${{ vars.PORTAL_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::warning::Sin CRON_SECRET no se puede avisar del fallo"
+            exit 0
+          fi
+          curl -sS -X POST "${PORTAL_URL:-https://portalfno.com}/api/notify" \
+            -H "Content-Type: application/json" \
+            -H "x-internal-key: $CRON_SECRET" \
+            -d "{\"type\":\"alerta_sistema\",\"data\":{\"trabajo\":\"Backup diario de la base\",\"url\":\"$RUN_URL\"}}"

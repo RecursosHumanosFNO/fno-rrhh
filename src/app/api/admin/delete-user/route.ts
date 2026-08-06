@@ -40,7 +40,47 @@ export async function POST(req: NextRequest) {
       if (authErr) console.error('[delete-user] auth:', authErr.message)
     }
 
-    // 2. Eliminar las filas de las tablas
+    // 2. Borrar los archivos del empleado en Storage.
+    //
+    // Antes esta ruta borraba fno_users y fno_empleados y nada más, así que un
+    // empleado "eliminado" dejaba atrás sus recibos de sueldo —filas Y PDFs—,
+    // firmas, solicitudes, tickets, notificaciones y fotos. Es basura que se
+    // acumula, pero sobre todo es que "borré al empleado" no borraba sus datos
+    // salariales.
+    //
+    // Los recibos viven en fno-recibos bajo {empleadoId}/ y las fotos en
+    // fno-media bajo fotos/{empleadoId}/. Storage no borra por prefijo: hay que
+    // listar y pasar las rutas.
+    for (const [bucket, prefijo] of [['fno-recibos', empleadoId], ['fno-media', `fotos/${empleadoId}`]]) {
+      const { data: archivos, error: listErr } = await sb.storage.from(bucket).list(prefijo)
+      if (listErr) { console.error(`[delete-user] list ${bucket}:`, listErr.message); continue }
+      if (!archivos?.length) continue
+      const rutas = archivos.map(a => `${prefijo}/${a.name}`)
+      const { error: rmErr } = await sb.storage.from(bucket).remove(rutas)
+      if (rmErr) console.error(`[delete-user] remove ${bucket}:`, rmErr.message)
+    }
+
+    // 3. Eliminar las filas asociadas antes que el empleado.
+    //
+    // Los registros de novedad NO se borran: son la bitácora interna (sanciones,
+    // accidentes, conflictos) y su valor está justamente en sobrevivir a la baja
+    // de la persona. Se les suelta el empleado_id y queda empleado_nombre, que
+    // ya se guarda desnormalizado.
+    const { error: desvincularErr } = await sb.from('fno_registros_novedad')
+      .update({ empleado_id: null }).eq('empleado_id', empleadoId)
+    if (desvincularErr) console.error('[delete-user] registros_novedad:', desvincularErr.message)
+
+    const enCascada = [
+      'fno_recibo_firmas', 'fno_recibos', 'fno_solicitudes',
+      'fno_tickets', 'fno_notifs', 'fno_push_subscriptions',
+    ]
+    for (const tabla of enCascada) {
+      const { error } = await sb.from(tabla).delete().eq('empleado_id', empleadoId)
+      // No se aborta: si una tabla falla, conviene igual terminar de borrar el
+      // resto y no dejar al empleado a medio eliminar.
+      if (error) console.error(`[delete-user] ${tabla}:`, error.message)
+    }
+
     await sb.from('fno_users').delete().eq('empleado_id', empleadoId)
     await sb.from('fno_empleados').delete().eq('id', empleadoId)
 
