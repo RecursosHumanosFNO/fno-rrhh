@@ -29,8 +29,20 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Chequeo de tipos
+        # npm run build sólo chequea lo que entra en el grafo de módulos de
+        # Next: los tests y cualquier .ts suelto quedaban afuera.
+        run: npx tsc --noEmit
+
       - name: Tests
         run: npm test
+
+      - name: Vulnerabilidades de dependencias
+        # Informativo, no bloquea: la línea 14.x de Next está EOL y arrastra
+        # advisories que sólo se cierran migrando a 15/16, así que fallar acá
+        # dejaría el CI en rojo permanente sin que nadie pueda hacer nada.
+        # Sirve para que un advisory nuevo se vea en el PR y no dentro de un año.
+        run: npm audit --audit-level=high || true
 
       - name: Build
         # Las claves NEXT_PUBLIC_ se leen en tiempo de build. Son valores de

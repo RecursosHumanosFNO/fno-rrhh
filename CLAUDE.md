@@ -60,17 +60,27 @@ All routes use Node.js runtime and the Supabase **service role key** (never expo
 | Route | Purpose |
 |---|---|
 | `POST /api/admin/create-auth-user` | Creates Supabase Auth user + fno_users record |
+| `POST /api/admin/create-empleado` | Creates the employee row via service role (RLS blocks the client-side insert) |
 | `POST /api/admin/set-role` | Updates user role |
 | `POST /api/admin/set-email` | Updates email in Auth + DB |
 | `POST /api/admin/delete-user` | Deletes from Auth + DB |
 | `POST/PUT/GET /api/reset-password` | Token-based password reset flow |
 | `POST /api/notify` | Email dispatch via Gmail/nodemailer (13+ email types) |
-| `POST /api/chat` | AI assistant (Google Gemini) |
-| `GET /api/recibo-url` | Supabase Storage signed URL for receipt downloads |
+| `POST /api/perfil` | Employee profile writes (photos included) via service role |
+| `POST /api/recibo-url` | Supabase Storage signed URL for receipt view/download |
+| `POST /api/recibo-firmar-pdf` | Stamps the signature onto the receipt PDF |
+| `POST /api/push/subscribe` | Stores the browser's Web Push subscription |
+| `POST /api/push/send` | Sends a push notification to the chosen recipients |
+| `GET /api/auth/callback` | OAuth/magic-link callback |
 | `GET /api/keepalive` | Pings Supabase to prevent idle timeout |
 | `GET /api/cron/cumpleanos` | Vercel cron — birthday notifications |
+| `GET /api/cron/reporte-diario` | Vercel cron — weekly RRHH summary (runs daily, only sends on Mondays) |
+| `GET /api/cron/solicitudes-pendientes` | Vercel cron — reminder about pending requests |
 
 Admin routes verify the requester's role by looking up `fno_users` with their `auth_id` before acting.
+Assigning the `admin` or `rrhh` role is admin-only — `rrhh` can only grant `employee` or `comunicaciones`.
+The three crons authenticate with `Authorization: Bearer $CRON_SECRET`; `/api/notify` accepts the same
+secret as `x-internal-key` for server-to-server calls.
 
 ### Database Tables (Supabase/PostgreSQL)
 
@@ -93,7 +103,13 @@ RLS is enabled on all tables. Service role key bypasses RLS (server-side only).
 
 ### Email System
 
-All emails go through `POST /api/notify`. Email failures are non-fatal — the API returns 200 and the operation continues. Gmail credentials: `GMAIL_USER` + `GMAIL_PASS` (app password).
+All emails go through `POST /api/notify`. Email failures are non-fatal — the API returns 200 and the
+operation continues — but the body carries `ok: false`, and anything that tells the user an email was
+sent must read it. `sendEmail()` (`src/contexts/email.ts`) returns that boolean; don't assume delivery.
+Gmail credentials: `GMAIL_USER` + `GMAIL_PASS` (app password).
+
+`/api/notify` is not an open relay: each email type is authorised in a table at the top of the route
+(public / any authenticated user / comunicaciones / gestión de personal / admin-only / internal).
 
 ### Key Environment Variables
 
@@ -104,7 +120,10 @@ SUPABASE_SERVICE_ROLE_KEY=          # Server-side API routes only
 NEXT_PUBLIC_PORTAL_URL=             # Used in email templates
 GMAIL_USER=
 GMAIL_PASS=
-NEXT_PUBLIC_GOOGLE_GENERATIVE_AI_API_KEY=
+CRON_SECRET=                        # Vercel crons + x-internal-key for /api/notify
+NEXT_PUBLIC_SENTRY_DSN=
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=       # Web Push
+VAPID_PRIVATE_KEY=
 ```
 
 `NEXT_PUBLIC_` prefix = safe for client bundle. Never add `SUPABASE_SERVICE_ROLE_KEY` or `GMAIL_PASS` to client code.
