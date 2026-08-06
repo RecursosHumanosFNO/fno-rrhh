@@ -5,6 +5,7 @@ import { useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
+import { FotoRegistro } from './components/FotoRegistro'
 import { supabase } from '@/lib/supabase'
 import {
   REGISTRO_NOVEDAD_CATEGORIA_LABEL,
@@ -337,19 +338,27 @@ function NovedadesInternasContent() {
     }))
   }
 
+  // Sube por /api/registro-foto, que escribe con service role en un bucket
+  // privado. Antes iba directo a fno-media —público— con nombre Date.now(), y
+  // estas fotos documentan sanciones y accidentes.
   const handleFotoChange = useCallback(async (file: File) => {
-    if (!supabase) return
     setUploadingFoto(true)
-    const ext = file.name.split('.').pop() ?? 'jpg'
-    const path = `registros-novedad/${Date.now()}.${ext}`
-    const { error } = await supabase.storage.from('fno-media').upload(path, file, {
-      contentType: file.type, upsert: false,
-    })
-    if (error) { console.error('[upload foto]', error.message); setUploadingFoto(false); return }
-    const { data } = supabase.storage.from('fno-media').getPublicUrl(path)
-    setForm(f => ({ ...f, fotoUrl: data.publicUrl }))
-    setFotoPreview(data.publicUrl)
-    setUploadingFoto(false)
+    try {
+      const body = new FormData()
+      body.append('file', file)
+      const res = await authFetch('/api/registro-foto', { method: 'POST', body })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data?.path) {
+        alert(data?.error ?? 'No se pudo subir la imagen')
+        return
+      }
+      setForm(f => ({ ...f, fotoUrl: data.path }))
+      // Para la previsualización alcanza con el archivo local: evita ir a pedir
+      // una URL firmada de algo que el usuario acaba de elegir.
+      setFotoPreview(URL.createObjectURL(file))
+    } finally {
+      setUploadingFoto(false)
+    }
   }, [])
 
   function onFileInput(e: React.ChangeEvent<HTMLInputElement>) {
@@ -593,11 +602,10 @@ function NovedadesInternasContent() {
             >
               <div className="flex items-start gap-4">
                 {r.fotoUrl && (
-                  <img loading="lazy" width={64} height={64}
-                    src={r.fotoUrl}
-                    alt=""
+                  <FotoRegistro
+                    fotoUrl={r.fotoUrl}
                     className="w-16 h-16 rounded-lg object-cover shrink-0 border border-gray-200 dark:border-gray-600 cursor-pointer"
-                    onClick={() => window.open(r.fotoUrl, '_blank')}
+                    onAbrir={url => window.open(url, '_blank')}
                   />
                 )}
                 <div className="flex-1 min-w-0">
