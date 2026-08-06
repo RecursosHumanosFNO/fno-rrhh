@@ -43,7 +43,8 @@ export function useSupabaseSync(setters: Setters) {
     try {
       const [usersRes, pendingRes, empRes, solRes, recRes, novRes, tickRes, notifRes, evtRes, firmasRes, regNovRes] = await Promise.all([
         supabase.from('fno_users').select('id, email, role, empleado_id'),
-        supabase.from('fno_pending').select('*'),
+        // Sin `password`: la contraseña ya no se guarda (ver usePendingRegistrationsCrud).
+        supabase.from('fno_pending').select('id, nombre, apellido, dni, email, sector, cargo, telefono, fecha_solicitud'),
         // Las columnas van explícitas (no `*`) porque la tabla tiene campos
         // pesados y este select se corre entero cada diez minutos por pestaña.
         // Tiene que ser un literal: Supabase infiere el tipo de la fila a

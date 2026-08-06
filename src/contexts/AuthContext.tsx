@@ -94,19 +94,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [loadProfile]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sincroniza el objeto empleado cuando DataContext termina de cargar.
-  // Preserva foto/fotoCover del cache ref — el bulk fetch no las incluye para ahorrar bandwidth.
+  //
+  // El sync masivo SÍ trae foto y foto_cover, así que acá se toma `emp` tal
+  // cual. Antes se hacía `emp.foto || fotoCache.current?.foto || …`, una cadena
+  // de fallbacks heredada de cuando el bulk fetch no las incluía. Con la cadena,
+  // borrar la foto era imposible: el borrado dejaba `emp.foto` en '', este mismo
+  // efecto se disparaba, y el '' caía al cache restaurando la foto vieja en el
+  // header, el sidebar y el perfil. El DELETE sí había llegado a la base — sólo
+  // mentía la pantalla, hasta recargar.
   useEffect(() => {
     if (!auth.user) return
     const emp = empleados.find(e => e.id === auth.user!.empleadoId)
     if (emp && emp !== auth.empleado) {
-      setAuth(prev => ({
-        ...prev,
-        empleado: {
-          ...emp,
-          foto: emp.foto || fotoCache.current?.foto || prev.empleado?.foto || '',
-          fotoCover: emp.fotoCover || fotoCache.current?.fotoCover || prev.empleado?.fotoCover || '',
-        },
-      }))
+      // El cache sigue al dato, nunca al revés: si no, vuelve a quedar viejo.
+      fotoCache.current = { foto: emp.foto ?? '', fotoCover: emp.fotoCover ?? '' }
+      try {
+        localStorage.setItem(`foto_cache_${emp.id}`,
+          JSON.stringify({ foto: emp.foto ?? '', fotoCover: emp.fotoCover ?? '' }))
+      } catch { /* localStorage no disponible */ }
+      setAuth(prev => ({ ...prev, empleado: emp }))
     }
     // Depende también de auth.user: si `empleados` sincroniza ANTES de que
     // onAuthStateChange setee el user, sin esta dep el empleado quedaría en null.

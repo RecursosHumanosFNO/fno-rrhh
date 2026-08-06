@@ -265,7 +265,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
                 </p>
                 {unread.length > 0 && (
                   <button
-                    onClick={markAllRead}
+                    onClick={() => markAllRead(unread.map(n => n.id))}
                     className="text-xs text-brand-600 dark:text-teal-400 hover:underline flex items-center gap-1"
                   >
                     <CheckCheck className="w-3 h-3" /> Leer todo

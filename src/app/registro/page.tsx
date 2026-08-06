@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useData } from '@/contexts/DataContext'
 import { SECTORES, CARGOS_POR_SECTOR } from '@/lib/mockData'
-import { Eye, EyeOff, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 
@@ -14,9 +14,8 @@ export default function RegistroPage() {
 
   const [form, setForm] = useState({
     nombre: '', apellido: '', dni: '', email: '',
-    password: '', confirmPassword: '', sector: '', cargo: '', telefono: '',
+    sector: '', cargo: '', telefono: '',
   })
-  const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
@@ -35,12 +34,8 @@ export default function RegistroPage() {
     e.preventDefault()
     setError('')
 
-    if (!form.nombre || !form.apellido || !form.dni || !form.email || !form.password || !form.sector || !form.cargo)
+    if (!form.nombre || !form.apellido || !form.dni || !form.email || !form.sector || !form.cargo)
       return setError('Completá todos los campos obligatorios.')
-    if (form.password.length < 6)
-      return setError('La contraseña debe tener al menos 6 caracteres.')
-    if (form.password !== form.confirmPassword)
-      return setError('Las contraseñas no coinciden.')
 
     const emailNorm = form.email.toLowerCase().trim()
     if (getUserByEmail(emailNorm))
@@ -52,7 +47,7 @@ export default function RegistroPage() {
     await new Promise(r => setTimeout(r, 600))
     addPendingRegistration({
       nombre: form.nombre, apellido: form.apellido, dni: form.dni,
-      email: emailNorm, password: form.password,
+      email: emailNorm,
       sector: form.sector, cargo: form.cargo, telefono: form.telefono,
     })
     setLoading(false)
@@ -167,23 +162,12 @@ export default function RegistroPage() {
               </div>
             </div>
 
-            <div>
-              <label className="form-label">Contraseña *</label>
-              <div className="relative">
-                <input type={showPass ? 'text' : 'password'} className="form-input pr-10"
-                  placeholder="Mínimo 6 caracteres" value={form.password} onChange={e => update('password', e.target.value)} />
-                <button type="button" onClick={() => setShowPass(!showPass)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
-                  {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label className="form-label">Confirmar contraseña *</label>
-              <input type="password" className="form-input" placeholder="Repetí la contraseña"
-                value={form.confirmPassword} onChange={e => update('confirmPassword', e.target.value)} />
-            </div>
+            {/* La contraseña ya no se pide acá: guardarla hasta la aprobación
+                obligaba a tenerla en claro en la base. Se define al final, por
+                el mismo flujo de "Olvidé mi contraseña". */}
+            <p className="text-sm text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3">
+              Cuando RRHH apruebe tu solicitud vas a recibir un email para crear tu contraseña.
+            </p>
 
             <button type="submit" className="btn-primary w-full justify-center py-3 mt-2" disabled={loading}>
               {loading ? (

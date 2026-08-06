@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
 
     // Traer datos del recibo y del empleado
     const [{ data: recibo }, { data: empleado }, { data: firma }] = await Promise.all([
-      sb.from('fno_recibos').select('id, archivo, mes, anio').eq('id', reciboId).maybeSingle(),
+      sb.from('fno_recibos').select('id, archivo, mes, anio, empleado_id').eq('id', reciboId).maybeSingle(),
       sb.from('fno_empleados').select('nombre, apellido, dni, cuil').eq('id', empleadoId).maybeSingle(),
       sb.from('fno_recibo_firmas').select('firmado_en').eq('recibo_id', reciboId).eq('empleado_id', empleadoId).maybeSingle(),
     ])
@@ -35,6 +35,17 @@ export async function POST(req: NextRequest) {
     if (!recibo?.archivo) return NextResponse.json({ error: 'Recibo no encontrado' }, { status: 404 })
     if (!empleado) return NextResponse.json({ error: 'Empleado no encontrado' }, { status: 404 })
     if (!firma) return NextResponse.json({ error: 'Firma no registrada aún' }, { status: 400 })
+
+    // El recibo tiene que ser del empleado que firma. Faltaba: alcanzaba con que
+    // el requester fuera dueño del empleadoId, pero el reciboId no se ataba a
+    // nadie. Como la firma la inserta el propio cliente con la anon key y los
+    // ids de todos los recibos llegan por el sync, un empleado podía registrar
+    // una firma sobre el recibo de otro y llamar acá: el upsert de abajo
+    // reemplaza el PDF original, así que el recibo ajeno quedaba estampado con
+    // el nombre y el DNI del atacante, y sin copia para recuperar.
+    if (recibo.empleado_id !== empleadoId) {
+      return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
+    }
 
     // Descargar PDF original de Storage
     const { data: fileData, error: downloadErr } = await sb.storage.from('fno-recibos').download(recibo.archivo)

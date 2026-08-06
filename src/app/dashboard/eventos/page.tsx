@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
+import { EVENTOS_FIJOS_IDS } from '@/contexts/useEventosCrud'
 import { supabase } from '@/lib/supabase'
 import ImageLightbox from '@/components/ImageLightbox'
 import Linkify from '@/components/Linkify'
@@ -43,6 +44,10 @@ const EVENTO_TIPO_CELL_BG: Record<EventoTipo, string> = {
 const PORTAL_LAUNCH = '2026-06-09'
 const PORTAL_LAUNCH_YEAR = 2026
 const ANIVERSARIO_ID = '__aniversario_portal__'
+
+// Feriados, actos y el aniversario viven en el código, no en la base: no tiene
+// sentido ofrecer editar ni eliminar, porque el siguiente sync los restaura.
+const esEventoFijo = (id: string) => id === ANIVERSARIO_ID || EVENTOS_FIJOS_IDS.has(id)
 
 function makeAniversario(year: number): Evento {
   const years = year - PORTAL_LAUNCH_YEAR
@@ -460,7 +465,7 @@ export default function EventosPage() {
                         <span className={`badge text-xs shrink-0 ${EVENTO_TIPO_COLOR[ev.tipo]}`}>
                           {EVENTO_TIPO_LABEL[ev.tipo]}
                         </span>
-                        {isAdmin && ev.id !== ANIVERSARIO_ID && (
+                        {isAdmin && !esEventoFijo(ev.id) && (
                           <div className="flex gap-1 shrink-0">
                             <button onClick={() => openEdit(ev)} className="p-1.5 rounded hover:bg-sky-100 dark:hover:bg-sky-900/20 text-slate-400 hover:text-sky-600 transition-colors">
                               <Edit2 className="w-3.5 h-3.5" />
@@ -538,7 +543,7 @@ export default function EventosPage() {
                         <span className={`badge text-xs ${EVENTO_TIPO_COLOR[ev.tipo]}`}>
                           {EVENTO_TIPO_LABEL[ev.tipo]}
                         </span>
-                        {isAdmin && ev.id !== ANIVERSARIO_ID && (
+                        {isAdmin && !esEventoFijo(ev.id) && (
                           <div className="flex gap-1 shrink-0">
                             <button onClick={() => openEdit(ev)} className="p-1.5 rounded-lg hover:bg-sky-100 dark:hover:bg-sky-900/20 text-slate-400 hover:text-sky-600 transition-colors">
                               <Edit2 className="w-3.5 h-3.5" />

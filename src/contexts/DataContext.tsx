@@ -74,7 +74,7 @@ interface DataContextType {
   refreshPending: () => Promise<void>
   // Notificaciones
   markNotificationRead: (id: string) => void
-  markAllRead: () => void
+  markAllRead: (ids: string[]) => void
   addNotification: (n: Omit<AppNotification, 'id' | 'fecha' | 'leida'>) => void
   // Registros de novedad (solo admin)
   addRegistroNovedad: (r: Omit<RegistroNovedad, 'id' | 'creadoEn'>) => Promise<string>
@@ -213,9 +213,20 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     if (supabase) supabase.from('fno_notifs').update({ leida: true }).eq('id', id).then()
   }, [])
 
-  const markAllRead = useCallback(() => {
-    setNotifications(prev => prev.map(n => ({ ...n, leida: true })))
-    if (supabase) supabase.from('fno_notifs').update({ leida: true }).eq('leida', false).then()
+  // Recibe los ids que el usuario tiene efectivamente a la vista.
+  //
+  // Antes hacía update({leida:true}).eq('leida', false) —sin ningún filtro por
+  // destinatario—, así que cualquier empleado que tocara "marcar todas como
+  // leídas" apagaba las notificaciones personales del resto y las soloAdmin, y
+  // Realtime lo propagaba al instante. El filtro de visibilidad existía sólo en
+  // la pantalla; el UPDATE se llevaba puesta la tabla entera.
+  const markAllRead = useCallback((ids: string[]) => {
+    if (!ids.length) return
+    const aMarcar = new Set(ids)
+    setNotifications(prev => prev.map(n => aMarcar.has(n.id) ? { ...n, leida: true } : n))
+    if (supabase) supabase.from('fno_notifs').update({ leida: true }).in('id', ids).then(({ error }) => {
+      if (error) console.error('[supabase] markAllRead:', error.message)
+    })
   }, [])
 
   return (

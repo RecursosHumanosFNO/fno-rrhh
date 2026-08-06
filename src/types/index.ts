@@ -130,7 +130,6 @@ export interface PendingRegistration {
   apellido: string
   dni: string
   email: string
-  password: string
   sector: string
   cargo: string
   telefono: string

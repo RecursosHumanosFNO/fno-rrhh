@@ -55,9 +55,17 @@ export function useSolicitudesCrud({ solicitudes, setSolicitudes, empleadosRef, 
       descripcion: s.descripcion,
     })
 
-    if (supabase) supabase.from('fno_solicitudes').insert(mapSolicitudToSupabase(nueva)).then(({ error }) => {
-      if (error) console.error('[supabase] insert fno_solicitudes:', error)
-    })
+    if (supabase) {
+      const sb = supabase
+      sb.from('fno_solicitudes').insert(mapSolicitudToSupabase(nueva)).then(({ error }) => {
+        if (!error) return
+        console.warn('[supabase] insert fno_solicitudes (full):', error.message, error.code)
+        // Reintento sin las columnas de horario, por si falta la migración.
+        sb.from('fno_solicitudes').insert(mapSolicitudToSupabase(nueva, true)).then(({ error: e2 }) => {
+          if (e2) console.error('[supabase] insert fno_solicitudes (base):', e2.message, e2.code)
+        })
+      })
+    }
   }, [setSolicitudes, addNotification, empleadosRef])
 
   /**
