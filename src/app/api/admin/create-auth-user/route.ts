@@ -3,15 +3,30 @@ import { serviceClient, getRequester, esGestionPersonal } from '@/lib/serverAuth
 
 export const runtime = 'nodejs'
 
+// Roles que puede otorgar cada quien al crear una cuenta.
+//
+// El rol venía en el body y se insertaba tal cual, sin validar, detrás de un
+// permiso que incluye a 'rrhh'. Es decir: un usuario de Gestión de Personal
+// podía crear un empleado, después crearle la cuenta con role: 'admin' y una
+// contraseña elegida por él, y entrar con ella. Eso saltea justamente lo que
+// 'rrhh' no puede hacer (set-role, recibos de sueldo, borrado de cuentas).
+//
+// Otorgar 'admin' o 'rrhh' queda sólo para un admin, igual que en set-role.
+const ROLES_VALIDOS = ['admin', 'employee', 'comunicaciones', 'rrhh'] as const
+const ROLES_QUE_PUEDE_DAR_RRHH = ['employee', 'comunicaciones']
+
 // POST /api/admin/create-auth-user
 // Crea un usuario en Supabase Auth y su registro en fno_users.
-// El requester se valida por JWT. Solo lo puede llamar un admin.
+// El requester se valida por JWT.
 export async function POST(req: NextRequest) {
   try {
     const { email, password, userId, empleadoId, role } = await req.json().catch(() => ({}))
 
     if (!email || !userId || !empleadoId || !role) {
       return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 })
+    }
+    if (!ROLES_VALIDOS.includes(role)) {
+      return NextResponse.json({ error: 'Rol inválido' }, { status: 400 })
     }
 
     // Si no llega password (fue removido del sync de Supabase por seguridad),
@@ -25,6 +40,9 @@ export async function POST(req: NextRequest) {
     const requester = await getRequester(req, sb)
     if (!requester) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
     if (!esGestionPersonal(requester)) return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
+    if (requester.role !== 'admin' && !ROLES_QUE_PUEDE_DAR_RRHH.includes(role)) {
+      return NextResponse.json({ error: 'Solo un administrador puede otorgar ese rol' }, { status: 403 })
+    }
 
     // 1. Crear usuario en Supabase Auth (contraseña encriptada automáticamente)
     const { data: authData, error: authErr } = await sb.auth.admin.createUser({

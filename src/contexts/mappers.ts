@@ -19,7 +19,7 @@ export function mapSupabaseToUser(row: Record<string, string>): User {
 export function mapSupabaseToPending(row: Record<string, string>): PendingRegistration {
   return {
     id: row.id, nombre: row.nombre, apellido: row.apellido, dni: row.dni,
-    email: row.email, password: row.password, sector: row.sector,
+    email: row.email, sector: row.sector,
     cargo: row.cargo, telefono: row.telefono ?? '', fechaSolicitud: row.fecha_solicitud,
   }
 }
@@ -97,6 +97,8 @@ export function mapSupabaseToSolicitud(row: Record<string, unknown>): Solicitud 
     fechaResolucion: (row.fecha_resolucion as string) || undefined,
     comentarioAdmin: (row.comentario_admin as string) || undefined,
     adjunto: (row.adjunto as string) || undefined,
+    horarioDesde: (row.horario_desde as string) || undefined,
+    horarioHasta: (row.horario_hasta as string) || undefined,
   }
 }
 export function mapSolicitudToSupabase(s: Solicitud) {
@@ -108,6 +110,11 @@ export function mapSolicitudToSupabase(s: Solicitud) {
     descripcion: s.descripcion, estado: s.estado,
     fecha_creacion: s.fechaCreacion, fecha_resolucion: s.fechaResolucion || null,
     comentario_admin: s.comentarioAdmin ?? '', adjunto: s.adjunto ?? '',
+    // Faltaban en ambas direcciones: el formulario los pedía, el mail y el PDF
+    // los mostraban, pero nunca llegaban a la base. Un "permiso de 14 a 16" se
+    // veía bien hasta el siguiente sync y ahí perdía el horario para siempre.
+    horario_desde: s.horarioDesde || null,
+    horario_hasta: s.horarioHasta || null,
   }
 }
 

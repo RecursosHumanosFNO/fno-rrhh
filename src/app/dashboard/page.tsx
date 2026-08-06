@@ -118,7 +118,10 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
   const sectoresActivos = new Set(empleados.map(e => e.sector).filter(Boolean)).size
 
   const hoy = new Date()
-  const hoyStr = hoy.toISOString().slice(0, 10)
+  // hoyAR y no toISOString(): a partir de las 21:00 de Argentina el UTC ya está
+  // en el día siguiente, con lo cual el filtro `ev.fecha >= hoyStr` escondía los
+  // eventos de hoy y la cuenta regresiva salía corrida un día.
+  const hoyStr = hoyAR()
   // Fin de la semana actual (domingo), semana lunes-domingo
   const finSemana = new Date(hoy)
   const diaSemana = hoy.getDay() // 0=dom, 1=lun … 6=sab
@@ -126,7 +129,7 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
   finSemana.setDate(hoy.getDate() + diasHastaDomingo)
   finSemana.setHours(23, 59, 59, 999)
   const en30 = new Date(hoy); en30.setDate(hoy.getDate() + 30)
-  const en30Str = en30.toISOString().slice(0, 10)
+  const en30Str = new Date(en30.getTime() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10)
 
   // ── Cumpleaños: esta semana vs próximos 30 días ───────────────────────────
   const todosCumples = empleados

@@ -4,6 +4,7 @@ import { uid, hoyAR } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import { authFetch } from '@/lib/authFetch'
 import { sendEmail } from './email'
+import { mapSupabaseToPending } from './mappers'
 
 type AddNotification = (n: Omit<AppNotification, 'id' | 'fecha' | 'leida'>) => void
 
@@ -25,11 +26,19 @@ export function usePendingRegistrationsCrud({
     setPending(prev => [...prev, newReg])
     addNotification({ texto: `Nueva solicitud de acceso: ${reg.nombre} ${reg.apellido}`, tipo: 'registro', soloAdmin: true })
     if (supabase) {
-      // password se guarda temporalmente hasta que el admin apruebe y se cree en Auth.
-      // Se borra de fno_pending al aprobar (el hash queda solo en Supabase Auth).
+      // La contraseña NO se guarda. Antes la elegía la persona al registrarse y
+      // quedaba en claro en fno_pending, insertada desde el navegador con la
+      // anon key y bajada de vuelta por el sync —que corre antes de
+      // autenticar—, así que su confidencialidad dependía por completo de una
+      // policy de RLS. Y como esa misma contraseña terminaba en Auth, leerla
+      // era tomar la cuenta.
+      //
+      // Ahora la cuenta se crea con una contraseña temporal (create-auth-user
+      // ya la genera si no le mandan ninguna) y la persona define la suya con
+      // "Olvidé mi contraseña", que usa tokens de un solo uso.
       supabase.from('fno_pending').insert({
         id: newReg.id, nombre: reg.nombre, apellido: reg.apellido, dni: reg.dni,
-        email: reg.email, password: reg.password, sector: reg.sector,
+        email: reg.email, sector: reg.sector,
         cargo: reg.cargo, telefono: reg.telefono || '', fecha_solicitud: newReg.fechaSolicitud,
       }).then(({ error }) => { if (error) console.error('[supabase] insert fno_pending:', error) })
     }
@@ -83,7 +92,8 @@ export function usePendingRegistrationsCrud({
       await authFetch('/api/admin/create-auth-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: reg.email, password: reg.password, userId, empleadoId, role: 'employee', requesterId }),
+        // Sin password: la genera el server y la persona la define por reset.
+        body: JSON.stringify({ email: reg.email, userId, empleadoId, role: 'employee', requesterId }),
       }).then(async r => {
         if (!r.ok) {
           const err = await r.json().catch(() => ({}))
@@ -103,14 +113,9 @@ export function usePendingRegistrationsCrud({
   const refreshPending = useCallback(async () => {
     if (!supabase) return
     try {
-      const { data } = await supabase.from('fno_pending').select('*')
-      if (data) {
-        setPending(data.map((p: Record<string, string>) => ({
-          id: p.id, nombre: p.nombre, apellido: p.apellido, dni: p.dni,
-          email: p.email, password: p.password, sector: p.sector,
-          cargo: p.cargo, telefono: p.telefono ?? '', fechaSolicitud: p.fecha_solicitud,
-        })))
-      }
+      const { data } = await supabase.from('fno_pending')
+        .select('id, nombre, apellido, dni, email, sector, cargo, telefono, fecha_solicitud')
+      if (data) setPending(data.map(mapSupabaseToPending))
     } catch (e) { console.error('[sync] refreshPending error:', e) }
   }, [setPending])
 

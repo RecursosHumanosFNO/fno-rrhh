@@ -138,8 +138,8 @@ export async function POST(req: NextRequest) {
           <h3 style="color:#10b981;margin-top:0;">¡Bienvenido/a al Portal RRHH!</h3>
           <p>Hola <strong>${data.nombre}</strong>,</p>
           <p style="color:#64748b;">Tu solicitud de acceso al Portal de Recursos Humanos de la <strong>Fundación Neuquén Oeste</strong> fue <strong style="color:#10b981;">aprobada</strong> por el equipo de RRHH.</p>
-          <p style="color:#64748b;">Ya podés iniciar sesión con el <strong>email y contraseña</strong> que registraste originalmente.</p>
-          ${btn('Ingresar al Portal', `${PORTAL_URL}/login`)}
+          <p style="color:#64748b;">Para entrar por primera vez tenés que <strong>crear tu contraseña</strong>: entrá a "Olvidé mi contraseña", poné este mismo email (<strong>${data.email}</strong>) y vas a recibir un link para definirla.</p>
+          ${btn('Crear mi contraseña', `${PORTAL_URL}/login`)}
           <p style="color:#94a3b8;font-size:13px;margin-top:24px;">Si tenés alguna duda, respondé este email o comunicate con el área de RRHH.</p>
         `),
       })

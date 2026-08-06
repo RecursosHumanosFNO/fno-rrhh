@@ -24,6 +24,13 @@ const withPWA = require('next-pwa')({
 })
 
 const nextConfig = {
+  // Sin esto Next 14 ignora instrumentation.ts y Sentry no llega a inicializar
+  // del lado del servidor (en Next 15 el hook pasa a ser estable y el flag
+  // desaparece). Es lo que hacía que los errores de las API routes y de los
+  // crons no se reportaran a ningún lado.
+  experimental: {
+    instrumentationHook: true,
+  },
   images: {
     remotePatterns: [
       {

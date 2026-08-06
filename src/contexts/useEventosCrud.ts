@@ -70,15 +70,27 @@ export function useEventosCrud({ setEventos, eventosRef, aviso }: {
     const existente = eventosRef.current.find(e => e.id === id)
     setEventos(prev => prev.map(e => e.id === id ? { ...e, ...data } : e).sort(porFecha))
     if (!existente) return
+    // Los fijos viven en mockData, no en la base: editarlos no se puede
+    // persistir y el siguiente sync los devuelve como estaban. Antes se cortaba
+    // recién al momento de guardar —después de tocar el estado y de mandar el
+    // aviso de "evento actualizado"—, así que se avisaba de un cambio que a los
+    // diez minutos se deshacía solo. Ahora se corta antes de todo.
+    if (EVENTOS_FIJOS_IDS.has(id)) {
+      alert('Los feriados y actos institucionales están fijados en el sistema y no se pueden editar.')
+      return
+    }
     const full: Evento = { ...existente, ...data }
     avisar(full, canales, true)
-    // Sólo persisten los eventos custom: los fijos viven en el código.
-    if (!EVENTOS_FIJOS_IDS.has(id)) persistir(full, 'upsert')
+    persistir(full, 'upsert')
   }, [setEventos, eventosRef, avisar])
 
   const deleteEvento = useCallback((id: string) => {
+    if (EVENTOS_FIJOS_IDS.has(id)) {
+      alert('Los feriados y actos institucionales están fijados en el sistema y no se pueden eliminar.')
+      return
+    }
     setEventos(prev => prev.filter(e => e.id !== id))
-    if (supabase && !EVENTOS_FIJOS_IDS.has(id)) {
+    if (supabase) {
       supabase.from('fno_eventos').delete().eq('id', id).then(({ error }) => {
         if (error) {
           console.error('[supabase] delete fno_eventos:', error.message, error.code)

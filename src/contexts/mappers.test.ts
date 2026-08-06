@@ -3,6 +3,7 @@ import {
   mapSupabaseToEmpleado, mapEmpleadoToSupabase,
   mapSupabaseToSolicitud, mapSupabaseToNotif, mapNotifToSupabase,
   mapSupabaseToUser, mapSupabaseToPending, mapSupabaseToFirma,
+  mapSolicitudToSupabase,
 } from './mappers'
 import type { Empleado, AppNotification } from '@/types'
 
@@ -135,5 +136,35 @@ describe('mappers de las tablas chicas', () => {
     expect(f.reciboId).toBe('r1')
     expect(f.empleadoId).toBe('e1')
     expect(f.userAgent).toBeUndefined()
+  })
+})
+
+// Los horarios existian en el tipo, en el formulario, en el mail y en el PDF,
+// pero no en los mappers: se perdian en el primer sync.
+describe('horario de las solicitudes', () => {
+  const base = {
+    id: 's1', empleadoId: 'e1', tipo: 'permiso' as const, fechaInicio: '2026-08-06',
+    descripcion: 'Turno medico', estado: 'pendiente' as const, fechaCreacion: '2026-08-06',
+  }
+
+  it('viaja en las dos direcciones', () => {
+    const row = mapSolicitudToSupabase({ ...base, horarioDesde: '14:00', horarioHasta: '16:00' })
+    expect(row.horario_desde).toBe('14:00')
+    expect(row.horario_hasta).toBe('16:00')
+
+    const s = mapSupabaseToSolicitud({ ...row, horario_desde: '14:00', horario_hasta: '16:00' })
+    expect(s.horarioDesde).toBe('14:00')
+    expect(s.horarioHasta).toBe('16:00')
+  })
+
+  it('manda null y no cadena vacia cuando la solicitud no tiene hora', () => {
+    const row = mapSolicitudToSupabase(base)
+    expect(row.horario_desde).toBeNull()
+    expect(row.horario_hasta).toBeNull()
+  })
+
+  it('deja undefined si la columna todavia no existe', () => {
+    const s = mapSupabaseToSolicitud({ ...mapSolicitudToSupabase(base) })
+    expect(s.horarioDesde).toBeUndefined()
   })
 })
