@@ -44,17 +44,17 @@ export function useEventosCrud({ setEventos, eventosRef, aviso }: {
       titulo: ev.titulo,
       destinatarios: ev.destinatarios,
       canales,
-      textoApp: `📅 ${verbo}: ${ev.titulo} — ${ev.fecha}`,
+      textoApp: `📅 ${verbo}: ${ev.titulo} — ${ev.fecha}${ev.hora ? ` ${ev.hora}` : ''}`,
       push: {
         titulo: esEdicion ? `${ev.titulo} (actualizado)` : ev.titulo,
-        cuerpo: recortar([`📅 ${formatFecha(ev.fecha)}`, ev.descripcion].filter(Boolean).join(' — ')),
+        cuerpo: recortar([`📅 ${formatFecha(ev.fecha)}${ev.hora ? ` ${ev.hora}` : ''}`, ev.descripcion].filter(Boolean).join(' — ')),
         url: '/dashboard/comunicaciones',
       },
       emailType: 'evento_notificacion',
       emailData: emails => ({
         emails: emails.join(','),
         titulo: ev.titulo, descripcion: ev.descripcion ?? '',
-        fecha: ev.fecha, imagen: ev.imagen ?? '',
+        fecha: ev.fecha, hora: ev.hora ?? '', imagen: ev.imagen ?? '',
         esEdicion: esEdicion ? '1' : '',
       }),
     })

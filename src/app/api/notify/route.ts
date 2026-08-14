@@ -277,7 +277,7 @@ export async function POST(req: NextRequest) {
             <h3 style="color:${BRAND};margin-top:0;">📅 ${esEdicion ? 'Evento actualizado' : 'Nuevo evento en el calendario'}</h3>
             <div style="background:#f1f5f9;border-radius:8px;padding:16px;margin:20px 0;">
               <p style="margin:0 0 8px 0;font-weight:700;color:#1e293b;font-size:16px;">${data.titulo}</p>
-              <p style="margin:0 0 8px 0;color:#475569;font-size:13px;">📆 ${data.fecha}</p>
+              <p style="margin:0 0 8px 0;color:#475569;font-size:13px;">📆 ${data.fecha}${data.hora ? ` · 🕒 ${data.hora}` : ''}</p>
               ${data.descripcion ? `<p style="margin:0;color:#475569;white-space:pre-wrap;">${data.descripcion}</p>` : ''}
               ${data.imagen ? `<img src="${data.imagen}" alt="" style="margin-top:12px;max-width:100%;border-radius:8px;display:block;" />` : ''}
             </div>

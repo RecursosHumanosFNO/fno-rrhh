@@ -233,6 +233,7 @@ export function mapSupabaseToEvento(row: Record<string, unknown>): Evento {
     id: row.id as string,
     titulo: row.titulo as string,
     fecha: row.fecha as string,
+    hora: (row.hora as string) || undefined,
     tipo: row.tipo as Evento['tipo'],
     descripcion: (row.descripcion as string) || undefined,
     empleadoId: (row.empleado_id as string) || undefined,
@@ -257,6 +258,11 @@ export function mapEventoToSupabase(e: Evento, baseOnly = false) {
     importante: e.importante ?? false,
     fijado: e.fijado ?? false,
     destinatarios: e.destinatarios ?? [],
+    // Opcional a propósito: la mayoría de los eventos (feriados, recesos) no
+    // tienen un horario puntual. null y no '', porque una columna time
+    // rechazaría el string vacío y haría fallar todo el insert en silencio
+    // (mismo criterio que las fechas opcionales de Solicitud).
+    hora: e.hora || null,
   }
 }
 

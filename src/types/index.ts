@@ -220,6 +220,7 @@ export interface Evento {
   id: string
   titulo: string
   fecha: string
+  hora?: string
   tipo: EventoTipo
   descripcion?: string
   empleadoId?: string
