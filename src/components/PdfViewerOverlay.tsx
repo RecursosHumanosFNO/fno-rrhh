@@ -5,6 +5,15 @@ export function PdfViewerOverlay({ viewer, onClose }: {
   viewer: { url: string; label: string }
   onClose: () => void
 }) {
+  // El visor nativo que Chrome/Safari embeben dentro del <iframe> abre el PDF
+  // con un zoom propio en mobile —no es el 100% de "ajustar a pantalla" que
+  // tienen al abrir un PDF suelto— y desde ahí no se puede bajar. #view=FitH
+  // es un parámetro estándar de PDF (lo entienden PDFium y el visor de Safari)
+  // que pide "ajustar al ancho" como estado inicial; el pellizco para hacer
+  // zoom sigue funcionando igual después. Va en el fragment (#) y no en la
+  // query: no viaja al servidor, así que no rompe la firma de la URL.
+  const src = `${viewer.url}#view=FitH`
+
   return (
     <div className="fixed inset-0 bg-black/70 z-50 flex flex-col" onClick={onClose}>
       <div className="flex items-center justify-between px-4 py-3 bg-slate-900 shrink-0" onClick={e => e.stopPropagation()}>
@@ -22,7 +31,7 @@ export function PdfViewerOverlay({ viewer, onClose }: {
         </div>
       </div>
       <div className="flex-1 overflow-hidden" onClick={e => e.stopPropagation()}>
-        <iframe src={viewer.url} className="w-full h-full border-0" title="Visor de recibo" />
+        <iframe src={src} className="w-full h-full border-0" title="Visor de recibo" />
       </div>
     </div>
   )
