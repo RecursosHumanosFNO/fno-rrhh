@@ -762,7 +762,10 @@ export default function RecibosPage() {
         </div>
 
         <div className="card overflow-x-auto hidden sm:block">
-          <table className="w-full min-w-[520px]">
+          {/* 640 y no 520: la columna de acción pasó de un botón a dos (Ver +
+              Descargar) y necesita más lugar antes de que el overflow-x-auto
+              del contenedor entre a scrollear. */}
+          <table className="w-full min-w-[640px]">
             <thead>
               <tr>
                 {viewAsAdmin && <th className="table-header text-left">Empleado</th>}
@@ -833,18 +836,33 @@ export default function RecibosPage() {
                     <td className="table-cell hidden sm:table-cell text-slate-600 dark:text-slate-400 text-sm">{formatFecha(r.fechaSubida)}</td>
                     <td className="table-cell text-right">
                       <div className="inline-flex items-center gap-2 justify-end">
-                        <button
-                          onClick={() => handleDescargar(r)}
-                          disabled={!tieneArchivo || isDownloading}
-                          className={`inline-flex items-center gap-1.5 text-sm py-1.5 px-3 rounded-lg transition-colors ${
-                            tieneArchivo
-                              ? 'bg-brand-700 hover:bg-brand-600 text-white disabled:opacity-70'
-                              : 'border border-slate-200 dark:border-slate-700 text-slate-400 cursor-not-allowed opacity-50'
-                          }`}
-                        >
-                          {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : tieneArchivo ? <Eye className="w-4 h-4" /> : <Download className="w-4 h-4" />}
-                          <span className="hidden sm:inline">{isDownloading ? 'Cargando...' : tieneArchivo ? 'Ver PDF' : 'Sin archivo'}</span>
-                        </button>
+                        {tieneArchivo ? (
+                          // Antes había un solo botón que decía "Ver PDF" pero en
+                          // realidad descargaba (llamaba a handleDescargar): para
+                          // ver el recibo sin descargarlo primero había que ir al
+                          // celular, donde sí estaban separados. Quedan los mismos
+                          // dos botones que ya tiene la tarjeta de mobile.
+                          <>
+                            <button
+                              onClick={() => handleVer(r)}
+                              disabled={isDownloading}
+                              className="inline-flex items-center gap-1.5 text-sm py-1.5 px-3 rounded-lg bg-brand-700 hover:bg-brand-600 text-white disabled:opacity-70 transition-colors"
+                            >
+                              {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />} Ver
+                            </button>
+                            <button
+                              onClick={() => handleDescargar(r)}
+                              disabled={isDownloading}
+                              className="inline-flex items-center gap-1.5 text-sm py-1.5 px-3 rounded-lg border border-brand-300 dark:border-brand-700 text-brand-700 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-900/20 disabled:opacity-70 transition-colors"
+                            >
+                              <Download className="w-4 h-4" /> Descargar
+                            </button>
+                          </>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 text-sm py-1.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-400 cursor-not-allowed opacity-50">
+                            <Download className="w-4 h-4" /> Sin archivo
+                          </span>
+                        )}
                         {/* Firma: empleado puede firmar, admin en tab "mis" también */}
                         {!viewAsAdmin && esMio && (
                           firma ? (
