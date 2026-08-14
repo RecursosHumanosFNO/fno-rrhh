@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useTheme } from '@/components/ThemeProvider'
@@ -38,9 +38,6 @@ export default function Header({ onMenuToggle }: HeaderProps) {
   }
   const [query, setQuery] = useState('')
   const [showSearch, setShowSearch] = useState(false)
-  const searchRef = useRef<HTMLDivElement>(null)
-  const notifsRef = useRef<HTMLDivElement>(null)
-  const userMenuRef = useRef<HTMLDivElement>(null)
 
   const isAdmin = user?.role === 'admin'
 
@@ -63,6 +60,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
   const unread = visibleNotifications.filter(n => !n.leida)
 
   const q = query.trim().toLowerCase()
+  const showSearchPanel = showSearch && q.length > 1
 
   // ── Resultados de búsqueda según rol ──────────────────────────────────────
   const searchResults = q.length > 1 ? [
@@ -110,24 +108,6 @@ export default function Header({ onMenuToggle }: HeaderProps) {
 
   ] : []
 
-  // Cierra cualquier panel al hacer click afuera
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
-        setShowSearch(false)
-        setQuery('')
-      }
-      if (notifsRef.current && !notifsRef.current.contains(e.target as Node)) {
-        setShowNotifs(false)
-      }
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
-        setShowDropdown(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
-
   const tipoIcon: Record<string, string> = {
     solicitud: '📋', novedad: '📢', recibo: '💰', ticket: '🎫', registro: '👤', sistema: '🔔',
   }
@@ -153,6 +133,19 @@ export default function Header({ onMenuToggle }: HeaderProps) {
 
   return (
     <header className="h-16 bg-[#c0e5e1]/90 backdrop-blur-sm dark:bg-slate-900 border-b border-[#9dd4ce]/50 dark:border-slate-800 flex items-center px-4 gap-3 sticky top-0 z-20 shadow-sm">
+      {/* Backdrop invisible detrás de cualquier panel abierto (búsqueda,
+          notificaciones, menú de usuario). Sin esto, tocar afuera del panel
+          cerraba el panel pero el toque seguía de largo hacia lo que hubiera
+          debajo —un link, un botón—, así que "cerrar el menú" también activaba
+          algo de la página. El backdrop absorbe ese primer toque: sólo cierra,
+          nunca dispara lo que está atrás. Va por debajo de los paneles (z-50)
+          y por encima de todo lo demás. */}
+      {(showSearchPanel || showNotifs || showDropdown) && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => { setShowSearch(false); setQuery(''); setShowNotifs(false); setShowDropdown(false) }}
+        />
+      )}
       <button
         onClick={onMenuToggle}
         aria-label="Abrir menú de navegación"
@@ -162,7 +155,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
       </button>
 
       {/* Search */}
-      <div ref={searchRef} className="flex-1 max-w-sm hidden md:block relative">
+      <div className="flex-1 max-w-sm hidden md:block relative z-50">
         <div className="flex items-center gap-2 bg-white/40 dark:bg-slate-800 border border-white/60 dark:border-transparent rounded-lg px-3 py-2">
           <Search className="w-4 h-4 text-teal-700/70 dark:text-slate-400 shrink-0" />
           <input
@@ -181,7 +174,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
           )}
         </div>
 
-        {showSearch && q.length > 1 && (
+        {showSearchPanel && (
           <div className="absolute top-full mt-1 left-0 right-0 card !bg-white dark:!bg-slate-900 shadow-xl z-50 overflow-hidden animate-scale-in">
             {searchResults.length === 0 ? (
               <div className="px-4 py-3">
@@ -238,7 +231,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
         </button>
 
         {/* Notifications */}
-        <div className="relative" ref={notifsRef}>
+        <div className="relative z-50">
           <button
             onClick={() => { setShowNotifs(!showNotifs); setShowDropdown(false) }}
             aria-label={`Notificaciones${unread.length > 0 ? ` (${unread.length} sin leer)` : ''}`}
@@ -303,7 +296,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
         </div>
 
         {/* User menu */}
-        <div className="relative ml-1" ref={userMenuRef}>
+        <div className="relative z-50 ml-1">
           <button
             onClick={() => { setShowDropdown(!showDropdown); setShowNotifs(false) }}
             className="flex items-center gap-2 pl-2 pr-1 py-1 rounded-lg hover:bg-white/30 dark:hover:bg-slate-800 transition-colors"
