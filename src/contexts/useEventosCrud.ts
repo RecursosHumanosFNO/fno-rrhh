@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import type { Evento } from '@/types'
 import { uid, formatFecha } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
+import { borrarImagenMedia } from './storage'
 import * as initial from '@/lib/mockData'
 import { mapEventoToSupabase } from './mappers'
 import type { Canal } from './useAviso'
@@ -43,17 +44,17 @@ export function useEventosCrud({ setEventos, eventosRef, aviso }: {
       titulo: ev.titulo,
       destinatarios: ev.destinatarios,
       canales,
-      textoApp: `📅 ${verbo}: ${ev.titulo} — ${ev.fecha}`,
+      textoApp: `📅 ${verbo}: ${ev.titulo} — ${ev.fecha}${ev.hora ? ` ${ev.hora}` : ''}`,
       push: {
         titulo: esEdicion ? `${ev.titulo} (actualizado)` : ev.titulo,
-        cuerpo: recortar([`📅 ${formatFecha(ev.fecha)}`, ev.descripcion].filter(Boolean).join(' — ')),
+        cuerpo: recortar([`📅 ${formatFecha(ev.fecha)}${ev.hora ? ` ${ev.hora}` : ''}`, ev.descripcion].filter(Boolean).join(' — ')),
         url: '/dashboard/comunicaciones',
       },
       emailType: 'evento_notificacion',
       emailData: emails => ({
         emails: emails.join(','),
         titulo: ev.titulo, descripcion: ev.descripcion ?? '',
-        fecha: ev.fecha, imagen: ev.imagen ?? '',
+        fecha: ev.fecha, hora: ev.hora ?? '', imagen: ev.imagen ?? '',
         esEdicion: esEdicion ? '1' : '',
       }),
     })
@@ -89,6 +90,7 @@ export function useEventosCrud({ setEventos, eventosRef, aviso }: {
       alert('Los feriados y actos institucionales están fijados en el sistema y no se pueden eliminar.')
       return
     }
+    borrarImagenMedia(eventosRef.current.find(e => e.id === id)?.imagen)
     setEventos(prev => prev.filter(e => e.id !== id))
     if (supabase) {
       supabase.from('fno_eventos').delete().eq('id', id).then(({ error }) => {

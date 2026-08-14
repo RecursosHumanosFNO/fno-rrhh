@@ -190,7 +190,7 @@ export default function EventosPage() {
   }
   function openEdit(ev: Evento) {
     setForm({
-      titulo: ev.titulo, fecha: ev.fecha, tipo: ev.tipo,
+      titulo: ev.titulo, fecha: ev.fecha, hora: ev.hora, tipo: ev.tipo,
       descripcion: ev.descripcion ?? '', imagen: ev.imagen,
       adjuntoUrl: ev.adjuntoUrl, adjuntoNombre: ev.adjuntoNombre,
       importante: ev.importante ?? false, fijado: ev.fijado ?? false,
@@ -459,7 +459,9 @@ export default function EventosPage() {
                           </p>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{ev.titulo}</p>
+                          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                            {ev.titulo}{ev.hora && <span className="font-normal text-slate-400"> · {ev.hora}</span>}
+                          </p>
                           {ev.descripcion && <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{ev.descripcion}</p>}
                         </div>
                         <span className={`badge text-xs shrink-0 ${EVENTO_TIPO_COLOR[ev.tipo]}`}>
@@ -554,7 +556,9 @@ export default function EventosPage() {
                           </div>
                         )}
                       </div>
-                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{ev.titulo}</p>
+                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                        {ev.titulo}{ev.hora && <span className="font-normal text-slate-400"> · {ev.hora}</span>}
+                      </p>
                       {ev.descripcion && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed"><Linkify text={ev.descripcion} /></p>}
                       {ev.imagen && (
                         <img loading="lazy"
@@ -651,12 +655,17 @@ export default function EventosPage() {
                 <input className="form-input" placeholder="Ej: Acto por el Día de la Bandera"
                   value={form.titulo} onChange={e => setForm(f => ({ ...f, titulo: e.target.value }))} autoFocus />
               </div>
-              {/* Fecha + Tipo */}
-              <div className="grid grid-cols-2 gap-4">
+              {/* Fecha + Hora + Tipo */}
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="form-label">Fecha *</label>
                   <input className="form-input" type="date" value={form.fecha}
                     onChange={e => setForm(f => ({ ...f, fecha: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="form-label">Hora <span className="text-slate-400 font-normal">(opcional)</span></label>
+                  <input className="form-input" type="time" value={form.hora ?? ''}
+                    onChange={e => setForm(f => ({ ...f, hora: e.target.value || undefined }))} />
                 </div>
                 <div>
                   <label className="form-label">Tipo *</label>
