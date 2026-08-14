@@ -15,6 +15,17 @@
     @apply border-gray-200 dark:border-gray-700;
   }
 
+  /* Al llegar al final de un panel con scroll propio (una lista dentro de un
+     modal, un dropdown), el navegador seguía pasándole el scroll restante a la
+     página de fondo — "se sigue desplazando la página de fondo" al tocar el
+     límite. overscroll-behavior: contain corta ese traspaso ahí mismo. Se
+     aplica a toda clase overflow-y-auto/overflow-auto en vez de tocar cada
+     lugar que la usa. */
+  .overflow-y-auto,
+  .overflow-auto {
+    overscroll-behavior: contain;
+  }
+
   body {
     /* Aurora institucional: glows de verde agua + azules sobre base clara */
     background-color: #dff1ec;
