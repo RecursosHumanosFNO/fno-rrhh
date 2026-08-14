@@ -21,6 +21,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!isLoading && !isAuthenticated) router.replace('/login')
   }, [isAuthenticated, isLoading, router])
 
+  // El menú móvil se abre sobre un backdrop fixed, pero un fixed no alcanza
+  // para frenar el scroll de la página de atrás: en el celular, deslizar sobre
+  // el backdrop igual mueve el body detrás (es el bug clásico de "modal sobre
+  // body que sigue scrolleando" en mobile Safari/Chrome). Mientras el menú está
+  // abierto, se bloquea el scroll del documento entero.
+  useEffect(() => {
+    if (!mobileOpen) return
+    const previo = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = previo }
+  }, [mobileOpen])
+
   const esperandoEmpleado = isAuthenticated && user?.role !== 'admin' && !empleado
   if (isLoading || !isAuthenticated || !synced || esperandoEmpleado) {
     return (
@@ -38,7 +50,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Mobile overlay — fade in/out */}
       <div
         className={cn(
-          'fixed inset-0 bg-black/50 z-20 lg:hidden transition-opacity duration-300',
+          'fixed inset-0 bg-black/50 z-20 lg:hidden transition-opacity duration-300 [touch-action:none]',
           mobileOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
         )}
         onClick={() => setMobileOpen(false)}
