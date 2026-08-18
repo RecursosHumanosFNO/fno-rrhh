@@ -19,7 +19,10 @@ jobs:
           PORTAL_URL: ${{ vars.PORTAL_URL }}
         run: |
           echo "Pinging keepalive endpoint..."
-          response=$(curl -s -o /dev/null -w "%{http_code}" ${PORTAL_URL:-https://portalfno.com}/api/keepalive)
+          # -L: portalfno.com hace un redirect 308 (a www, o http->https, según
+          # cómo esté configurado el dominio en Vercel) y sin -L el 308 se
+          # queda como el código final aunque el sitio ande perfecto.
+          response=$(curl -sL -o /dev/null -w "%{http_code}" ${PORTAL_URL:-https://portalfno.com}/api/keepalive)
           echo "HTTP status: $response"
           if [ "$response" != "200" ]; then
             # Antes esto era un ::warning:: y el job quedaba en verde igual, así
