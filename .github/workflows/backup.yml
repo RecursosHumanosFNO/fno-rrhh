@@ -56,7 +56,10 @@ jobs:
             echo "::warning::Sin CRON_SECRET no se puede avisar del fallo"
             exit 0
           fi
-          curl -sS -X POST "${PORTAL_URL:-https://portalfno.com}/api/notify" \
+          # -L: portalfno.com redirige con 308 (método y body se preservan,
+          # a diferencia de un 301/302 viejo), y sin -L la alerta se queda en
+          # el redirect y nunca llega a mandarse el mail.
+          curl -sSL -X POST "${PORTAL_URL:-https://portalfno.com}/api/notify" \
             -H "Content-Type: application/json" \
             -H "x-internal-key: $CRON_SECRET" \
             -d "{\"type\":\"alerta_sistema\",\"data\":{\"trabajo\":\"Backup diario de la base\",\"url\":\"$RUN_URL\"}}"
