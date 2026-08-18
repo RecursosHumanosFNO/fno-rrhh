@@ -19,7 +19,7 @@ jobs:
           PORTAL_URL: ${{ vars.PORTAL_URL }}
         run: |
           echo "Pinging keepalive endpoint..."
-          response=$(curl -s -o /dev/null -w "%{http_code}" ${PORTAL_URL:-https://portalfundacion.vercel.app}/api/keepalive)
+          response=$(curl -s -o /dev/null -w "%{http_code}" ${PORTAL_URL:-https://portalfno.com}/api/keepalive)
           echo "HTTP status: $response"
           if [ "$response" != "200" ]; then
             # Antes esto era un ::warning:: y el job quedaba en verde igual, así
