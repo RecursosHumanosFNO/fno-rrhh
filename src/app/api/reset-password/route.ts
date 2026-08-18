@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 
 export const runtime = 'nodejs'
 
-const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL ?? 'https://portalfundacion.vercel.app'
+const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL ?? 'https://portalfno.com'
 
 const TOKEN_TTL_MS = 30 * 60 * 1000 // 30 minutos
 // Ventana mínima entre dos pedidos de reset para el mismo email. Sin esto,
