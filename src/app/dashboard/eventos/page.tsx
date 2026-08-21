@@ -7,6 +7,7 @@ import { EVENTOS_FIJOS_IDS } from '@/contexts/useEventosCrud'
 import { supabase } from '@/lib/supabase'
 import ImageLightbox from '@/components/ImageLightbox'
 import Linkify from '@/components/Linkify'
+import { comprimirImagen } from '@/lib/comprimirImagen'
 import { parseLocalDate, EVENTO_TIPO_LABEL, EVENTO_TIPO_COLOR, EVENTO_TIPO_DOT, formatFecha, hoyAR } from '@/lib/utils'
 import type { EventoTipo, Evento, NovedadCategoria } from '@/types'
 import {
@@ -98,15 +99,28 @@ export default function EventosPage() {
     if (!supabase) return
     setUploadingImg(true)
     try {
-      const ext = file.name.split('.').pop() || 'jpg'
+      // Ver el mismo comentario en comunicaciones/page.tsx: una foto de la
+      // cámara puede pesar varios MB a resolución completa, de sobra para
+      // superar el límite del bucket. Se comprime antes de subir, salvo GIF.
+      const esGif = file.type === 'image/gif'
+      if (esGif && file.size > 8 * 1024 * 1024) {
+        alert('El GIF no puede superar los 8 MB.')
+        return
+      }
+      const subida = esGif ? file : await comprimirImagen(file, 1600)
+      const ext = esGif ? 'gif' : 'jpg'
       const path = `eventos/${Date.now()}.${ext}`
-      const { error } = await supabase.storage.from('fno-media').upload(path, file, { upsert: false, contentType: file.type })
+      const { error } = await supabase.storage.from('fno-media').upload(path, subida, {
+        upsert: false, contentType: esGif ? file.type : 'image/jpeg',
+      })
       if (!error) {
         const { data } = supabase.storage.from('fno-media').getPublicUrl(path)
         setForm(f => ({ ...f, imagen: data.publicUrl }))
       } else {
         alert('No se pudo subir la imagen: ' + error.message)
       }
+    } catch (e) {
+      alert('No se pudo procesar la imagen: ' + (e instanceof Error ? e.message : 'error desconocido'))
     } finally {
       setUploadingImg(false)
     }
