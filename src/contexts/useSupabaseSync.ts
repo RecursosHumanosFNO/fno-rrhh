@@ -17,6 +17,8 @@ import {
 import { EVENTOS_FIJOS_IDS } from './useEventosCrud'
 import { useRefEspejo } from './useRefEspejo'
 import type { Setters } from './setters'
+import { authFetch } from '@/lib/authFetch'
+import { fusionarDetalle, type DetalleEmpleado } from './detalleEmpleados'
 
 // Fallback lento. OJO: NO bajar este intervalo — un polling de 30s descargaba
 // toda la base ~120 veces/hora por pestaña y reventó la cuota de egress de
@@ -60,15 +62,19 @@ export function useSupabaseSync(setters: Setters) {
     if (!supabase) return
     const s = settersRef.current
     try {
-      const [usersRes, pendingRes, empRes, solRes, recRes, novRes, tickRes, notifRes, evtRes, firmasRes, regNovRes] = await Promise.all([
+      const [usersRes, pendingRes, empRes, solRes, recRes, novRes, tickRes, notifRes, evtRes, firmasRes, regNovRes, detalleRes] = await Promise.all([
         supabase.from('fno_users').select('id, email, role, empleado_id'),
         // Sin `password`: la contraseña ya no se guarda (ver usePendingRegistrationsCrud).
         supabase.from('fno_pending').select('id, nombre, apellido, dni, email, sector, cargo, telefono, fecha_solicitud'),
-        // Las columnas van explícitas (no `*`) porque la tabla tiene campos
-        // pesados y este select se corre entero cada diez minutos por pestaña.
+        // Sólo el directorio: lo que cualquier compañero legítimamente
+        // necesita (nombre, sector, cargo, foto, cumpleaños). El DNI, el CBU,
+        // la dirección y la desvinculación salieron de acá y llegan por
+        // /api/empleados-detalle, que mira el rol real en el JWT — antes venían
+        // todos en este select y la separación existía sólo en la pantalla.
+        //
         // Tiene que ser un literal: Supabase infiere el tipo de la fila a
         // partir del string, y con una constante devuelve GenericStringError.
-        supabase.from('fno_empleados').select('id, nombre, apellido, dni, fecha_nacimiento, email, telefono, direccion, cuil, contacto_emergencia, sector, cargo, cargos_extra, fecha_ingreso, tipo_contrato, jornada, supervisor, estado, cbu, banco, desvinculacion, historial_desvinculaciones, foto, foto_cover'),
+        supabase.from('fno_empleados').select('id, nombre, apellido, email, fecha_nacimiento, sector, cargo, cargos_extra, estado, foto, foto_cover'),
         // Estas tablas son append-only y crecen para siempre. El tope es una
         // red contra el crecimiento sin fin, no un recorte de lo que se ve: los
         // números están holgados respecto del volumen actual a propósito, para
@@ -82,13 +88,23 @@ export function useSupabaseSync(setters: Setters) {
         supabase.from('fno_eventos').select('*'),
         supabase.from('fno_recibo_firmas').select('*').order('firmado_en', { ascending: false }).limit(TOPE),
         supabase.from('fno_registros_novedad').select('*').order('creado_en', { ascending: false }).limit(TOPE),
+        // Fuera del Promise.all no: se pide en paralelo con el resto para no
+        // sumarle otra vuelta al sync. Si falla, el directorio igual se muestra
+        // y lo sensible queda vacío — degradado, no roto.
+        authFetch('/api/empleados-detalle')
+          .then(r => r.ok ? r.json() : null)
+          .catch(() => null),
       ])
 
       // Supabase es siempre la fuente de verdad — actualizar aunque el array
       // venga vacío, porque así se reflejan también los borrados.
       if (usersRes.data) s.setUsers(usersRes.data.map(mapSupabaseToUser))
       if (pendingRes.data) s.setPending(pendingRes.data.map(mapSupabaseToPending))
-      if (empRes.data) s.setEmpleados(empRes.data.map(r => mapSupabaseToEmpleado(r as Record<string, unknown>)))
+      if (empRes.data) {
+        const directorio = empRes.data.map(r => mapSupabaseToEmpleado(r as Record<string, unknown>))
+        const detalle = (detalleRes as { empleados?: DetalleEmpleado[] } | null)?.empleados
+        s.setEmpleados(detalle ? fusionarDetalle(directorio, detalle) : directorio)
+      }
       avisaMax('fno_solicitudes', solRes.data)
       avisaMax('fno_recibos', recRes.data)
       avisaMax('fno_tickets', tickRes.data)
