@@ -29,7 +29,11 @@
 -- moverlo obligaba a rehacer ese flujo y agrandaba un cambio que ya toca
 -- permisos en producción. Queda anotado como mejora aparte.
 
-begin;
+-- Sin begin/commit a proposito: el editor de Supabase ya envuelve lo que se
+-- ejecuta, y un bloque explicito se presta a que un error pase inadvertido y
+-- quede todo revertido sin que se note. El primer intento no aplico nada
+-- —quedo verificado con pg_attribute.attacl, que no mostraba ninguna columna—
+-- asi que conviene ver el resultado de cada sentencia.
 
 -- El permiso de tabla se reemplaza por permisos columna por columna. Sin el
 -- revoke previo, el grant de abajo no quita nada: los permisos se suman.
@@ -51,6 +55,11 @@ grant select (
   foto_cover
 ) on public.fno_empleados to authenticated;
 
+-- A `anon` no se le toca nada. Tiene permiso de tabla completo, pero la
+-- politica de RLS de fno_empleados aplica solo a `authenticated`, asi que un
+-- visitante sin sesion no obtiene ninguna fila igual. Revocarselo ademas haria
+-- que el sync que corre antes de autenticar devuelva error en vez de vacio.
+
 -- Quedan fuera, y sólo se pueden leer vía /api/empleados-detalle:
 --   dni, cuil, direccion, telefono, contacto_emergencia,
 --   cbu, banco, desvinculacion, historial_desvinculaciones,
@@ -59,8 +68,6 @@ grant select (
 --
 -- (las dos últimas no las usa la aplicación hoy, pero se cierran igual: son
 --  datos del legajo y no hay motivo para dejarlas abiertas)
-
-commit;
 
 -- ── Verificación ────────────────────────────────────────────────────────────
 -- Después de correr esto, volver al dashboard → Authentication → Users →
