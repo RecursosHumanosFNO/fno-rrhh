@@ -7,7 +7,7 @@ import type {
   ReciboFirma, DesvinculacionInfo, RegistroNovedad,
 } from '@/types'
 import * as initial from '@/lib/mockData'
-import { uid, hoyAR } from '@/lib/utils'
+import { uid, ahoraISO } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import { mapNotifToSupabase } from './mappers'
 import { useSupabaseSync } from './useSupabaseSync'
@@ -129,7 +129,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   // ── Notificaciones ─────────────────────────────────────────────────────────
   const addNotification = useCallback((n: Omit<AppNotification, 'id' | 'fecha' | 'leida'>) => {
-    const notif: AppNotification = { ...n, id: uid(), fecha: hoyAR(), leida: false }
+    // ahoraISO() y no hoyAR(): las notificaciones se ordenan por este campo, y
+    // guardando sólo el día todas las de una misma jornada empataban y salían
+    // en cualquier orden.
+    const notif: AppNotification = { ...n, id: uid(), fecha: ahoraISO(), leida: false }
     setNotifications(prev => [notif, ...prev])
     if (supabase) {
       const sb = supabase

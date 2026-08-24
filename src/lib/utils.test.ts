@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { hoyAR, formatFecha, formatMes, calcularEdad, calcularAntiguedad, conTimeout, esLunesEnAR } from './utils'
+import { hoyAR, formatFecha, formatMes, calcularEdad, calcularAntiguedad, conTimeout, esLunesEnAR, formatFechaHora, ahoraISO } from './utils'
 
 afterEach(() => vi.useRealTimers())
 
@@ -144,5 +144,39 @@ describe('esLunesEnAR', () => {
     // El cron dispara 11:00 UTC = 8am ARG. Ese es el caso que importa.
     expect(esLunesEnAR(new Date('2026-07-27T11:00:00Z'))).toBe(true)
     expect(esLunesEnAR(new Date('2026-07-28T11:00:00Z'))).toBe(false)
+  })
+})
+
+// Las notificaciones guardaban solo el dia, asi que todas las de una misma
+// jornada empataban al ordenar y salian en cualquier orden.
+describe('formatFechaHora', () => {
+  it('muestra fecha y hora en horario argentino', () => {
+    // 14:11 UTC = 11:11 en Argentina (UTC-3).
+    expect(formatFechaHora('2026-08-24T14:11:03.512Z')).toBe('24/08/2026, 11:11')
+  })
+
+  it('convierte bien pasadas las 21 de Argentina, que ya es otro dia en UTC', () => {
+    // 01:30 UTC del 25 sigue siendo el 24 a las 22:30 en Argentina.
+    expect(formatFechaHora('2026-08-25T01:30:00.000Z')).toBe('24/08/2026, 22:30')
+  })
+
+  it('deja pasar las viejas, que solo tienen fecha, sin correrles el dia', () => {
+    expect(formatFechaHora('2026-08-24')).toBe('24/08/2026')
+  })
+
+  it('no rompe con vacio ni con basura', () => {
+    expect(formatFechaHora('')).toBe('-')
+    expect(formatFechaHora('no-es-una-fechaT')).toBe('no-es-una-fechaT')
+  })
+})
+
+describe('ahoraISO', () => {
+  it('devuelve un ISO completo, que es lo que permite ordenar', () => {
+    const v = ahoraISO()
+    expect(v).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)
+    // Lo esencial: dos momentos distintos no empatan al comparar como texto,
+    // que es como los ordenan tanto Postgres como localeCompare.
+    expect('2026-08-24T14:11:03.512Z' > '2026-08-24T09:02:00.000Z').toBe(true)
+    expect('2026-08-24T09:02:00.000Z' > '2026-08-24').toBe(true)
   })
 })
