@@ -16,6 +16,7 @@ import { upsert, upsertHead } from './listas'
 import { useRefEspejo } from './useRefEspejo'
 import type { Setters } from './setters'
 import type { Empleado } from '@/types'
+import { conservarSensibles } from './detalleEmpleados'
 
 type Fila = Record<string, unknown>
 type CambioRealtime = { eventType: string; new: unknown; old: unknown }
@@ -28,7 +29,11 @@ function conservarFotos(incoming: Empleado, existente: Empleado | undefined): Em
   if (!existente) return incoming
   if (!incoming.foto && existente.foto) incoming.foto = existente.foto
   if (!incoming.fotoCover && existente.fotoCover) incoming.fotoCover = existente.fotoCover
-  return incoming
+  // Los campos sensibles ya no vienen en el sync ni, por lo tanto, tienen por
+  // qué venir en el payload de Realtime: se conservan los que ya estaban en
+  // memoria (los trajo /api/empleados-detalle). Sin esto, editar un empleado
+  // le vaciaría el DNI y el CBU en pantalla hasta el próximo sync.
+  return conservarSensibles(incoming, existente)
 }
 
 /**
