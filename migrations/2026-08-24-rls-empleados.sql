@@ -29,6 +29,20 @@
 -- moverlo obligaba a rehacer ese flujo y agrandaba un cambio que ya toca
 -- permisos en producción. Queda anotado como mejora aparte.
 
+-- ⚠️ ANTES DE CORRER: salir del modo "View data as user" del dashboard.
+--
+-- Esa impersonacion no afecta solo al Table Editor: tambien hace SET ROLE
+-- authenticated en el SQL Editor. Y en PostgreSQL un REVOKE solo quita los
+-- permisos que otorgo el rol que ejecuta la sentencia — el ACL dice
+-- authenticated=arwdDxtm/postgres, o sea que los otorgo postgres—, asi que
+-- corriendo como authenticated la sentencia NO HACE NADA y reporta Success
+-- igual (Postgres emite un WARNING, no un error).
+--
+-- Nos costo cuatro diagnosticos darnos cuenta. Para comprobarlo:
+--   select current_user, session_user;
+-- Tienen que decir postgres las dos. Si current_user dice authenticated,
+-- la impersonacion sigue activa.
+
 -- Sin begin/commit a proposito: el editor de Supabase ya envuelve lo que se
 -- ejecuta, y un bloque explicito se presta a que un error pase inadvertido y
 -- quede todo revertido sin que se note. El primer intento no aplico nada
