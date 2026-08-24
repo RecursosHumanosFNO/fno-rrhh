@@ -6,6 +6,7 @@ import { useData } from '@/contexts/DataContext'
 import { useTheme } from '@/components/ThemeProvider'
 import { Bell, Sun, Moon, Menu, Search, ChevronDown, X, CheckCheck, Users, Megaphone, CalendarDays, Cake, RefreshCw } from 'lucide-react'
 import Link from 'next/link'
+import { formatFechaHora } from '@/lib/utils'
 
 interface HeaderProps {
   onMenuToggle: () => void
@@ -285,7 +286,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
                       <p className={`text-xs leading-relaxed ${n.leida ? 'text-slate-500 dark:text-slate-400' : 'text-slate-700 dark:text-slate-200 font-medium'}`}>
                         {n.texto}
                       </p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">{n.fecha}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{formatFechaHora(n.fecha)}</p>
                     </div>
                     {!n.leida && <div className="w-2 h-2 bg-brand-600 dark:bg-teal-400 rounded-full shrink-0 mt-1.5" />}
                   </Link>

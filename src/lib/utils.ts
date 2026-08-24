@@ -25,6 +25,43 @@ export function hoyAR(): string {
   return ar.toISOString().slice(0, 10)
 }
 
+const TZ_AR = 'America/Argentina/Buenos_Aires'
+
+/**
+ * Momento actual como ISO completo en UTC ("2026-08-24T14:11:03.512Z").
+ *
+ * Para lo que necesita ORDEN, no basta con hoyAR(): al guardar sólo el día,
+ * todo lo del mismo día empata y el orden entre esos elementos queda librado
+ * al azar —era el motivo de que las notificaciones aparecieran desordenadas—.
+ *
+ * Se guarda en UTC y no en hora argentina a propósito: el ISO en UTC ordena
+ * bien alfabéticamente, que es como lo comparan tanto Postgres como
+ * localeCompare. La conversión a hora local es cosa de formatFechaHora.
+ */
+export function ahoraISO(): string {
+  return new Date().toISOString()
+}
+
+/**
+ * Muestra fecha y hora en horario argentino.
+ *
+ * Tolera los dos formatos a propósito: las notificaciones viejas guardaron
+ * sólo "YYYY-MM-DD" y ahí no hay hora que mostrar. Además, pasarlas por una
+ * conversión de zona horaria las correría un día, así que se las deja pasar
+ * por formatFecha tal cual.
+ */
+export function formatFechaHora(valor: string): string {
+  if (!valor) return '-'
+  if (!valor.includes('T')) return formatFecha(valor)
+  const d = new Date(valor)
+  if (Number.isNaN(d.getTime())) return valor
+  return d.toLocaleString('es-AR', {
+    timeZone: TZ_AR,
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  })
+}
+
 export function formatFecha(fecha: string): string {
   if (!fecha) return '-'
   const d = parseLocalDate(fecha)
