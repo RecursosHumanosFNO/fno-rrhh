@@ -10,11 +10,15 @@ Portal de Recursos Humanos de la Fundación Neuquén Oeste (FNO). Sistema intern
 
 ```bash
 npm run dev       # Development server at http://localhost:3000
-npm run build     # Production build (runs TypeScript check + Next.js build)
+npm run build     # Production build. Runs `next build --webpack` a propósito:
+                  # next-pwa es un plugin de webpack y con Turbopack (el default
+                  # desde Next 16) no falla — simplemente NO genera public/sw.js,
+                  # y como está gitignoreado, en Vercel las push dejan de andar
+                  # sin ningún error visible.
 npm run lint      # ESLint check
 ```
 
-No test suite configured. Verify changes via `npm run build` (catches TypeScript errors).
+Tests con Vitest (`npm test`). Verificar además con `npm run build` y `npx tsc --noEmit`.
 
 ## Architecture
 

@@ -36,8 +36,8 @@ export function BulkUploadModal({
   setConfirmed: React.Dispatch<React.SetStateAction<boolean>>
   progress: number
   done: { ok: number; fail: number }
-  inputRef: React.RefObject<HTMLInputElement>
-  addInputRef: React.RefObject<HTMLInputElement>
+  inputRef: React.RefObject<HTMLInputElement | null>
+  addInputRef: React.RefObject<HTMLInputElement | null>
   onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void
   onFileDrop: (e: React.DragEvent<HTMLDivElement>) => void
   onAgregarMas: (e: React.ChangeEvent<HTMLInputElement>) => void

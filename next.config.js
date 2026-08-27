@@ -1,5 +1,10 @@
 /** @type {import('next').NextConfig} */
 const { withSentryConfig } = require('@sentry/nextjs')
+// OJO: el build tiene que correr con `next build --webpack` (ver package.json).
+// next-pwa es un plugin de webpack, y Next 16 usa Turbopack por defecto: con
+// Turbopack no falla nada, simplemente NO genera public/sw.js. Como ese archivo
+// está en .gitignore, en Vercel no existiría y las push dejarían de funcionar
+// sin ningún error visible.
 const withPWA = require('next-pwa')({
   dest: 'public',
   register: true,
@@ -24,13 +29,6 @@ const withPWA = require('next-pwa')({
 })
 
 const nextConfig = {
-  // Sin esto Next 14 ignora instrumentation.ts y Sentry no llega a inicializar
-  // del lado del servidor (en Next 15 el hook pasa a ser estable y el flag
-  // desaparece). Es lo que hacía que los errores de las API routes y de los
-  // crons no se reportaran a ningún lado.
-  experimental: {
-    instrumentationHook: true,
-  },
   images: {
     remotePatterns: [
       {
@@ -47,6 +45,12 @@ module.exports = withSentryConfig(withPWA(nextConfig), {
   silent: true,
   widenClientFileUpload: true,
   hideSourceMaps: true,
-  disableLogger: true,
-  automaticVercelMonitors: false,
+  // Estas dos se movieron bajo `webpack` en @sentry/nextjs 10; en la raíz
+  // siguen funcionando pero avisan que van a desaparecer.
+  webpack: {
+    treeshake: { removeDebugLogging: true },
+    // Sigue en false: los monitores automáticos de cron de Vercel son de pago
+    // y acá no se usan.
+    automaticVercelMonitors: false,
+  },
 })

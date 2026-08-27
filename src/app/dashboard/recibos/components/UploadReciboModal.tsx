@@ -26,7 +26,7 @@ export function UploadReciboModal({
   status: UploadStatus
   error: string
   selectedFile: File | null
-  fileInputRef: React.RefObject<HTMLInputElement>
+  fileInputRef: React.RefObject<HTMLInputElement | null>
   onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void
   onClose: () => void
   onSubir: () => void

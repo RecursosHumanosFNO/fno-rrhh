@@ -597,7 +597,7 @@ export default function EstadisticasPage() {
                 <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} allowDecimals={false} />
                 <Tooltip
                   contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 12 }}
-                  formatter={(v: number) => [v, 'Empleados']}
+                  formatter={(v) => [Number(v ?? 0), 'Empleados']}
                   labelFormatter={(label) => {
                     const orig = empleadosPorSector.find(d => shortSector(d.sector) === label)
                     return orig?.sector ?? label
