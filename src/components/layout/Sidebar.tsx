@@ -11,7 +11,7 @@ import {
   LayoutDashboard, Users, FileText, ClipboardList, Megaphone,
   BarChart3, User, ChevronRight,
   LogOut, ExternalLink, Info, UserCheck, CalendarDays, AlertTriangle,
-  BookOpen, ClipboardCheck,
+  BookOpen, ClipboardCheck, ShieldAlert,
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -26,6 +26,13 @@ interface NavLink {
   icon: React.ComponentType<{ className?: string }>
   badge?: number
   warn?: boolean
+  // Resaltado verde: se usa para la ART, que tiene que saltar a la vista en una
+  // emergencia y no perderse entre el resto de las secciones.
+  destacado?: boolean
+}
+
+const LINK_ART: NavLink = {
+  href: '/dashboard/art', label: 'ART · Emergencias', icon: ShieldAlert, destacado: true,
 }
 
 export default function Sidebar({ collapsed, mobileOpen, onToggle }: SidebarProps) {
@@ -45,6 +52,7 @@ export default function Sidebar({ collapsed, mobileOpen, onToggle }: SidebarProp
 
   const adminLinks: NavLink[] = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    LINK_ART,
     { href: '/dashboard/registros-pendientes', label: 'Accesos Pendientes', icon: UserCheck, badge: pendingRegistrations.length },
     { href: '/dashboard/empleados', label: 'Empleados', icon: Users },
     { href: '/dashboard/recibos', label: 'Recibos de Sueldo', icon: FileText },
@@ -60,6 +68,7 @@ export default function Sidebar({ collapsed, mobileOpen, onToggle }: SidebarProp
 
   const employeeLinks: NavLink[] = [
     { href: '/dashboard', label: 'Inicio', icon: LayoutDashboard },
+    LINK_ART,
     { href: '/dashboard/recibos', label: 'Mis Recibos', icon: FileText },
     { href: '/dashboard/solicitudes', label: 'Solicitudes y Pedidos', icon: ClipboardList },
     { href: '/dashboard/comunicaciones', label: 'Comunicaciones', icon: Megaphone },
@@ -71,6 +80,7 @@ export default function Sidebar({ collapsed, mobileOpen, onToggle }: SidebarProp
 
   const comunicacionesLinks: NavLink[] = [
     { href: '/dashboard', label: 'Inicio', icon: LayoutDashboard },
+    LINK_ART,
     { href: '/dashboard/comunicaciones', label: 'Comunicaciones', icon: Megaphone },
     { href: '/dashboard/eventos', label: 'Calendario', icon: CalendarDays },
     { href: '/dashboard/recibos', label: 'Mis Recibos', icon: FileText },
@@ -82,6 +92,7 @@ export default function Sidebar({ collapsed, mobileOpen, onToggle }: SidebarProp
 
   const rrhhLinks: NavLink[] = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    LINK_ART,
     { href: '/dashboard/registros-pendientes', label: 'Accesos Pendientes', icon: UserCheck, badge: pendingRegistrations.length },
     { href: '/dashboard/empleados', label: 'Empleados', icon: Users },
     { href: '/dashboard/solicitudes', label: 'Solicitudes y Pedidos', icon: ClipboardList, badge: solicitudes.filter(s => s.estado === 'pendiente').length },
@@ -139,14 +150,23 @@ export default function Sidebar({ collapsed, mobileOpen, onToggle }: SidebarProp
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-0.5">
-          {links.map(({ href, label, icon: Icon, badge, warn }) => {
+          {links.map(({ href, label, icon: Icon, badge, warn, destacado }) => {
             const isActive = href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(href)
             return (
               <Link
                 key={href}
                 href={href}
                 title={collapsed ? (warn ? `${label} · perfil incompleto` : label) : undefined}
-                className={cn('nav-link relative', collapsed ? 'justify-center px-2' : '', isActive ? 'nav-link-active' : 'nav-link-inactive')}
+                className={cn(
+                  'nav-link relative',
+                  collapsed ? 'justify-center px-2' : '',
+                  destacado
+                    ? cn(
+                        'bg-emerald-500/90 hover:bg-emerald-500 text-white font-semibold',
+                        isActive && 'ring-2 ring-white/70',
+                      )
+                    : isActive ? 'nav-link-active' : 'nav-link-inactive',
+                )}
               >
                 <Icon className="w-5 h-5 shrink-0" />
                 <span className="sidebar-label flex-1">{label}</span>

@@ -7,6 +7,7 @@
 // ruta valida contra esta misma lista para que no entre nada raro.
 export const DESTINOS_PUSH = [
   { url: '/dashboard', label: 'Inicio' },
+  { url: '/dashboard/art', label: 'ART · Emergencias' },
   { url: '/dashboard/comunicaciones', label: 'Comunicaciones' },
   { url: '/dashboard/eventos', label: 'Calendario' },
   { url: '/dashboard/recibos', label: 'Recibos de sueldo' },
