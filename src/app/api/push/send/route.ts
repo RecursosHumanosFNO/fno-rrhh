@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import webpush from 'web-push'
 import { serviceClient, getRequester } from '@/lib/serverAuth'
+import { esDestinoPushValido, DESTINO_PUSH_POR_DEFECTO } from '@/lib/destinosPush'
 
 export const runtime = 'nodejs'
 
@@ -36,7 +37,9 @@ export async function POST(req: NextRequest) {
   const payload = JSON.stringify({
     title,
     body,
-    url: url ?? '/dashboard',
+    // Sólo rutas de la lista: una URL inventada abre un 404 en una pestaña
+    // nueva del service worker, sin historial para volver atrás.
+    url: esDestinoPushValido(url) ? url : DESTINO_PUSH_POR_DEFECTO,
     icon: '/icon-192.png',
     badge: '/icon-192.png',
   })
