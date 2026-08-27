@@ -8,6 +8,7 @@ import { authFetch } from '@/lib/authFetch'
 import ImageLightbox from '@/components/ImageLightbox'
 import Linkify from '@/components/Linkify'
 import { comprimirImagen } from '@/lib/comprimirImagen'
+import { DESTINOS_PUSH, DESTINO_PUSH_POR_DEFECTO, esDestinoPushValido } from '@/lib/destinosPush'
 import {
   NOVEDAD_CATEGORIA_COLOR, NOVEDAD_CATEGORIA_LABEL, NOVEDAD_CATEGORIAS,
   EVENTO_TIPO_LABEL, EVENTO_TIPO_COLOR, formatFecha,
@@ -77,7 +78,7 @@ export default function ComunicacionesPage() {
   const [editId, setEditId] = useState<string | null>(null)
 
   const [showPush, setShowPush] = useState(false)
-  const [pushForm, setPushForm] = useState({ title: '', body: '', url: '' })
+  const [pushForm, setPushForm] = useState({ title: '', body: '', url: DESTINO_PUSH_POR_DEFECTO as string })
   const [pushModo, setPushModo] = useState<'todos' | 'algunos'>('todos')
   const [pushDestinatarios, setPushDestinatarios] = useState<string[]>([])
   const [pushSending, setPushSending] = useState(false)
@@ -272,6 +273,7 @@ export default function ComunicacionesPage() {
     if (!pushForm.title.trim() || !pushForm.body.trim()) return
     setPushSending(true)
     setPushResult(null)
+    const destino = esDestinoPushValido(pushForm.url) ? pushForm.url : DESTINO_PUSH_POR_DEFECTO
     try {
       const res = await authFetch('/api/push/send', {
         method: 'POST',
@@ -279,7 +281,7 @@ export default function ComunicacionesPage() {
         body: JSON.stringify({
           title: pushForm.title,
           body: pushForm.body,
-          url: pushForm.url || '/dashboard',
+          url: destino,
           // La ruta interpreta la lista vacía como "todos".
           empleadoIds: pushModo === 'algunos' ? pushDestinatarios : [],
         }),
@@ -289,7 +291,6 @@ export default function ComunicacionesPage() {
       // La push sólo llega a quien la tenga activada y se pierde si el aviso
       // pasa desapercibido. Dejamos además una notificación en la campanita,
       // que le queda a todo el mundo y no depende de ningún permiso.
-      const destino = pushForm.url || '/dashboard'
       const texto = `${pushForm.title}: ${pushForm.body}`
       if (pushModo === 'algunos') {
         pushDestinatarios.forEach(empleadoId => {
@@ -300,7 +301,7 @@ export default function ComunicacionesPage() {
       }
 
       setPushResult(`Enviado a ${data.sent} dispositivo${data.sent !== 1 ? 's' : ''}.`)
-      setPushForm({ title: '', body: '', url: '' })
+      setPushForm({ title: '', body: '', url: DESTINO_PUSH_POR_DEFECTO })
       setPushDestinatarios([])
       setPushModo('todos')
     } catch {
@@ -863,13 +864,16 @@ export default function ComunicacionesPage() {
                 />
               </div>
               <div>
-                <label className="form-label">URL destino (opcional)</label>
-                <input
+                <label className="form-label">¿A dónde la lleva al tocarla?</label>
+                <select
                   className="form-input"
-                  placeholder="/dashboard (por defecto)"
                   value={pushForm.url}
                   onChange={e => setPushForm(f => ({ ...f, url: e.target.value }))}
-                />
+                >
+                  {DESTINOS_PUSH.map(d => (
+                    <option key={d.url} value={d.url}>{d.label}</option>
+                  ))}
+                </select>
               </div>
             </div>
             {pushResult && (

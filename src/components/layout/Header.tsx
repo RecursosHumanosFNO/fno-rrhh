@@ -49,7 +49,10 @@ export default function Header({ onMenuToggle }: HeaderProps) {
   const visibleNotifications = [...notifications]
     .filter(n => {
       if (isAdmin) {
-        if (n.soloEmpleado) return false
+        // soloEmpleado se descarta salvo que el destinatario sea el propio
+        // admin: si se manda una push a sí mismo (o le llega un aviso como
+        // empleado), antes se insertaba la notificación y no la veía nunca.
+        if (n.soloEmpleado && (!empleado?.id || n.empleadoId !== empleado.id)) return false
         if (n.empleadoId && n.empleadoId !== empleado?.id) return false
         return true
       }
