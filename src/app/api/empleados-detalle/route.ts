@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     // La lista va literal y no en una constante: Supabase infiere el tipo de la
     // fila a partir del string, y con una constante devuelve GenericStringError.
     const query = sb.from('fno_empleados')
-      .select('id, dni, cuil, direccion, telefono, contacto_emergencia, cbu, banco, desvinculacion, historial_desvinculaciones, fecha_ingreso, tipo_contrato, jornada, supervisor')
+      .select('id, dni, cuil, direccion, telefono, contacto_emergencia, cbu, banco, desvinculacion, historial_desvinculaciones, fecha_ingreso, tipo_contrato, jornada, supervisor, credencial_art, credencial_art_nombre, credencial_art_subida_en')
 
     // Sin empleadoId no hay legajo propio que devolver: mejor una lista vacía
     // que una consulta sin filtro.

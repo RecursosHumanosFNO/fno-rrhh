@@ -57,6 +57,9 @@ export function mapSupabaseToEmpleado(row: Record<string, unknown>): Empleado {
     estado: ((row.estado as EmpleadoEstado) ?? 'activo'),
     cbu: (row.cbu as string) ?? '',
     banco: (row.banco as string) ?? '',
+    credencialArt: (row.credencial_art as string) ?? undefined,
+    credencialArtNombre: (row.credencial_art_nombre as string) ?? undefined,
+    credencialArtSubidaEn: (row.credencial_art_subida_en as string) ?? undefined,
     desvinculacion: (row.desvinculacion as DesvinculacionInfo) ?? undefined,
     historialDesvinculaciones: (row.historial_desvinculaciones as DesvinculacionInfo[]) ?? undefined,
   }
@@ -78,6 +81,9 @@ export function mapEmpleadoToSupabase(e: Empleado) {
   if (e.fotoCover) row.foto_cover = e.fotoCover
   // Solo incluir desvinculacion si tiene valor para no romper inserts
   // cuando la columna aún no existe en la tabla de Supabase
+  if (e.credencialArt !== undefined) row.credencial_art = e.credencialArt || null
+  if (e.credencialArtNombre !== undefined) row.credencial_art_nombre = e.credencialArtNombre || null
+  if (e.credencialArtSubidaEn !== undefined) row.credencial_art_subida_en = e.credencialArtSubidaEn || null
   if (e.desvinculacion !== undefined) row.desvinculacion = e.desvinculacion
   if (e.historialDesvinculaciones !== undefined) row.historial_desvinculaciones = e.historialDesvinculaciones
   return row

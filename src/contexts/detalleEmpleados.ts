@@ -17,6 +17,7 @@ export const CAMPOS_SENSIBLES = [
   'dni', 'cuil', 'direccion', 'telefono', 'contactoEmergencia',
   'cbu', 'banco', 'desvinculacion', 'historialDesvinculaciones',
   'fechaIngreso', 'tipoContrato', 'jornada', 'supervisor',
+  'credencialArt', 'credencialArtNombre', 'credencialArtSubidaEn',
 ] as const satisfies readonly (keyof Empleado)[]
 
 /** Lo que devuelve /api/empleados-detalle: el id más lo sensible. */

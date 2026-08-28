@@ -23,11 +23,12 @@ import {
 import Link from 'next/link'
 import { EditField } from './components/EditField'
 import { PdfViewerOverlay } from '@/components/PdfViewerOverlay'
+import { CredencialArt } from '@/components/CredencialArt'
 import { DesactivarModal } from './components/DesactivarModal'
 import { ReactivarModal, EliminarModal, ConfirmarRolModal } from './components/ConfirmModals'
 import { HistorialTab } from './components/HistorialTab'
 
-const TABS = ['Personal', 'Laboral', 'Documentos', 'Solicitudes', 'Historial']
+const TABS = ['Personal', 'Laboral', 'Documentos', 'Credencial ART', 'Solicitudes', 'Historial']
 
 export default function EmpleadoDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -957,8 +958,18 @@ export default function EmpleadoDetailPage() {
         </div>
       )}
 
-      {/* Tab: Solicitudes */}
+      {/* Tab: Credencial ART */}
       {tab === 3 && (
+        <CredencialArt
+          empleadoId={emp.id}
+          credencial={emp}
+          puedeEditar={isAdmin}
+          onCambio={c => updateEmpleado(emp.id, c)}
+        />
+      )}
+
+      {/* Tab: Solicitudes */}
+      {tab === 4 && (
         <div className="card overflow-hidden">
           <div className="p-5 border-b border-slate-100 dark:border-slate-800">
             <p className="section-title">Solicitudes</p>
@@ -993,7 +1004,7 @@ export default function EmpleadoDetailPage() {
       )}
 
       {/* Tab: Historial */}
-      {tab === 4 && (
+      {tab === 5 && (
         <HistorialTab
           empleado={emp}
           isAdmin={isAdmin}

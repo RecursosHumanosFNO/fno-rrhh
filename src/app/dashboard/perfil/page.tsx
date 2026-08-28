@@ -13,6 +13,7 @@ import {
   Shield, AlertCircle, Loader2, AlertTriangle, Bell,
 } from 'lucide-react'
 import { PushToggle } from '@/components/PushToggle'
+import { CredencialArt } from '@/components/CredencialArt'
 
 export default function PerfilPage() {
   const { empleado, user, updateEmpleado } = useAuth()
@@ -667,6 +668,9 @@ export default function PerfilPage() {
           </p>
         )}
       </div>
+
+      {/* Credencial de ART (sólo lectura: la carga RRHH) */}
+      <CredencialArt empleadoId={empleado.id} credencial={empleado} puedeEditar={false} />
 
       {/* Notificaciones push */}
       <div className="card p-5">
