@@ -163,6 +163,11 @@ export interface Empleado {
   estado: EmpleadoEstado
   cbu?: string
   banco?: string
+  // Credencial digital de la ART (PDF en el bucket privado). Se guarda el path
+  // de Storage, no una URL: el acceso va siempre por URL firmada.
+  credencialArt?: string
+  credencialArtNombre?: string
+  credencialArtSubidaEn?: string
   desvinculacion?: DesvinculacionInfo           // Baja actual (solo si estado === 'inactivo')
   historialDesvinculaciones?: DesvinculacionInfo[] // Bajas anteriores (se preservan al reactivar)
 }

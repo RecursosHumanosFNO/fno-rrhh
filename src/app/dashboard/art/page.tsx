@@ -1,11 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { Phone, Clock, ShieldAlert, FileWarning, Info } from 'lucide-react'
+import { Phone, Clock, ShieldAlert, FileWarning, Info, Building2 } from 'lucide-react'
 
 // Datos de la credencial digital de Provincia ART.
 const EMERGENCIAS = '0800-333-1333'
 const ATENCION = '0800-333-1278'
+// Datos del empleador que pide la ART en cada llamado.
+const CUIT = '30-65589409-4'
+const MAIL = 'contable@fundacionnqnoeste.com'
 
 // El número marcable no lleva guiones (algunos teléfonos no los limpian solos).
 const soloDigitos = (n: string) => n.replace(/\D/g, '')
@@ -78,6 +81,42 @@ export default function ArtPage() {
           Lunes a viernes de 8 a 20
         </p>
       </a>
+
+      {/* Datos que pide la ART al llamar */}
+      <div className="rounded-2xl p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+        <h2 className="flex items-center gap-2 font-semibold text-slate-800 dark:text-slate-100">
+          <Building2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+          Datos que te van a pedir
+        </h2>
+        <dl className="mt-3 space-y-3 text-sm">
+          <div>
+            <dt className="text-slate-500 dark:text-slate-400">Empleador</dt>
+            <dd className="font-medium text-slate-800 dark:text-slate-100">
+              Fundación Cristiana Neuquén Oeste
+            </dd>
+          </div>
+          <div>
+            <dt className="text-slate-500 dark:text-slate-400">CUIT de la Fundación</dt>
+            <dd className="font-bold text-lg text-slate-800 dark:text-slate-100 tabular-nums select-all">
+              {CUIT}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-slate-500 dark:text-slate-400">Mail de contacto</dt>
+            <dd>
+              <a
+                href={`mailto:${MAIL}`}
+                className="font-medium text-emerald-700 dark:text-emerald-400 hover:underline break-all"
+              >
+                {MAIL}
+              </a>
+            </dd>
+          </div>
+        </dl>
+        <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+          También te van a pedir tu CUIL, que está en tu credencial (Mi Perfil → Credencial de ART).
+        </p>
+      </div>
 
       {/* Qué hacer ante un accidente */}
       <div className="rounded-2xl p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
