@@ -1,24 +1,30 @@
 /** @type {import('next').NextConfig} */
 const { withSentryConfig } = require('@sentry/nextjs')
 // OJO: el build tiene que correr con `next build --webpack` (ver package.json).
-// next-pwa es un plugin de webpack, y Next 16 usa Turbopack por defecto: con
-// Turbopack no falla nada, simplemente NO genera public/sw.js. Como ese archivo
-// está en .gitignore, en Vercel no existiría y las push dejarían de funcionar
-// sin ningún error visible.
-const withPWA = require('next-pwa')({
-  dest: 'public',
-  register: true,
-  skipWaiting: true,
+// Serwist, igual que next-pwa antes, es un plugin de webpack: con Turbopack no
+// falla nada, simplemente NO genera public/sw.js. Como ese archivo está en
+// .gitignore, en Vercel no existiría y las push dejarían de funcionar sin
+// ningún error visible. (Existe @serwist/turbopack, pero es experimental y no
+// vale el riesgo para el worker que sostiene las notificaciones.)
+const withSerwist = require('@serwist/next').default({
+  swSrc: 'src/app/sw.ts',
+  swDest: 'public/sw.js',
   disable: process.env.NODE_ENV === 'development',
-  customWorkerDir: 'worker',
-  // Workbox descarga TODO el manifiesto al instalar el service worker, y si una
+  // El registro lo hace ServiceWorkerRegister.tsx, que además escucha los
+  // mensajes del worker para navegar al tocar una push.
+  register: false,
+  // next-pwa no recargaba la app al volver la conexión; Serwist sí lo hace por
+  // defecto. Se deja como estaba: una recarga sorpresa en medio de un formulario
+  // es peor que un dato viejo.
+  reloadOnOnline: false,
+  // Serwist descarga TODO el manifiesto al instalar el service worker, y si una
   // sola URL responde 404 la instalación entera falla y el worker nunca activa
   // (el síntoma es que las notificaciones push no se pueden activar nunca).
   //
-  // Los .map no se sirven en producción porque Sentry está con
-  // hideSourceMaps, y los build manifests tampoco son públicos: si entran al
-  // precache, rompen la instalación.
-  buildExcludes: [
+  // Los .map no se sirven en producción porque Sentry está con hideSourceMaps,
+  // y los build manifests tampoco son públicos: si entran al precache, rompen
+  // la instalación.
+  exclude: [
     /\.map$/,
     /^build-manifest\.json$/,
     /^react-loadable-manifest\.json$/,
@@ -39,7 +45,7 @@ const nextConfig = {
   },
 }
 
-module.exports = withSentryConfig(withPWA(nextConfig), {
+module.exports = withSentryConfig(withSerwist(nextConfig), {
   org: 'fundacion-neuquen-oeste',
   project: 'javascript-nextjs',
   silent: true,
