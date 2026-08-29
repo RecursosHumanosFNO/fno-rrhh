@@ -36,10 +36,6 @@ _login*.png
 *.tsbuildinfo
 next-env.d.ts
 
-# PWA generated files (next-pwa build artifacts)
+# PWA: el worker lo genera Serwist en cada build a partir de src/app/sw.ts
 /public/sw.js
 /public/sw.js.map
-# next-pwa regenera el worker con otro hash en cada build
-/public/worker-*.js
-/public/workbox-*.js
-/public/workbox-*.js.map
