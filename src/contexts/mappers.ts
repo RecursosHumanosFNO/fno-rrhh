@@ -2,6 +2,7 @@
 // dominio (camelCase). Son funciones puras: viven fuera del contexto para poder
 // probarlas y para no seguir engordando DataContext.
 import type {
+  MensajeSolicitud,
   Empleado, Solicitud, Recibo, Novedad, Ticket, AppNotification, Evento,
   RegistroNovedad, EmpleadoEstado, DesvinculacionInfo, SolicitudTipo,
   SolicitudEstado, NovedadCategoria, TicketTipo, TicketEstado,
@@ -105,6 +106,7 @@ export function mapSupabaseToSolicitud(row: Record<string, unknown>): Solicitud 
     adjunto: (row.adjunto as string) || undefined,
     horarioDesde: (row.horario_desde as string) || undefined,
     horarioHasta: (row.horario_hasta as string) || undefined,
+    conversacion: (row.conversacion as MensajeSolicitud[]) ?? undefined,
   }
 }
 export function mapSolicitudToSupabase(s: Solicitud, baseOnly = false) {
@@ -129,6 +131,7 @@ export function mapSolicitudToSupabase(s: Solicitud, baseOnly = false) {
     ...base,
     horario_desde: s.horarioDesde || null,
     horario_hasta: s.horarioHasta || null,
+    conversacion: s.conversacion ?? [],
   }
 }
 

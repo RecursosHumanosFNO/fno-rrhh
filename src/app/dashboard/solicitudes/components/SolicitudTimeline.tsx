@@ -4,6 +4,7 @@ import { formatFecha } from '@/lib/utils'
 // ── Línea de tiempo del estado de una solicitud ──────────────────────────────
 export function SolicitudTimeline({ sol }: { sol: { estado: string; fechaCreacion: string; fechaResolucion?: string } }) {
   const resuelto = sol.estado === 'aprobado' || sol.estado === 'rechazado'
+  const enRevision = sol.estado === 'en_revision'
   const aprobado = sol.estado === 'aprobado'
   const rechazado = sol.estado === 'rechazado'
 
@@ -19,7 +20,11 @@ export function SolicitudTimeline({ sol }: { sol: { estado: string; fechaCreacio
     {
       label: resuelto ? 'Revisada por RRHH' : 'En revisión por RRHH',
       fecha: resuelto ? sol.fechaResolucion : undefined,
-      sub: resuelto ? undefined : 'Esperando respuesta del administrador',
+      sub: resuelto
+        ? undefined
+        : enRevision
+          ? 'RRHH pidió más información — respondé en la conversación'
+          : 'Esperando respuesta del administrador',
       icon: resuelto ? CheckCircle2 : Hourglass,
       state: resuelto ? ('done' as const) : ('active' as const),
       color: resuelto

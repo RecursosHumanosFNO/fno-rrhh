@@ -47,6 +47,8 @@ interface DataContextType {
   rejectSolicitud: (id: string, comment: string) => void
   editSolicitud: (id: string, estado: 'aprobado' | 'rechazado', comment: string) => void
   cancelSolicitud: (id: string) => void
+  // Mensaje en una solicitud abierta. Con `cerrarComo` (sólo RRHH) además la resuelve.
+  responderSolicitud: (id: string, texto: string, cerrarComo?: 'aprobado' | 'rechazado') => Promise<boolean>
   // Novedades
   addNovedad: (n: Omit<Novedad, 'id'>, notifyChannels?: ('app' | 'email')[]) => void
   updateNovedad: (id: string, data: Partial<Omit<Novedad, 'id'>>, notifyChannels?: ('app' | 'email')[]) => void
@@ -157,6 +159,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   // ── Solicitudes ────────────────────────────────────────────────────────────
   const {
     addSolicitud, approveSolicitud, rejectSolicitud, editSolicitud, cancelSolicitud,
+    responderSolicitud,
   } = useSolicitudesCrud({ solicitudes, setSolicitudes, empleadosRef, addNotification })
 
   // Notificador compartido por novedades y eventos (mismo formato de aviso).
@@ -238,6 +241,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       pendingRegistrations, notifications, registrosNovedad,
       addEmpleado, updateEmpleado, deleteEmpleado, desactivarEmpleado, reactivarEmpleado,
       addSolicitud, approveSolicitud, rejectSolicitud, editSolicitud, cancelSolicitud,
+      responderSolicitud,
       addNovedad, updateNovedad, deleteNovedad,
       addEvento, updateEvento, deleteEvento,
       addRecibo, deleteRecibo, firmas, firmarRecibo,

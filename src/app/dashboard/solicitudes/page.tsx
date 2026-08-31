@@ -13,6 +13,7 @@ import type { SolicitudTipo, TicketTipo, TicketEstado, Solicitud, Empleado } fro
 import { authFetch } from '@/lib/authFetch'
 import { PedidosRRHH } from './components/PedidosRRHH'
 import { SolicitudTimeline } from './components/SolicitudTimeline'
+import { Conversacion } from './components/Conversacion'
 import {
   BRAND_C, DARK_C, type JsPDFDoc,
   _pdfHeader, _pdfFooter, _pdfField, _pdfDivider, _pdfEmpCard, _pdfBadge, _pdfRespuesta,
@@ -138,7 +139,7 @@ async function descargarMensajePDF(emp: Empleado, asunto: string, mensaje: strin
 
 export default function SolicitudesPage() {
   const { user } = useAuth()
-  const { empleados, solicitudes, addSolicitud, approveSolicitud, rejectSolicitud, editSolicitud, cancelSolicitud, tickets, addTicket, respondTicket, addNotification, addRegistroNovedad } = useData()
+  const { empleados, solicitudes, addSolicitud, approveSolicitud, rejectSolicitud, editSolicitud, cancelSolicitud, responderSolicitud, tickets, addTicket, respondTicket, addNotification, addRegistroNovedad } = useData()
   const isAdmin = user?.role === 'admin' || user?.role === 'rrhh'
   const [activeTab, setActiveTab] = useState<'solicitudes' | 'pedidos'>('solicitudes')
 
@@ -221,7 +222,9 @@ export default function SolicitudesPage() {
     return matchQuery && matchEstado && matchTipo && matchDesde && matchHasta
   }).sort((a, b) => b.fechaCreacion.localeCompare(a.fechaCreacion))
 
-  const pendientes = base.filter(s => s.estado === 'pendiente').length
+  // Sin resolver = pendientes + las que están en conversación. Son las que
+  // todavía le deben una respuesta a alguien.
+  const pendientes = base.filter(s => s.estado === 'pendiente' || s.estado === 'en_revision').length
 
   const AUSENCIA_TIPOS: SolicitudTipo[] = [
     'ausencia', 'llegada_tarde', 'salida_anticipada',
@@ -350,7 +353,7 @@ export default function SolicitudesPage() {
           </h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-0.5">
             {activeTab === 'solicitudes'
-              ? `${filtered.length} solicitudes · ${pendientes} pendientes`
+              ? `${filtered.length} solicitudes · ${pendientes} sin resolver`
               : `${filteredTickets.length} pedidos · ${ticketsActivos} activos`}
           </p>
         </div>
@@ -428,9 +431,10 @@ export default function SolicitudesPage() {
       {activeTab === 'solicitudes' && (<>
 
       {/* Stats row */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
         {[
           { label: 'Pendientes', count: base.filter(s => s.estado === 'pendiente').length, color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20', icon: Clock },
+          { label: 'En revisión', count: base.filter(s => s.estado === 'en_revision').length, color: 'text-sky-600 bg-sky-50 dark:bg-sky-900/20', icon: MessageSquare },
           { label: 'Aprobadas', count: base.filter(s => s.estado === 'aprobado').length, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20', icon: CheckCircle2 },
           { label: 'Rechazadas', count: base.filter(s => s.estado === 'rechazado').length, color: 'text-red-600 bg-red-50 dark:bg-red-900/20', icon: XCircle },
         ].map(({ label, count, color, icon: Icon }) => (
@@ -464,6 +468,7 @@ export default function SolicitudesPage() {
         <select className="form-select w-auto text-sm" value={estadoFilter} onChange={e => setEstadoFilter(e.target.value)}>
           <option value="">Todos los estados</option>
           <option value="pendiente">Pendiente</option>
+          <option value="en_revision">En revisión</option>
           <option value="aprobado">Aprobado</option>
           <option value="rechazado">Rechazado</option>
         </select>
@@ -577,6 +582,16 @@ export default function SolicitudesPage() {
                     {/* Línea de tiempo del estado */}
                     <SolicitudTimeline sol={sol} />
 
+                    {/* Conversación: RRHH pregunta, el empleado contesta, y la
+                        solicitud se cierra recién cuando está claro. */}
+                    <Conversacion
+                      mensajes={sol.conversacion ?? []}
+                      abierta={sol.estado === 'pendiente' || sol.estado === 'en_revision'}
+                      puedeEscribir={isAdmin || sol.empleadoId === user?.empleadoId}
+                      puedeCerrar={isAdmin}
+                      onEnviar={(texto, cerrarComo) => responderSolicitud(sol.id, texto, cerrarComo)}
+                    />
+
                     {sol.comentarioAdmin && (
                       <div className="bg-brand-50 dark:bg-brand-900/20 rounded-xl p-3 border border-brand-100 dark:border-brand-800">
                         <p className="text-xs font-semibold text-brand-700 dark:text-brand-400 mb-1">
@@ -589,8 +604,10 @@ export default function SolicitudesPage() {
                       </div>
                     )}
 
-                    {/* Admin actions — pendiente */}
-                    {isAdmin && sol.estado === 'pendiente' && (
+                    {/* Admin actions — pendiente y sin conversación abierta.
+                        Cuando ya hay ida y vuelta, los botones viven adentro de
+                        <Conversacion> para no tener dos lugares donde resolver. */}
+                    {isAdmin && sol.estado === 'pendiente' && !(sol.conversacion?.length) && (
                       <div className="space-y-2">
                         <textarea
                           className="form-input text-sm resize-none"
@@ -656,7 +673,7 @@ export default function SolicitudesPage() {
                     )}
 
                     {/* Employee cancel */}
-                    {!isAdmin && sol.estado === 'pendiente' && (
+                    {!isAdmin && (sol.estado === 'pendiente' || sol.estado === 'en_revision') && (
                       <div className="flex justify-end">
                         <button
                           onClick={() => setConfirmCancel(sol.id)}

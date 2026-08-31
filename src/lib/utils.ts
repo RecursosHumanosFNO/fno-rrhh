@@ -151,12 +151,14 @@ export const SOLICITUD_TIPO_LABEL: Record<SolicitudTipo, string> = {
 
 export const SOLICITUD_ESTADO_LABEL: Record<SolicitudEstado, string> = {
   pendiente: 'Pendiente',
+  en_revision: 'En revisión',
   aprobado: 'Aprobado',
   rechazado: 'Rechazado',
 }
 
 export const SOLICITUD_ESTADO_COLOR: Record<SolicitudEstado, string> = {
   pendiente: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
+  en_revision: 'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300',
   aprobado: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
   rechazado: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
 }
