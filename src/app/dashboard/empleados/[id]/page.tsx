@@ -63,21 +63,27 @@ export default function EmpleadoDetailPage() {
   })
   const fotoRef = useRef<HTMLInputElement>(null)
   // Fotos cargadas on-demand (no vienen en el fetch masivo para ahorrar bandwidth)
-  const [profileFoto, setProfileFoto] = useState<string | null>(null)
-  const [profileFotoCover, setProfileFotoCover] = useState<string | null>(null)
+  // Las fotos se piden aparte (no vienen en el sync del directorio) y se guardan
+  // junto al id al que pertenecen. Antes eran dos estados que el efecto ponía en
+  // null de entrada para no mostrar la foto del empleado anterior; guardando el
+  // id no hace falta ese reset sincrónico: si no coincide, no se muestra.
+  const [fotosDe, setFotosDe] = useState<{ id: string; foto: string; cover: string } | null>(null)
+  const profileFoto = fotosDe?.id === id ? fotosDe.foto : null
+  const profileFotoCover = fotosDe?.id === id ? fotosDe.cover : null
 
   useEffect(() => {
     if (!id) return
-    setProfileFoto(null)
-    setProfileFotoCover(null)
     supabase?.from('fno_empleados')
       .select('foto, foto_cover')
       .eq('id', id)
       .maybeSingle()
       .then(({ data }) => {
         if (data) {
-          setProfileFoto((data.foto as string) ?? '')
-          setProfileFotoCover((data.foto_cover as string) ?? '')
+          setFotosDe({
+            id,
+            foto: (data.foto as string) ?? '',
+            cover: (data.foto_cover as string) ?? '',
+          })
         }
       })
   }, [id])
@@ -244,7 +250,7 @@ export default function EmpleadoDetailPage() {
       supabase?.storage.from('fno-media').remove([`fotos/${emp!.id}/perfil.jpg`]).catch(() => {})
     }
     updateEmpleado(emp!.id, { foto: '' })
-    setProfileFoto('')
+    setFotosDe(prev => prev && prev.id === emp!.id ? { ...prev, foto: '' } : prev)
     persistEmpleado({ foto: '' })
   }
 
@@ -282,7 +288,7 @@ export default function EmpleadoDetailPage() {
         }
 
         updateEmpleado(emp!.id, { foto: fotoValue })
-        setProfileFoto(fotoValue)
+        setFotosDe(prev => prev && prev.id === emp!.id ? { ...prev, foto: fotoValue } : prev)
         persistEmpleado({ foto: fotoValue })
       }
       img.src = e.target?.result as string

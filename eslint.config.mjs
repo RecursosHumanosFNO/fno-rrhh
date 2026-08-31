@@ -27,16 +27,25 @@ export default [
       '@next/next/no-img-element': 'warn',
       '@typescript-eslint/no-explicit-any': 'warn',
 
-      // Reglas nuevas que trae la config de Next 16 (era del React Compiler).
-      // Marcaban 11 errores en código que ya venía funcionando: efectos que
-      // llaman a setState de forma sincrónica, y un handler de click que arma
-      // un .xlsx mutando la hoja. Ninguno es un bug — son avisos de
-      // rendimiento y de compatibilidad con el compilador.
+      // Reglas del React Compiler que trae la config de Next 16. Eran 11
+      // avisos; quedan 9, y quedan a propósito. No son bugs:
       //
-      // Quedan en warn a propósito: refactorizar once hooks dentro del mismo
-      // PR que sube Next y React dos versiones mayores es la forma más segura
-      // de romper algo sin saber qué lo rompió. Vale la pena atacarlos después,
-      // por separado y de a poco.
+      //  · 8 son "setState sincrónico dentro de un efecto" en el mismo caso:
+      //    leer al montar algo que sólo existe en el navegador —el tema
+      //    guardado, si ya se vio la bienvenida, el permiso de notificaciones,
+      //    la sesión de Supabase—. En una app con render en el servidor ese ES
+      //    el patrón correcto: leerlo durante el render daría una marca
+      //    distinta en el servidor y en el cliente, y React tiraría un error de
+      //    hidratación. Sacarlos pide useSyncExternalStore, que es un cambio
+      //    real (uno de ellos vive en AuthContext) a cambio de nada visible.
+      //
+      //  · 1 es el exportador de .xlsx de estadísticas: los helpers mutan la
+      //    hoja, pero todo pasa dentro del handler del click, no durante el
+      //    render. Se saca moviendo 260 líneas fuera del componente; el día que
+      //    haya que tocar ese informe, conviene hacerlo ahí.
+      //
+      // Los dos que sí valía la pena arreglar ya se arreglaron (FotoRegistro y
+      // la ficha del empleado): eran estado que se podía derivar.
       'react-hooks/set-state-in-effect': 'warn',
       'react-hooks/immutability': 'warn',
     },

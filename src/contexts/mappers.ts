@@ -222,20 +222,6 @@ export function mapSupabaseToNotif(row: Record<string, unknown>): AppNotificatio
     url: (row.url as string) || undefined,
   }
 }
-export function mapNotifToSupabase(n: AppNotification, baseOnly = false) {
-  const base = {
-    id: n.id, texto: n.texto, leida: n.leida, fecha: n.fecha,
-    tipo: n.tipo, empleado_id: n.empleadoId ?? '',
-  }
-  if (baseOnly) return base
-  return {
-    ...base,
-    solo_admin: n.soloAdmin ?? false,
-    solo_empleado: n.soloEmpleado ?? false,
-    url: n.url ?? null,
-  }
-}
-
 // ── Mappers Supabase ↔ Evento ─────────────────────────────────────────────────
 export function mapSupabaseToEvento(row: Record<string, unknown>): Evento {
   return {
