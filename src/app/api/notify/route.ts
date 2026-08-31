@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import nodemailer from 'nodemailer'
 import { serviceClient, getRequester, esGestionPersonal } from '@/lib/serverAuth'
+import { esc, escaparValores, imagenSegura } from '@/lib/htmlMail'
 
 export const runtime = 'nodejs'
 
@@ -26,6 +27,7 @@ const ADMIN_EMAIL = 'rrhhfundacionnqnoeste@gmail.com'
 const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL ?? 'https://portalfno.com'
 
 const BRAND = '#23597e'
+
 
 function base(content: string) {
   return `
@@ -68,9 +70,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, reason: 'Invalid JSON' }, { status: 400 })
   }
 
-  const { type, data } = body
+  const { type, data: raw } = body
+  // `data` es la versión escapada: es la que usan todas las plantillas HTML.
+  const data = escaparValores(raw)
 
   // ── Autorización ─────────────────────────────────────────────────────────
+  // Se guarda fuera del bloque: password_changed lo usa para mandarle el aviso
+  // al dueño de la sesión y no a la dirección que venga en el body.
+  let requester: Awaited<ReturnType<typeof getRequester>> = null
   const internalKey = process.env.CRON_SECRET
   const esInterno = !!internalKey && req.headers.get('x-internal-key') === internalKey
 
@@ -80,7 +87,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, reason: 'No autorizado' }, { status: 401 })
     }
     const sb = serviceClient()
-    const requester = sb ? await getRequester(req, sb) : null
+    requester = sb ? await getRequester(req, sb) : null
     if (!requester) {
       return NextResponse.json({ ok: false, reason: 'No autorizado' }, { status: 401 })
     }
@@ -111,7 +118,7 @@ export async function POST(req: NextRequest) {
     if (type === 'new_registration') {
       await transporter.sendMail({
         from, to: ADMIN_EMAIL,
-        subject: `🔔 Nueva solicitud de acceso — ${data.nombre} ${data.apellido}`,
+        subject: `🔔 Nueva solicitud de acceso — ${raw.nombre} ${raw.apellido}`,
         html: base(`
           <h3 style="color:${BRAND};margin-top:0;">Nueva solicitud de acceso al portal</h3>
           <p style="color:#64748b;">Un empleado solicitó acceso al sistema y está pendiente de aprobación.</p>
@@ -132,7 +139,7 @@ export async function POST(req: NextRequest) {
     /* ── Registro aprobado ─────────────────────────────────────────── */
     else if (type === 'registration_approved') {
       await transporter.sendMail({
-        from, to: data.email,
+        from, to: raw.email,
         subject: `✅ ¡Tu acceso al Portal RRHH fue aprobado!`,
         html: base(`
           <h3 style="color:#10b981;margin-top:0;">¡Bienvenido/a al Portal RRHH!</h3>
@@ -153,7 +160,7 @@ export async function POST(req: NextRequest) {
     else if (type === 'alerta_sistema') {
       await transporter.sendMail({
         from, to: ADMIN_EMAIL,
-        subject: `⚠️ Falló: ${data.trabajo}`,
+        subject: `⚠️ Falló: ${raw.trabajo}`,
         html: base(`
           <h3 style="color:#dc2626;margin-top:0;">Un proceso automático falló</h3>
           <p style="color:#64748b;">El proceso <strong>${data.trabajo}</strong> terminó con error.</p>
@@ -166,7 +173,7 @@ export async function POST(req: NextRequest) {
     /* ── Registro rechazado ────────────────────────────────────────── */
     else if (type === 'registration_rejected') {
       await transporter.sendMail({
-        from, to: data.email,
+        from, to: raw.email,
         subject: `Actualización sobre tu solicitud — Portal RRHH FNO`,
         html: base(`
           <h3 style="color:${BRAND};margin-top:0;">Actualización de tu solicitud</h3>
@@ -187,7 +194,7 @@ export async function POST(req: NextRequest) {
         : ''
       await transporter.sendMail({
         from, to: ADMIN_EMAIL,
-        subject: `📋 Nueva solicitud — ${data.tipo} · ${data.nombre}`,
+        subject: `📋 Nueva solicitud — ${raw.tipo} · ${raw.nombre}`,
         html: base(`
           <h3 style="color:${BRAND};margin-top:0;">Nueva solicitud recibida</h3>
           <p style="color:#64748b;margin-top:0;">Un empleado envió una nueva solicitud que requiere tu revisión.</p>
@@ -209,8 +216,8 @@ export async function POST(req: NextRequest) {
     else if (type === 'solicitud_resuelta') {
       const aprobada = data.estado === 'aprobado'
       await transporter.sendMail({
-        from, to: data.email,
-        subject: `${aprobada ? '✅' : '❌'} Tu solicitud de ${data.tipo} fue ${aprobada ? 'aprobada' : 'rechazada'}`,
+        from, to: raw.email,
+        subject: `${aprobada ? '✅' : '❌'} Tu solicitud de ${raw.tipo} fue ${aprobada ? 'aprobada' : 'rechazada'}`,
         html: base(`
           <h3 style="color:${aprobada ? '#10b981' : '#ef4444'};margin-top:0;">
             Solicitud ${aprobada ? 'Aprobada ✅' : 'Rechazada ❌'}
@@ -234,8 +241,8 @@ export async function POST(req: NextRequest) {
     /* ── Recibo disponible → empleado ─────────────────────────────────────── */
     else if (type === 'recibo_disponible') {
       await transporter.sendMail({
-        from, to: data.email,
-        subject: `💰 Tu recibo de sueldo de ${data.periodo} está disponible`,
+        from, to: raw.email,
+        subject: `💰 Tu recibo de sueldo de ${raw.periodo} está disponible`,
         html: base(`
           <h3 style="color:${BRAND};margin-top:0;">Recibo de sueldo disponible</h3>
           <p>Hola <strong>${data.nombre}</strong>,</p>
@@ -250,8 +257,8 @@ export async function POST(req: NextRequest) {
     /* ── Ticket respondido → empleado ──────────────────────────────────────── */
     else if (type === 'ticket_respondido') {
       await transporter.sendMail({
-        from, to: data.email,
-        subject: `💬 RRHH respondió tu pedido: ${data.asunto}`,
+        from, to: raw.email,
+        subject: `💬 RRHH respondió tu pedido: ${raw.asunto}`,
         html: base(`
           <h3 style="color:${BRAND};margin-top:0;">Respuesta a tu pedido de RRHH</h3>
           <p>Hola <strong>${data.nombre}</strong>,</p>
@@ -267,19 +274,19 @@ export async function POST(req: NextRequest) {
 
     /* ── Notificación de evento → destinatarios o todo el equipo ──────────── */
     else if (type === 'evento_notificacion') {
-      const emails = (data.emails ?? '').split(',').map(e => e.trim()).filter(Boolean)
+      const emails = (raw.emails ?? '').split(',').map(e => e.trim()).filter(Boolean)
       if (emails.length > 0) {
         const esEdicion = data.esEdicion === '1'
         await transporter.sendMail({
           from, to: ADMIN_EMAIL, bcc: emails,
-          subject: `📅 ${esEdicion ? 'Evento actualizado' : 'Nuevo evento'}: ${data.titulo}`,
+          subject: `📅 ${esEdicion ? 'Evento actualizado' : 'Nuevo evento'}: ${raw.titulo}`,
           html: base(`
             <h3 style="color:${BRAND};margin-top:0;">📅 ${esEdicion ? 'Evento actualizado' : 'Nuevo evento en el calendario'}</h3>
             <div style="background:#f1f5f9;border-radius:8px;padding:16px;margin:20px 0;">
               <p style="margin:0 0 8px 0;font-weight:700;color:#1e293b;font-size:16px;">${data.titulo}</p>
               <p style="margin:0 0 8px 0;color:#475569;font-size:13px;">📆 ${data.fecha}${data.hora ? ` · 🕒 ${data.hora}` : ''}</p>
               ${data.descripcion ? `<p style="margin:0;color:#475569;white-space:pre-wrap;">${data.descripcion}</p>` : ''}
-              ${data.imagen ? `<img src="${data.imagen}" alt="" style="margin-top:12px;max-width:100%;border-radius:8px;display:block;" />` : ''}
+              ${imagenSegura(raw.imagen) ? `<img src="${esc(imagenSegura(raw.imagen))}" alt="" style="margin-top:12px;max-width:100%;border-radius:8px;display:block;" />` : ''}
             </div>
             ${btn('Ver en el calendario', `${PORTAL_URL}/dashboard/eventos`)}
           `),
@@ -289,18 +296,18 @@ export async function POST(req: NextRequest) {
 
     /* ── Novedad publicada → todos ─────────────────────────────────────────── */
     else if (type === 'novedad_publicada') {
-      const emails = (data.emails ?? '').split(',').map(e => e.trim()).filter(Boolean)
+      const emails = (raw.emails ?? '').split(',').map(e => e.trim()).filter(Boolean)
       await transporter.sendMail({
         from, to: ADMIN_EMAIL,
         bcc: emails.length > 0 ? emails : undefined,
-        subject: `📢 Nueva novedad publicada: ${data.titulo}`,
+        subject: `📢 Nueva novedad publicada: ${raw.titulo}`,
         html: base(`
           <h3 style="color:${BRAND};margin-top:0;">Nueva novedad publicada</h3>
           <p style="color:#64748b;">Se publicó una nueva novedad en el portal:</p>
           <div style="background:#f1f5f9;border-radius:8px;padding:16px;margin:20px 0;">
             <p style="margin:0 0 8px 0;font-weight:700;color:#1e293b;font-size:16px;">${data.titulo}</p>
             <p style="margin:0;color:#475569;white-space:pre-line;">${String(data.contenido ?? '').replace(/\n/g, '<br>')}</p>
-            ${data.imagen ? `<img src="${data.imagen}" alt="" style="margin-top:12px;max-width:100%;border-radius:8px;display:block;" />` : ''}
+            ${imagenSegura(raw.imagen) ? `<img src="${esc(imagenSegura(raw.imagen))}" alt="" style="margin-top:12px;max-width:100%;border-radius:8px;display:block;" />` : ''}
             <p style="margin:8px 0 0 0;color:#94a3b8;font-size:12px;">Publicado por ${data.autor}</p>
           </div>
           ${btn('Ver en el portal', `${PORTAL_URL}/dashboard/comunicaciones`)}
@@ -310,9 +317,9 @@ export async function POST(req: NextRequest) {
 
     /* ── Solicitud de reset de contraseña ──────────────────────────────────── */
     else if (type === 'reset_password') {
-      const resetUrl = `${PORTAL_URL}/reset-password?token=${data.token}`
+      const resetUrl = `${PORTAL_URL}/reset-password?token=${encodeURIComponent(raw.token ?? '')}`
       await transporter.sendMail({
-        from, to: data.email,
+        from, to: raw.email,
         subject: `🔑 Restablecer contraseña — Portal RRHH FNO`,
         html: base(`
           <h3 style="color:${BRAND};margin-top:0;">Restablecer contraseña</h3>
@@ -329,8 +336,14 @@ export async function POST(req: NextRequest) {
 
     /* ── Contraseña cambiada → empleado (aviso de seguridad) ───────────────── */
     else if (type === 'password_changed') {
+      // El destinatario sale de la sesión, no del body: si no, cualquier
+      // empleado logueado podía disparar mails con el sello de la Fundación a
+      // la dirección que quisiera. Cuando el aviso lo manda el flujo de reset
+      // (server-to-server, sin sesión) se cae al email del body, que en ese
+      // caso lo puso el propio servidor.
+      const destino = requester?.email ?? raw.email
       await transporter.sendMail({
-        from, to: data.email,
+        from, to: destino,
         subject: `🔒 Tu contraseña del Portal RRHH fue cambiada`,
         html: base(`
           <h3 style="color:${BRAND};margin-top:0;">Tu contraseña fue actualizada</h3>
@@ -353,7 +366,7 @@ export async function POST(req: NextRequest) {
           : 'Sin hora especificada'
       await transporter.sendMail({
         from, to: ADMIN_EMAIL,
-        subject: `📋 Registro de novedad — ${data.categoria} · ${data.empleadoNombre}`,
+        subject: `📋 Registro de novedad — ${raw.categoria} · ${raw.empleadoNombre}`,
         html: base(`
           <h3 style="color:${BRAND};margin-top:0;">Nuevo registro de novedad cargado</h3>
           <table style="width:100%;border-collapse:collapse;margin:20px 0;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
@@ -364,7 +377,7 @@ export async function POST(req: NextRequest) {
             ${row('Horario', horario)}
             ${data.descripcion ? row('Descripción', data.descripcion, true) : ''}
           </table>
-          ${data.fotoUrl ? `<img src="${data.fotoUrl}" alt="Foto adjunta" style="max-width:100%;border-radius:8px;display:block;margin:0 0 20px 0;" />` : ''}
+          ${imagenSegura(raw.fotoUrl) ? `<img src="${esc(imagenSegura(raw.fotoUrl))}" alt="Foto adjunta" style="max-width:100%;border-radius:8px;display:block;margin:0 0 20px 0;" />` : ''}
           ${btn('Ver en el portal', `${PORTAL_URL}/dashboard/novedades-internas`)}
         `),
       })
@@ -373,8 +386,8 @@ export async function POST(req: NextRequest) {
     /* ── Mensaje directo de RRHH al empleado ──────────────────────────────── */
     else if (type === 'mensaje_rrhh') {
       await transporter.sendMail({
-        from, to: data.email,
-        subject: `📋 Mensaje de RRHH: ${data.asunto}`,
+        from, to: raw.email,
+        subject: `📋 Mensaje de RRHH: ${raw.asunto}`,
         html: base(`
           <h3 style="color:${BRAND};margin-top:0;">Mensaje del área de RRHH</h3>
           <p>Hola <strong>${data.nombre}</strong>,</p>
