@@ -31,8 +31,11 @@ export async function POST(req: NextRequest) {
       'nombre', 'apellido', 'dni', 'cuil', 'fecha_nacimiento',
       'telefono', 'direccion', 'contacto_emergencia', 'cbu', 'banco',
       'foto', 'foto_cover',
-      // Info laboral editable por el propio empleado
-      'sector', 'cargo', 'jornada', 'supervisor', 'fecha_ingreso',
+      // Sector, cargo, supervisor y fecha de ingreso NO están: los define RRHH.
+      // Estaban, y con eso alguien podía auto-asignarse un cargo o adelantarse
+      // la antigüedad sin que nadie lo aprobara. La jornada queda porque es
+      // informativa y el empleado la carga al completar su perfil.
+      'jornada',
     ]
     // Admins pueden editar todo; empleados solo sus campos permitidos
     const update: Record<string, unknown> = { id: empleadoId }
