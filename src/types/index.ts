@@ -25,7 +25,17 @@ export interface DesvinculacionInfo {
   fechaRegistro: string                      // Cuándo se cargó en el sistema
 }
 
-export type SolicitudEstado = 'pendiente' | 'aprobado' | 'rechazado'
+// 'en_revision': RRHH ya la miró pero le falta información. Es el estado en el
+// que la solicitud queda mientras va y viene la conversación, hasta que se
+// pueda aprobar o rechazar de verdad.
+export type SolicitudEstado = 'pendiente' | 'en_revision' | 'aprobado' | 'rechazado'
+
+export interface MensajeSolicitud {
+  de: 'rrhh' | 'empleado'
+  texto: string
+  fecha: string        // ISO con hora
+  autor?: string       // nombre de quien escribió, para mostrarlo
+}
 
 export type SolicitudTipo =
   // Asistencia
@@ -198,6 +208,8 @@ export interface Solicitud {
   fechaResolucion?: string
   comentarioAdmin?: string
   adjunto?: string
+  // Ida y vuelta entre RRHH y el empleado mientras la solicitud sigue abierta.
+  conversacion?: MensajeSolicitud[]
 }
 
 export interface Novedad {

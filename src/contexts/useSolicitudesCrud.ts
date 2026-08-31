@@ -4,6 +4,7 @@ import { uid, hoyAR, SOLICITUD_TIPO_LABEL } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import { mapSolicitudToSupabase } from './mappers'
 import { sendEmail } from './email'
+import { authFetch } from '@/lib/authFetch'
 
 type AddNotification = (n: Omit<AppNotification, 'id' | 'fecha' | 'leida'>) => void
 
@@ -130,10 +131,66 @@ export function useSolicitudesCrud({ solicitudes, setSolicitudes, empleadosRef, 
     })
   }, [resolver])
 
+  /**
+   * Mensaje dentro de una solicitud abierta. Lo guarda el servidor
+   * (/api/solicitud-mensaje): la policy de UPDATE es sólo para admin, así que
+   * sin eso el empleado no podría contestar, y abrirle el UPDATE por RLS sería
+   * peor — es la misma regla que impide auto-aprobarse una licencia.
+   */
+  const responderSolicitud = useCallback(async (
+    id: string,
+    texto: string,
+    cerrarComo?: 'aprobado' | 'rechazado',
+  ): Promise<boolean> => {
+    const res = await authFetch('/api/solicitud-mensaje', {
+      method: 'POST',
+      body: JSON.stringify({ solicitudId: id, texto, cerrarComo }),
+    }).catch(() => null)
+    if (!res?.ok) return false
+    const { mensaje, estado } = await res.json()
+
+    setSolicitudes(prev => prev.map(s => s.id === id
+      ? {
+          ...s,
+          estado,
+          conversacion: [...(s.conversacion ?? []), mensaje],
+          ...(cerrarComo ? { comentarioAdmin: mensaje.texto, fechaResolucion: hoyAR() } : {}),
+        }
+      : s
+    ))
+
+    const sol = solicitudes.find(s => s.id === id)
+    if (!sol) return true
+    const emp = empleadosRef.current.find(e => e.id === sol.empleadoId)
+    const nombreEmp = emp ? `${emp.nombre} ${emp.apellido}` : 'el empleado'
+
+    if (mensaje.de === 'rrhh') {
+      addNotification({
+        texto: cerrarComo
+          ? `Tu solicitud fue ${cerrarComo === 'aprobado' ? 'aprobada ✓' : 'rechazada'}`
+          : 'RRHH respondió tu solicitud y necesita más información',
+        tipo: 'solicitud', empleadoId: sol.empleadoId, soloEmpleado: true,
+        url: '/dashboard/solicitudes',
+      })
+      if (emp?.email && cerrarComo) {
+        sendEmail('solicitud_resuelta', {
+          email: emp.email, nombre: nombreEmp, tipo: label(sol.tipo),
+          estado: cerrarComo, comentario: mensaje.texto,
+        })
+      }
+    } else {
+      addNotification({
+        texto: `${nombreEmp} respondió en su solicitud de ${label(sol.tipo)}`,
+        tipo: 'solicitud', soloAdmin: true, url: '/dashboard/solicitudes',
+      })
+    }
+    return true
+  }, [solicitudes, setSolicitudes, addNotification, empleadosRef])
+
   const cancelSolicitud = useCallback((id: string) => {
     setSolicitudes(prev => prev.filter(s => s.id !== id))
     if (supabase) supabase.from('fno_solicitudes').delete().eq('id', id).then()
   }, [setSolicitudes])
 
-  return { addSolicitud, approveSolicitud, rejectSolicitud, editSolicitud, cancelSolicitud }
+  return { addSolicitud, approveSolicitud, rejectSolicitud, editSolicitud, cancelSolicitud, responderSolicitud }
 }
