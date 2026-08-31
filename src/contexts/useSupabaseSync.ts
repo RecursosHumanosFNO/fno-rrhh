@@ -64,8 +64,13 @@ export function useSupabaseSync(setters: Setters) {
     try {
       const [usersRes, pendingRes, empRes, solRes, recRes, novRes, tickRes, notifRes, evtRes, firmasRes, regNovRes, detalleRes] = await Promise.all([
         supabase.from('fno_users').select('id, email, role, empleado_id'),
-        // Sin `password`: la contraseña ya no se guarda (ver usePendingRegistrationsCrud).
-        supabase.from('fno_pending').select('id, nombre, apellido, dni, email, sector, cargo, telefono, fecha_solicitud'),
+        // Los registros pendientes traen DNI y teléfono, y este sync corre
+        // también en /login y /registro, sin sesión: por eso ya no salen por la
+        // anon key sino por una ruta que mira el rol en el JWT y le devuelve
+        // una lista vacía a quien no maneja RRHH.
+        authFetch('/api/pendientes')
+          .then(r => r.ok ? r.json() : null)
+          .catch(() => null),
         // Sólo el directorio: lo que cualquier compañero legítimamente
         // necesita (nombre, sector, cargo, foto, cumpleaños). El DNI, el CBU,
         // la dirección y la desvinculación salieron de acá y llegan por
@@ -99,7 +104,7 @@ export function useSupabaseSync(setters: Setters) {
       // Supabase es siempre la fuente de verdad — actualizar aunque el array
       // venga vacío, porque así se reflejan también los borrados.
       if (usersRes.data) s.setUsers(usersRes.data.map(mapSupabaseToUser))
-      if (pendingRes.data) s.setPending(pendingRes.data.map(mapSupabaseToPending))
+      if (Array.isArray(pendingRes)) s.setPending(pendingRes.map(mapSupabaseToPending))
       if (empRes.data) {
         const directorio = empRes.data.map(r => mapSupabaseToEmpleado(r as Record<string, unknown>))
         const detalle = (detalleRes as { empleados?: DetalleEmpleado[] } | null)?.empleados

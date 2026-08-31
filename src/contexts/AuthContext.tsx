@@ -16,7 +16,7 @@ interface AuthContextType extends AuthState {
 const AuthContext = createContext<AuthContextType | null>(null)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { empleados, pendingRegistrations, updateEmpleado: updateEmpData } = useData()
+  const { empleados, updateEmpleado: updateEmpData } = useData()
 
   const [auth, setAuth] = useState<AuthState>({
     user: null,
@@ -162,9 +162,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   ): Promise<'ok' | 'pendiente' | 'error' | 'timeout' | 'desactivada'> => {
     const normalEmail = email.toLowerCase().trim()
 
-    // Verificar pendientes (lista local, sin contraseñas)
-    const pending = pendingRegistrations.find(p => p.email === normalEmail)
-    if (pending) return 'pendiente'
+    // ¿Tiene una solicitud de acceso esperando aprobación? La lista ya no se
+    // baja al navegador (traía DNI y teléfono de todos), así que se pregunta por
+    // este email y nada más. Si la consulta falla, seguimos con el login normal.
+    const esPendiente = await fetch('/api/pendientes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: normalEmail }),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => d?.pendiente === true)
+      .catch(() => false)
+    if (esPendiente) return 'pendiente'
 
     if (!supabase) return 'error'
 
@@ -215,7 +224,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       return 'error'
     }
-  }, [pendingRegistrations, empleados, loadProfile])
+  }, [empleados, loadProfile])
 
   const logout = useCallback(() => {
     marcarRecordar(false)

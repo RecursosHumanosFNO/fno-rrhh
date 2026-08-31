@@ -46,6 +46,20 @@ export async function getRequester(req: NextRequest, sb: SupabaseClient): Promis
     .eq('auth_id', user.id)
     .maybeSingle()
   if (!row) return null
+
+  // Un empleado dado de baja no puede seguir operando. El chequeo de
+  // `estado === 'inactivo'` vivía sólo en el cliente, DESPUÉS de que Supabase ya
+  // había emitido un token válido: con ese token en la mano —sin ejecutar el JS
+  // del portal— la persona seguía entrando a todas estas rutas. Acá se corta
+  // para todas de una vez.
+  if (row.empleado_id) {
+    const { data: emp } = await sb
+      .from('fno_empleados')
+      .select('estado')
+      .eq('id', row.empleado_id)
+      .maybeSingle()
+    if (emp?.estado === 'inactivo') return null
+  }
   return {
     authId: user.id,
     email: user.email ?? null,
