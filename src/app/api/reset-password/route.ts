@@ -106,8 +106,10 @@ export async function PUT(req: NextRequest) {
   if (!token || !password) {
     return NextResponse.json({ ok: false, error: 'Token y contraseña requeridos' }, { status: 400 })
   }
-  if (password.length < 6) {
-    return NextResponse.json({ ok: false, error: 'La contraseña debe tener al menos 6 caracteres' }, { status: 400 })
+  // Diez y no seis: seis caracteres se prueban por fuerza bruta en minutos, y
+  // esta contraseña abre recibos de sueldo y datos personales de terceros.
+  if (password.length < 10) {
+    return NextResponse.json({ ok: false, error: 'La contraseña debe tener al menos 10 caracteres' }, { status: 400 })
   }
 
   const supabase = getSupabase()

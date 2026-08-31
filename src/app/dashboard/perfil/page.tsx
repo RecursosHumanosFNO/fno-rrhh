@@ -6,7 +6,6 @@ import { supabase } from '@/lib/supabase'
 import { authFetch } from '@/lib/authFetch'
 import { formatFecha, calcularAntiguedad, calcularEdad } from '@/lib/utils'
 import type { Empleado } from '@/types'
-import { SECTORES, CARGOS_POR_SECTOR } from '@/lib/mockData'
 import {
   User, Edit2, Save, X, Lock, Building2, Phone, Mail,
   Clock, CheckCircle2, Eye, EyeOff, Camera, Image as ImageIcon,
@@ -108,11 +107,10 @@ export default function PerfilPage() {
       },
       cbu: form.cbu,
       banco: form.banco,
-      sector: form.sector,
-      cargo: form.cargo,
       jornada: form.jornada,
-      supervisor: form.supervisor,
-      fecha_ingreso: form.fechaIngreso,
+      // Sector, cargo, supervisor y fecha de ingreso no se mandan: los define
+      // RRHH y la ruta los ignora para un empleado. Mandarlos igual haría que
+      // la pantalla mostrara un cambio que la base nunca guardó.
       // Las fotos se guardan al subirlas (handlePhotoUpload) — no incluirlas
       // acá para evitar que un upsert con valor vacío/stale las pise.
     }
@@ -135,8 +133,8 @@ export default function PerfilPage() {
         nombre: form.nombre, apellido: form.apellido, dni: form.dni, cuil: form.cuil,
         fechaNacimiento: form.fechaNacimiento, telefono: form.telefono, direccion: form.direccion,
         contactoEmergencia: { nombre: form.contactoNombre, telefono: form.contactoTelefono, relacion: form.contactoRelacion },
-        cbu: form.cbu, banco: form.banco, sector: form.sector, cargo: form.cargo,
-        jornada: form.jornada as Empleado['jornada'], supervisor: form.supervisor, fechaIngreso: form.fechaIngreso,
+        cbu: form.cbu, banco: form.banco,
+        jornada: form.jornada as Empleado['jornada'],
       })
       setEditMode(false)
       setSaveOk(true)
@@ -249,8 +247,8 @@ export default function PerfilPage() {
   }
 
   async function handlePasswordChange() {
-    if (passForm.nueva.length < 6) {
-      setPassMsg({ type: 'err', msg: 'La nueva contraseña debe tener al menos 6 caracteres.' })
+    if (passForm.nueva.length < 10) {
+      setPassMsg({ type: 'err', msg: 'La nueva contraseña debe tener al menos 10 caracteres.' })
       return
     }
     if (passForm.nueva !== passForm.confirm) {
@@ -300,7 +298,7 @@ export default function PerfilPage() {
   }
 
   // Validaciones en vivo del formulario de contraseña
-  const nuevaCorta = passForm.nueva.length > 0 && passForm.nueva.length < 6
+  const nuevaCorta = passForm.nueva.length > 0 && passForm.nueva.length < 10
   const confirmNoCoincide = passForm.confirm.length > 0 && passForm.nueva !== passForm.confirm
   const passFormValido = passForm.nueva.length >= 6 && passForm.nueva === passForm.confirm
 
@@ -519,26 +517,14 @@ export default function PerfilPage() {
             <div className="space-y-2.5">
               <div className="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-800">
                 <span className="text-xs text-slate-500 dark:text-slate-400">Sector</span>
-                {editMode
-                  ? <select className="form-select text-sm max-w-[55%]" value={form.sector} onChange={e => setForm(f => ({ ...f, sector: e.target.value, cargo: '' }))}>
-                      {SECTORES.map(s => <option key={s}>{s}</option>)}
-                    </select>
-                  : <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.sector}</span>}
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.sector}</span>
               </div>
               <div className="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-xs text-slate-500 dark:text-slate-400">Cargo</span>
-                {editMode
-                  ? <select className="form-select text-sm max-w-[55%]" value={form.cargo} onChange={e => setForm(f => ({ ...f, cargo: e.target.value }))}>
-                      <option value="">Seleccionar</option>
-                      {(CARGOS_POR_SECTOR[form.sector] ?? []).map(c => <option key={c}>{c}</option>)}
-                    </select>
-                  : <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.cargo}</span>}
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.cargo}</span>
               </div>
               <div className="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-800">
                 <span className="text-xs text-slate-500 dark:text-slate-400">Fecha de ingreso</span>
-                {editMode
-                  ? <input className="form-input text-sm max-w-[55%]" type="date" value={form.fechaIngreso} onChange={e => setForm(f => ({ ...f, fechaIngreso: e.target.value }))} />
-                  : <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{formatFecha(empleado.fechaIngreso)}</span>}
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{formatFecha(empleado.fechaIngreso)}</span>
               </div>
               <div className="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-800">
                 <span className="text-xs text-slate-500 dark:text-slate-400">Jornada</span>
@@ -550,11 +536,13 @@ export default function PerfilPage() {
               </div>
               <div className="flex justify-between items-center py-1.5">
                 <span className="text-xs text-slate-500 dark:text-slate-400">Supervisor/a</span>
-                {editMode
-                  ? <input className="form-input text-sm max-w-[55%]" value={form.supervisor} onChange={e => setForm(f => ({ ...f, supervisor: e.target.value }))} />
-                  : <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.supervisor || '—'}</span>}
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.supervisor || '—'}</span>
               </div>
             </div>
+            <p className="text-xs text-slate-400 mt-3">
+              Sector, cargo, fecha de ingreso y supervisor/a los define RRHH. Si algo
+              no coincide, escribinos desde Portal RRHH y lo corregimos.
+            </p>
           </div>
 
           {/* Datos bancarios */}
@@ -635,7 +623,7 @@ export default function PerfilPage() {
                   {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              {nuevaCorta && <p className="text-xs text-red-500 mt-1">Debe tener al menos 6 caracteres.</p>}
+              {nuevaCorta && <p className="text-xs text-red-500 mt-1">Debe tener al menos 10 caracteres.</p>}
             </div>
             <div>
               <label className="form-label">Confirmar nueva contraseña</label>
