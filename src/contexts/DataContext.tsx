@@ -9,7 +9,7 @@ import type {
 import * as initial from '@/lib/mockData'
 import { uid, ahoraISO } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
-import { mapNotifToSupabase } from './mappers'
+import { authFetch } from '@/lib/authFetch'
 import { useSupabaseSync } from './useSupabaseSync'
 import { useRealtime } from './useRealtime'
 import type { Setters } from './setters'
@@ -136,18 +136,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     // en cualquier orden.
     const notif: AppNotification = { ...n, id: uid(), fecha: ahoraISO(), leida: false }
     setNotifications(prev => [notif, ...prev])
-    if (supabase) {
-      const sb = supabase
-      sb.from('fno_notifs').insert(mapNotifToSupabase(notif)).then(({ error }) => {
-        if (error) {
-          console.warn('[supabase] insert fno_notifs (full):', error.message, error.code)
-          // Retry sin columnas nuevas (por si la migración SQL todavía no se corrió)
-          sb.from('fno_notifs').insert(mapNotifToSupabase(notif, true)).then(({ error: e2 }) => {
-            if (e2) console.error('[supabase] insert fno_notifs (base):', e2.message, e2.code)
-          })
-        }
-      })
-    }
+    // La inserción va por el servidor: desde el navegador hacía falta que la
+    // policy fuera `with check (true)` —es el empleado quien crea el aviso para
+    // RRHH al mandar una solicitud—, y con eso cualquiera podía inventarle una
+    // notificación a otro. La ruta valida quién puede avisarle a quién.
+    authFetch('/api/notificacion', {
+      method: 'POST',
+      body: JSON.stringify({ notif }),
+    }).then(res => {
+      if (!res.ok) console.error('[notificacion] no se pudo guardar:', res.status)
+    }).catch(err => console.error('[notificacion]', err))
   }, [])
 
   // ── Empleados ──────────────────────────────────────────────────────────────

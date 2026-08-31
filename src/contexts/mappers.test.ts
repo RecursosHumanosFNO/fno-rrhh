@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   mapSupabaseToEmpleado, mapEmpleadoToSupabase,
-  mapSupabaseToSolicitud, mapSupabaseToNotif, mapNotifToSupabase,
+  mapSupabaseToSolicitud, mapSupabaseToNotif,
   mapSupabaseToUser, mapSupabaseToPending, mapSupabaseToFirma,
   mapSolicitudToSupabase,
 } from './mappers'
@@ -80,26 +80,6 @@ describe('mapSupabaseToSolicitud', () => {
   })
 })
 
-describe('mapNotifToSupabase', () => {
-  const notif: AppNotification = {
-    id: 'n1', texto: 'Hola', leida: false, fecha: '2026-01-01',
-    tipo: 'novedad', url: '/dashboard/recibos',
-  }
-
-  it('incluye las columnas nuevas por defecto', () => {
-    const row = mapNotifToSupabase(notif) as Record<string, unknown>
-    expect(row.url).toBe('/dashboard/recibos')
-    expect(row.solo_admin).toBe(false)
-  })
-
-  it('las omite en modo base, que es el reintento cuando falta la migración', () => {
-    const row = mapNotifToSupabase(notif, true) as Record<string, unknown>
-    expect('url' in row).toBe(false)
-    expect('solo_admin' in row).toBe(false)
-    // Lo esencial tiene que seguir estando para que el insert sirva.
-    expect(row.texto).toBe('Hola')
-  })
-})
 
 describe('mapSupabaseToNotif', () => {
   it('deja la url en undefined si la columna todavía no existe', () => {

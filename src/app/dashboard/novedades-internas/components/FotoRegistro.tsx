@@ -18,14 +18,18 @@ export function FotoRegistro({ fotoUrl, className, onAbrir }: {
   onAbrir?: (url: string) => void
 }) {
   const esLegacy = fotoUrl.startsWith('http')
-  const [url, setUrl] = useState(esLegacy ? fotoUrl : '')
+  // Las viejas son URLs públicas y ya están listas: se derivan, no se guardan
+  // en estado. Antes se copiaban con un setState dentro del efecto, que además
+  // dejaba el valor viejo un render de más si cambiaba la prop.
+  const [urlFirmada, setUrlFirmada] = useState('')
+  const url = esLegacy ? fotoUrl : urlFirmada
 
   useEffect(() => {
-    if (esLegacy) { setUrl(fotoUrl); return }
+    if (esLegacy) return
     let vigente = true
     authFetch(`/api/registro-foto?path=${encodeURIComponent(fotoUrl)}`)
       .then(r => r.json())
-      .then(d => { if (vigente && d?.url) setUrl(d.url) })
+      .then(d => { if (vigente && d?.url) setUrlFirmada(d.url) })
       .catch(() => { /* sin foto es preferible a romper la lista */ })
     return () => { vigente = false }
   }, [fotoUrl, esLegacy])
