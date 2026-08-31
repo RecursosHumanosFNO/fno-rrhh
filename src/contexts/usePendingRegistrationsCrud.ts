@@ -113,9 +113,10 @@ export function usePendingRegistrationsCrud({
   const refreshPending = useCallback(async () => {
     if (!supabase) return
     try {
-      const { data } = await supabase.from('fno_pending')
-        .select('id, nombre, apellido, dni, email, sector, cargo, telefono, fecha_solicitud')
-      if (data) setPending(data.map(mapSupabaseToPending))
+      const res = await authFetch('/api/pendientes')
+      if (!res.ok) return
+      const data = await res.json()
+      if (Array.isArray(data)) setPending(data.map(mapSupabaseToPending))
     } catch (e) { console.error('[sync] refreshPending error:', e) }
   }, [setPending])
 
