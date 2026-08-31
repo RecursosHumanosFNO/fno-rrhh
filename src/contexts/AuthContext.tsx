@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import type { User, Empleado, AuthState, UserRole } from '@/types'
 import { useData } from './DataContext'
 import { supabase } from '@/lib/supabase'
+import { marcarRecordar } from '@/lib/authStorage'
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string, remember: boolean) => Promise<'ok' | 'pendiente' | 'error' | 'timeout' | 'desactivada'>
@@ -59,16 +60,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // signOut), igual bajamos isLoading — de lo contrario el spinner queda infinito.
         try {
           if (session?.user) {
-            // Si no hay "recordar sesión" activo ni marca de sesión activa en esta pestaña,
-            // significa que el usuario cerró el navegador sin marcar "recordar" y la sesión
-            // quedó guardada en localStorage. La invalidamos.
-            const remember = localStorage.getItem('fno_remember') === '1'
-            const sessionActive = sessionStorage.getItem('fno_session_active') === '1'
-            if (!remember && !sessionActive) {
-              await supabase!.auth.signOut()
-              setAuth({ user: null, empleado: null, isAuthenticated: false })
-              return
-            }
+            // Acá ya no se decide nada sobre "recordar sesión": si Supabase
+            // pudo restaurar la sesión es porque estaba donde tenía que estar
+            // (ver src/lib/authStorage.ts). Antes había un signOut() en este
+            // punto que, ante cualquier flag perdido, echaba a un usuario con
+            // sesión válida.
             const user = await loadProfile(session.user.id)
             if (user) {
               setAuth(prev => ({
@@ -178,20 +174,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Guardar flags ANTES de llamar a Supabase: onAuthStateChange dispara un
       // setTimeout(0) durante signInWithPassword y necesita leer estos flags ya
       // presentes, o de lo contrario los ve vacíos y llama signOut() (race condition).
-      if (remember) {
-        localStorage.setItem('fno_remember', '1')
-        sessionStorage.removeItem('fno_session_active')
-      } else {
-        localStorage.removeItem('fno_remember')
-        sessionStorage.setItem('fno_session_active', '1')
-      }
+      // Tiene que quedar marcado ANTES de pedirle la sesión a Supabase: es lo
+      // que decide en qué storage se guarda el token.
+      marcarRecordar(remember)
 
       const attempt = (async (): Promise<'ok' | 'error' | 'desactivada'> => {
         const { data, error } = await supabase!.auth.signInWithPassword({ email: normalEmail, password })
         if (error || !data.user) {
-          // Limpiar flags si el login falla
-          localStorage.removeItem('fno_remember')
-          sessionStorage.removeItem('fno_session_active')
+          marcarRecordar(false)
           return 'error'
         }
         // Cargar el perfil y dejar la sesión lista ANTES de devolver 'ok'.
@@ -228,8 +218,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [pendingRegistrations, empleados, loadProfile])
 
   const logout = useCallback(() => {
-    localStorage.removeItem('fno_remember')
-    sessionStorage.removeItem('fno_session_active')
+    marcarRecordar(false)
     if (supabase) supabase.auth.signOut().catch(() => {})
     setAuth({ user: null, empleado: null, isAuthenticated: false })
   }, [])

@@ -16,7 +16,10 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [remember, setRemember] = useState(false)
+  // Viene tildado: es un portal interno que se usa desde el celular propio, y
+  // el default anterior (destildado) hacía que la sesión se perdiera al cerrar
+  // la app salvo que alguien se acordara de marcarlo.
+  const [remember, setRemember] = useState(true)
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
