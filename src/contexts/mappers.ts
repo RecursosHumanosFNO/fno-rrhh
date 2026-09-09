@@ -238,6 +238,9 @@ export function mapSupabaseToEvento(row: Record<string, unknown>): Evento {
     importante: (row.importante as boolean) ?? false,
     fijado: (row.fijado as boolean) ?? false,
     destinatarios: (row.destinatarios as string[]) ?? [],
+    repeticion: (row.repeticion as Evento['repeticion']) || undefined,
+    repeticionCada: (row.repeticion_cada as number) || undefined,
+    repeticionHasta: (row.repeticion_hasta as string) || undefined,
   }
 }
 export function mapEventoToSupabase(e: Evento, baseOnly = false) {
@@ -258,6 +261,11 @@ export function mapEventoToSupabase(e: Evento, baseOnly = false) {
     // rechazaría el string vacío y haría fallar todo el insert en silencio
     // (mismo criterio que las fechas opcionales de Solicitud).
     hora: e.hora || null,
+    // Repetición: null y no '' por el mismo motivo que la hora — la columna de
+    // fecha rechaza el string vacío.
+    repeticion: e.repeticion ?? null,
+    repeticion_cada: e.repeticion ? (e.repeticionCada ?? 1) : null,
+    repeticion_hasta: e.repeticionHasta || null,
   }
 }
 

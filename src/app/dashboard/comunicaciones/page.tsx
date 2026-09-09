@@ -20,7 +20,10 @@ import type { NovedadCategoria, Novedad, Evento, EventoTipo } from '@/types'
 const EVENTO_TIPOS_SET = new Set([
   'feriado', 'jornada', 'acto', 'capacitacion', 'reunion',
   'receso', 'proyecto', 'institucional', 'reunion_padres',
-  'examen', 'inscripciones', 'salida', 'religioso', 'otro',
+  'examen', 'inscripciones', 'salida', 'religioso',
+  'conmemoracion', 'efemeride', 'boletines', 'graduacion',
+  'deportivo', 'cultural', 'campana', 'administrativo',
+  'mantenimiento', 'simulacro', 'gremial', 'otro',
 ])
 
 type DisplayItem =
@@ -50,7 +53,10 @@ type NotifyChannel = 'app' | 'email'
 const TIPOS_EVENTO: EventoTipo[] = [
   'jornada', 'acto', 'capacitacion', 'reunion', 'receso',
   'proyecto', 'institucional', 'reunion_padres', 'examen',
-  'inscripciones', 'salida', 'religioso', 'otro',
+  'inscripciones', 'salida', 'religioso',
+  'conmemoracion', 'efemeride', 'boletines', 'graduacion',
+  'deportivo', 'cultural', 'campana', 'administrativo',
+  'mantenimiento', 'simulacro', 'gremial', 'otro',
 ]
 
 const FORM_INICIAL = {

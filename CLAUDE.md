@@ -11,10 +11,11 @@ Portal de Recursos Humanos de la Fundación Neuquén Oeste (FNO). Sistema intern
 ```bash
 npm run dev       # Development server at http://localhost:3000
 npm run build     # Production build. Runs `next build --webpack` a propósito:
-                  # next-pwa es un plugin de webpack y con Turbopack (el default
-                  # desde Next 16) no falla — simplemente NO genera public/sw.js,
-                  # y como está gitignoreado, en Vercel las push dejan de andar
-                  # sin ningún error visible.
+                  # Serwist (el que genera el service worker, ex next-pwa) es un
+                  # plugin de webpack y con Turbopack (el default desde Next 16)
+                  # no falla — simplemente NO genera public/sw.js, y como está
+                  # gitignoreado, en Vercel las push dejan de andar sin ningún
+                  # error visible. El worker se escribe en src/app/sw.ts.
 npm run lint      # ESLint check
 ```
 
@@ -98,7 +99,7 @@ RLS is enabled on all tables. Service role key bypasses RLS (server-side only).
 | `fno_recibos` | Payroll receipt metadata + storage URLs |
 | `fno_recibo_firmas` | Receipt signature audit trail |
 | `fno_novedades` | News/communications |
-| `fno_eventos` | Calendar events (DB = custom; code = fixed holidays in `mockData.ts`) |
+| `fno_eventos` | Calendar events (DB = custom; code = fixed holidays in `mockData.ts`). Los que se repiten guardan UNA fila + cómo se repiten; las ocurrencias se calculan en `src/lib/recurrencia.ts` |
 | `fno_tickets` | RRHH portal requests |
 | `fno_notifs` | In-app notifications |
 | `fno_pending` | Pending registration queue |

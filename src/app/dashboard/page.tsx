@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { expandirEventos } from '@/lib/recurrencia'
 import {
   SOLICITUD_ESTADO_COLOR, SOLICITUD_ESTADO_LABEL, SOLICITUD_TIPO_LABEL,
   NOVEDAD_CATEGORIA_COLOR, NOVEDAD_CATEGORIA_LABEL, formatFecha, formatMes,
@@ -144,8 +145,10 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
   const cumpleProximo = todosCumples.filter(({ cumple }) => cumple > finSemana)
 
   // ── Próximos feriados (30 días) ───────────────────────────────────────────
-  const proximosFeriados = eventos
-    .filter(ev => ev.tipo === 'feriado' && ev.fecha >= hoyStr && ev.fecha <= en30Str)
+  // expandirEventos: un feriado cargado como "se repite todos los años" tiene
+  // una sola fila, con la fecha del año en que se creó.
+  const proximosFeriados = expandirEventos(eventos, hoyStr, en30Str)
+    .filter(ev => ev.tipo === 'feriado')
     .sort((a, b) => a.fecha.localeCompare(b.fecha))
 
   function parseFecha(f: string) { return new Date(f + 'T00:00:00') }
