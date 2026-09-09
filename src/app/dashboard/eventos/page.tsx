@@ -9,11 +9,12 @@ import ImageLightbox from '@/components/ImageLightbox'
 import Linkify from '@/components/Linkify'
 import { comprimirImagen } from '@/lib/comprimirImagen'
 import { parseLocalDate, EVENTO_TIPO_LABEL, EVENTO_TIPO_COLOR, EVENTO_TIPO_DOT, formatFecha, hoyAR } from '@/lib/utils'
-import type { EventoTipo, Evento, NovedadCategoria } from '@/types'
+import { expandirEventos, textoRepeticion, REPETICION_LABEL } from '@/lib/recurrencia'
+import type { EventoTipo, Evento, EventoRepeticion, NovedadCategoria } from '@/types'
 import {
   Calendar, PartyPopper, Plus, ChevronLeft, ChevronRight,
   Edit2, Trash2, X, Save, Image as ImageIcon, Loader2,
-  Paperclip, Download, Pin, Bell, Mail, Lock, Users, Megaphone,
+  Paperclip, Download, Pin, Bell, Mail, Lock, Users, Megaphone, Repeat,
 } from 'lucide-react'
 
 type NotifyChannel = 'app' | 'email'
@@ -22,7 +23,15 @@ type EventoForm = Omit<Evento, 'id'> & {
   addToComunicaciones: boolean
 }
 
-const TIPOS_EVENTO: EventoTipo[] = ['feriado', 'jornada', 'acto', 'capacitacion', 'reunion', 'receso', 'proyecto', 'institucional', 'reunion_padres', 'examen', 'inscripciones', 'salida', 'religioso', 'otro']
+// Agrupados para que el select no sea una lista de veinte cosas sueltas.
+const GRUPOS_TIPO_EVENTO: { grupo: string; tipos: EventoTipo[] }[] = [
+  { grupo: 'Fechas especiales', tipos: ['conmemoracion', 'efemeride', 'feriado', 'religioso', 'acto'] },
+  { grupo: 'Vida escolar', tipos: ['jornada', 'proyecto', 'examen', 'boletines', 'inscripciones', 'graduacion', 'salida'] },
+  { grupo: 'Encuentros', tipos: ['reunion', 'reunion_padres', 'capacitacion', 'institucional'] },
+  { grupo: 'Actividades', tipos: ['deportivo', 'cultural', 'campana'] },
+  { grupo: 'Operativos', tipos: ['administrativo', 'mantenimiento', 'simulacro', 'gremial', 'receso', 'otro'] },
+]
+const TIPOS_EVENTO: EventoTipo[] = GRUPOS_TIPO_EVENTO.flatMap(g => g.tipos)
 
 // Fondo de celda del calendario (más saturado que el badge para que se vea bien)
 const EVENTO_TIPO_CELL_BG: Record<EventoTipo, string> = {
@@ -39,6 +48,17 @@ const EVENTO_TIPO_CELL_BG: Record<EventoTipo, string> = {
   inscripciones: 'bg-teal-200 dark:bg-teal-900/60',
   salida:        'bg-lime-200 dark:bg-lime-900/60',
   religioso:     'bg-violet-200 dark:bg-violet-900/60',
+  conmemoracion: 'bg-fuchsia-200 dark:bg-fuchsia-900/60',
+  efemeride:     'bg-sky-200 dark:bg-sky-900/60',
+  boletines:     'bg-yellow-200 dark:bg-yellow-900/60',
+  graduacion:    'bg-amber-300 dark:bg-amber-900/60',
+  deportivo:     'bg-green-300 dark:bg-green-900/60',
+  cultural:      'bg-pink-200 dark:bg-pink-900/60',
+  campana:       'bg-orange-300 dark:bg-orange-900/60',
+  administrativo:'bg-stone-200 dark:bg-stone-800/80',
+  mantenimiento: 'bg-zinc-200 dark:bg-zinc-800/80',
+  simulacro:     'bg-red-300 dark:bg-red-900/60',
+  gremial:       'bg-neutral-300 dark:bg-neutral-700/80',
   otro:          'bg-slate-200 dark:bg-slate-700/80',
 }
 
@@ -169,18 +189,23 @@ export default function EventosPage() {
   const aniversarioPortal = useMemo(() => makeAniversario(viewAnio), [viewAnio])
 
   // ── Eventos del mes visible (incluyendo aniversario si es junio) ──────────
+  // Los eventos que se repiten se expanden al rango del mes que se está viendo:
+  // en la base hay una sola fila (ver src/lib/recurrencia.ts).
   const eventosMes = useMemo(() => {
-    const base = eventosVisibles.filter(ev => {
-      const f = parseLocalDate(ev.fecha)
-      return f.getFullYear() === viewAnio && f.getMonth() === viewMes
-    })
+    const ultimo = new Date(viewAnio, viewMes + 1, 0).getDate()
+    const mm = String(viewMes + 1).padStart(2, '0')
+    const base = expandirEventos(
+      eventosVisibles,
+      `${viewAnio}-${mm}-01`,
+      `${viewAnio}-${mm}-${String(ultimo).padStart(2, '0')}`,
+    )
     return viewMes === 5 ? [...base, aniversarioPortal] : base
   }, [eventosVisibles, viewAnio, viewMes, aniversarioPortal])
 
   // ── Eventos del día seleccionado ──────────────────────────────────────────
   const eventosDia = useMemo(() => {
     if (!selectedDay) return []
-    const base = eventosVisibles.filter(ev => ev.fecha === selectedDay)
+    const base = expandirEventos(eventosVisibles, selectedDay, selectedDay)
     return selectedDay === `${viewAnio}-06-09` ? [...base, aniversarioPortal] : base
   }, [eventosVisibles, selectedDay, viewAnio, aniversarioPortal])
 
@@ -202,13 +227,19 @@ export default function EventosPage() {
     setDestSearch('')
     setModal({ mode: 'add', fechaDefault })
   }
-  function openEdit(ev: Evento) {
+  function openEdit(evClickeado: Evento) {
+    // Si lo que se tocó es una repetición, hay que editar el evento original:
+    // la copia expandida trae la fecha de ESA ocurrencia, y guardarla movería
+    // el arranque de toda la serie al año que se estaba mirando.
+    const ev = eventos.find(e => e.id === evClickeado.id) ?? evClickeado
     setForm({
       titulo: ev.titulo, fecha: ev.fecha, hora: ev.hora, tipo: ev.tipo,
       descripcion: ev.descripcion ?? '', imagen: ev.imagen,
       adjuntoUrl: ev.adjuntoUrl, adjuntoNombre: ev.adjuntoNombre,
       importante: ev.importante ?? false, fijado: ev.fijado ?? false,
       destinatarios: ev.destinatarios ?? [],
+      repeticion: ev.repeticion, repeticionCada: ev.repeticionCada,
+      repeticionHasta: ev.repeticionHasta,
       notifyChannels: [], addToComunicaciones: false,
     })
     setDestSearch('')
@@ -273,11 +304,11 @@ export default function EventosPage() {
 
   // Map de día → eventos (sin cumpleaños, se renderizan por separado)
   const eventosPorDia = useMemo(() => {
-    const map: Record<number, { tipo: EventoTipo; titulo: string }[]> = {}
+    const map: Record<number, { tipo: EventoTipo; titulo: string; hora?: string }[]> = {}
     eventosMes.forEach(ev => {
       const d = parseLocalDate(ev.fecha).getDate()
       if (!map[d]) map[d] = []
-      map[d].push({ tipo: ev.tipo, titulo: ev.titulo })
+      map[d].push({ tipo: ev.tipo, titulo: ev.titulo, hora: ev.hora })
     })
     return map
   }, [eventosMes])
@@ -336,11 +367,13 @@ export default function EventosPage() {
               ))}
             </div>
 
-            {/* Celdas del calendario */}
+            {/* Celdas del calendario — con el texto del evento adentro, como
+                en Google Calendar. Antes la celda era un cuadrado de color y
+                había que tocarla para saber qué había ese día. */}
             <div className="grid grid-cols-7 gap-0.5">
               {celdas.map((dia, i) => {
                 if (dia === null) {
-                  return <div key={`empty-${i}`} className="aspect-square" />
+                  return <div key={`empty-${i}`} className="min-h-[64px] sm:min-h-[92px]" />
                 }
                 const fechaStr = `${viewAnio}-${String(viewMes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`
                 const evs = eventosPorDia[dia] ?? []
@@ -348,52 +381,54 @@ export default function EventosPage() {
                 const esHoy = fechaStr === hoyStr
                 const esSelected = fechaStr === selectedDay
                 const esFinDeSemana = [0, 6].includes((primerDia + (dia - 1)) % 7)
-                const tienePuntos = evs.length > 0 || cumpleCount > 0
 
-                // Color de celda: selected > evento > cumpleaños > hoy > default
-                const cellBg = esSelected
-                  ? 'bg-brand-700 shadow-md'
-                  : evs.length > 0
-                  ? EVENTO_TIPO_CELL_BG[evs[0].tipo]
-                  : cumpleCount > 0
-                  ? 'bg-pink-200 dark:bg-pink-900/60'
-                  : esHoy
-                  ? 'bg-sky-100 dark:bg-sky-900/30'
-                  : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                // En pantalla chica entran menos chips; el resto se cuenta.
+                const VISIBLES = 2
+                const extra = evs.length + (cumpleCount > 0 ? 1 : 0) - VISIBLES
 
                 return (
                   <button
                     key={fechaStr}
                     onClick={() => setSelectedDay(esSelected ? null : fechaStr)}
-                    className={`aspect-square rounded-lg flex flex-col items-center justify-center transition-all relative cursor-pointer ${cellBg}`}
+                    className={`min-h-[64px] sm:min-h-[92px] rounded-lg p-1 flex flex-col gap-0.5 text-left transition-all border
+                      ${esSelected
+                        ? 'border-brand-600 ring-2 ring-brand-600/40 bg-brand-50 dark:bg-brand-900/30'
+                        : 'border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50'}
+                    `}
                   >
                     {/* Número del día — círculo azul si es hoy */}
-                    <span className={`font-semibold text-sm flex items-center justify-center
-                      ${esHoy && !esSelected
-                        ? 'w-6 h-6 rounded-full bg-sky-500 text-white'
-                        : esSelected
-                        ? 'text-white'
-                        : evs.length > 0 || cumpleCount > 0
-                        ? 'text-slate-900 dark:text-white'
+                    <span className={`text-xs font-semibold w-5 h-5 flex items-center justify-center shrink-0
+                      ${esHoy
+                        ? 'rounded-full bg-sky-500 text-white'
                         : esFinDeSemana
-                        ? 'text-slate-400 dark:text-slate-500'
-                        : 'text-slate-700 dark:text-slate-200'
-                      }
+                          ? 'text-slate-400 dark:text-slate-500'
+                          : 'text-slate-700 dark:text-slate-200'}
                     `}>
                       {dia}
                     </span>
 
-                    {/* Indicador de cumpleaños cuando la celda ya tiene color de evento */}
-                    {cumpleCount > 0 && evs.length > 0 && !esSelected && (
-                      <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-pink-500 border border-white dark:border-slate-900" />
-                    )}
-
-                    {/* Cantidad de eventos si hay más de uno */}
-                    {evs.length > 1 && !esSelected && (
-                      <span className="text-[9px] leading-none mt-0.5 opacity-60 text-slate-700 dark:text-white">
-                        {evs.length}
-                      </span>
-                    )}
+                    {/* Chips de eventos: el título entra acá */}
+                    <span className="flex flex-col gap-0.5 min-w-0">
+                      {evs.slice(0, VISIBLES).map((ev, j) => (
+                        <span
+                          key={`${ev.titulo}-${j}`}
+                          title={ev.hora ? `${ev.hora} · ${ev.titulo}` : ev.titulo}
+                          className={`text-[10px] leading-tight rounded px-1 py-0.5 truncate ${EVENTO_TIPO_CELL_BG[ev.tipo]} text-slate-900 dark:text-white`}
+                        >
+                          {ev.hora ? `${ev.hora} ` : ''}{ev.titulo}
+                        </span>
+                      ))}
+                      {cumpleCount > 0 && evs.length < VISIBLES && (
+                        <span className="text-[10px] leading-tight rounded px-1 py-0.5 truncate bg-pink-200 dark:bg-pink-900/60 text-slate-900 dark:text-white">
+                          🎂 {cumpleCount} cumple{cumpleCount > 1 ? 's' : ''}
+                        </span>
+                      )}
+                      {extra > 0 && (
+                        <span className="text-[10px] leading-tight text-slate-500 dark:text-slate-400 px-1">
+                          +{extra} más
+                        </span>
+                      )}
+                    </span>
                   </button>
                 )
               })}
@@ -424,11 +459,14 @@ export default function EventosPage() {
             {(() => {
               const desde = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate())
               const hasta = new Date(desde.getTime() + 30 * 24 * 60 * 60 * 1000)
+              const txt = (d: Date) =>
+                `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
               const anivActual = makeAniversario(hoy.getFullYear())
-              const proximos = [...eventosVisibles, anivActual].filter(ev => {
-                const f = parseLocalDate(ev.fecha)
-                return f >= desde && f <= hasta
-              }).sort((a, b) => a.fecha.localeCompare(b.fecha))
+              // Expandido igual que el mes: si no, un evento que se repite no
+              // aparecería acá hasta el año de su fecha original.
+              const proximos = [...expandirEventos(eventosVisibles, txt(desde), txt(hasta)), anivActual]
+                .filter(ev => ev.fecha >= txt(desde) && ev.fecha <= txt(hasta))
+                .sort((a, b) => a.fecha.localeCompare(b.fecha))
 
               if (proximos.length === 0) return (
                 <p className="text-slate-400 text-sm text-center py-4">Sin eventos en los próximos 30 días</p>
@@ -573,6 +611,11 @@ export default function EventosPage() {
                       <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
                         {ev.titulo}{ev.hora && <span className="font-normal text-slate-400"> · {ev.hora}</span>}
                       </p>
+                      {textoRepeticion(ev) && (
+                        <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
+                          <Repeat className="w-3 h-3" /> {textoRepeticion(ev)}
+                        </p>
+                      )}
                       {ev.descripcion && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed"><Linkify text={ev.descripcion} /></p>}
                       {ev.imagen && (
                         <img loading="lazy"
@@ -685,10 +728,88 @@ export default function EventosPage() {
                   <label className="form-label">Tipo *</label>
                   <select className="form-select" value={form.tipo}
                     onChange={e => setForm(f => ({ ...f, tipo: e.target.value as EventoTipo }))}>
-                    {TIPOS_EVENTO.map(t => <option key={t} value={t}>{EVENTO_TIPO_LABEL[t]}</option>)}
+                    {GRUPOS_TIPO_EVENTO.map(g => (
+                      <optgroup key={g.grupo} label={g.grupo}>
+                        {g.tipos.map(t => <option key={t} value={t}>{EVENTO_TIPO_LABEL[t]}</option>)}
+                      </optgroup>
+                    ))}
                   </select>
                 </div>
               </div>
+              {/* Repetición */}
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-3 space-y-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="form-label mb-0 shrink-0">Se repite</label>
+                  <select
+                    className="form-select w-auto text-sm"
+                    value={form.repeticion ?? ''}
+                    onChange={e => {
+                      const v = e.target.value as EventoRepeticion | ''
+                      setForm(f => ({
+                        ...f,
+                        repeticion: v || undefined,
+                        // Al apagar la repetición se limpia todo lo demás, para
+                        // no dejar un "hasta" colgado de una serie que ya no existe.
+                        repeticionCada: v ? (f.repeticionCada ?? 1) : undefined,
+                        repeticionHasta: v ? f.repeticionHasta : undefined,
+                      }))
+                    }}
+                  >
+                    <option value="">No se repite</option>
+                    {(['semanal', 'mensual', 'anual'] as EventoRepeticion[]).map(r => (
+                      <option key={r} value={r}>{REPETICION_LABEL[r]}</option>
+                    ))}
+                  </select>
+
+                  {form.repeticion && (
+                    <>
+                      <span className="text-sm text-slate-500 dark:text-slate-400">cada</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={99}
+                        className="form-input w-20 text-sm"
+                        value={form.repeticionCada ?? 1}
+                        onChange={e => setForm(f => ({ ...f, repeticionCada: Math.max(1, Number(e.target.value) || 1) }))}
+                      />
+                      <span className="text-sm text-slate-500 dark:text-slate-400">
+                        {form.repeticion === 'semanal' ? 'semana(s)' : form.repeticion === 'mensual' ? 'mes(es)' : 'año(s)'}
+                      </span>
+                    </>
+                  )}
+                </div>
+
+                {form.repeticion && (
+                  <div className="flex flex-wrap items-center gap-3">
+                    <label className="form-label mb-0 shrink-0">Hasta <span className="text-slate-400 font-normal">(opcional)</span></label>
+                    <input
+                      type="date"
+                      className="form-input w-auto text-sm"
+                      value={form.repeticionHasta ?? ''}
+                      onChange={e => setForm(f => ({ ...f, repeticionHasta: e.target.value || undefined }))}
+                    />
+                    {form.repeticionHasta && (
+                      <button
+                        type="button"
+                        onClick={() => setForm(f => ({ ...f, repeticionHasta: undefined }))}
+                        className="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                      >
+                        Sin fecha de fin
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {form.repeticion && (
+                  <p className="text-xs text-slate-400">
+                    Se guarda un solo evento: las repeticiones se calculan solas. Editarlo o
+                    borrarlo afecta a todas.
+                    {form.repeticion === 'mensual' && form.fecha && Number(form.fecha.slice(8, 10)) > 28 &&
+                      ' Ojo: los meses que no tengan ese día se saltean.'}
+                  </p>
+                )}
+              </div>
+
               {/* Descripción */}
               <div>
                 <label className="form-label">Descripción (opcional)</label>

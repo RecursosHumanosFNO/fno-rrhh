@@ -231,7 +231,17 @@ export interface Novedad {
 export type EventoTipo =
   | 'feriado' | 'jornada' | 'acto' | 'capacitacion' | 'reunion'
   | 'receso' | 'proyecto' | 'institucional' | 'reunion_padres'
-  | 'examen' | 'inscripciones' | 'salida' | 'religioso' | 'otro'
+  | 'examen' | 'inscripciones' | 'salida' | 'religioso'
+  // Días que se conmemoran todos los años (del maestro, del profesor, del
+  // alumno, del auxiliar) y el resto de la vida de la escuela.
+  | 'conmemoracion' | 'efemeride' | 'boletines' | 'graduacion'
+  | 'deportivo' | 'cultural' | 'campana' | 'administrativo'
+  | 'mantenimiento' | 'simulacro' | 'gremial'
+  | 'otro'
+
+// Cada cuánto se repite un evento. La repetición se calcula al mostrar (ver
+// src/lib/recurrencia.ts): en la base hay una sola fila.
+export type EventoRepeticion = 'semanal' | 'mensual' | 'anual'
 
 export interface Evento {
   id: string
@@ -247,6 +257,9 @@ export interface Evento {
   importante?: boolean
   fijado?: boolean
   destinatarios?: string[] // IDs de empleados; vacío = visible para todos
+  repeticion?: EventoRepeticion   // sin valor = no se repite
+  repeticionCada?: number         // 1 = todas; 2 = una sí y una no
+  repeticionHasta?: string        // 'YYYY-MM-DD' inclusive; sin valor = sin fin
 }
 
 export interface Ticket {
