@@ -8,7 +8,6 @@ import { mapEventoToSupabase } from './mappers'
 import type { Canal } from './useAviso'
 import { recortar } from './texto'
 import { estaProgramada } from './programado'
-import { textoRepeticion } from '@/lib/recurrencia'
 
 type Aviso = ReturnType<typeof import('./useAviso').useAviso>
 
@@ -64,7 +63,9 @@ export function useEventosCrud({ setEventos, eventosRef, aviso }: {
         emails: emails.join(','),
         titulo: ev.titulo, descripcion: ev.descripcion ?? '',
         fecha: formatFecha(ev.fecha), hora: ev.hora ?? '', imagen: ev.imagen ?? '',
-        repeticion: textoRepeticion(ev) ?? '',
+        // La repetición NO viaja: cada cuánto se repite un evento es
+        // configuración interna del calendario, no información para quien lo
+        // recibe. Al empleado le importa la fecha de ESTE evento.
         eventoId: ev.id,
         esEdicion: esEdicion ? '1' : '',
       }),

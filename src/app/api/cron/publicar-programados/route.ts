@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { formatFecha } from '@/lib/utils'
-import { textoRepeticion } from '@/lib/recurrencia'
 import type { Canal } from '@/types'
 import { mapSupabaseToEvento, mapSupabaseToNovedad } from '@/contexts/mappers'
 
@@ -113,7 +112,7 @@ export async function GET(req: NextRequest) {
         emails: emails.join(','),
         titulo: ev.titulo, descripcion: ev.descripcion ?? '',
         fecha: formatFecha(ev.fecha), hora: ev.hora ?? '', imagen: ev.imagen ?? '',
-        repeticion: textoRepeticion(ev) ?? '',
+        // Sin repetición: es configuración interna, no va en el aviso.
         eventoId: ev.id,
         esEdicion: '',
       }),

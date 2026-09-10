@@ -31,11 +31,10 @@ describe('textoEventoWhatsapp', () => {
     expect(t).not.toContain('🕒')
   })
 
-  it('avisa si se repite', () => {
-    const t = textoEventoWhatsapp({
-      titulo: 'Día del Maestro', fecha: '2026-09-11', repeticion: 'anual',
-    })
-    expect(t).toContain('🔁 Cada año')
+  it('NO dice que el evento se repite: es configuración interna, no va al grupo', () => {
+    const t = textoEventoWhatsapp({ titulo: 'Día del Maestro', fecha: '2026-09-11' })
+    expect(t).not.toContain('🔁')
+    expect(t.toLowerCase()).not.toContain('cada año')
   })
 
   it('incluye la descripción cuando está', () => {

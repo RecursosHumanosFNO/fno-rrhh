@@ -286,7 +286,6 @@ export async function POST(req: NextRequest) {
               <p style="margin:0 0 12px 0;font-weight:700;color:#1e293b;font-size:17px;line-height:1.35;">${data.titulo}</p>
               <p style="margin:0;color:#475569;font-size:14px;line-height:1.6;">📆 ${data.fecha}</p>
               ${data.hora ? `<p style="margin:4px 0 0 0;color:#475569;font-size:14px;line-height:1.6;">🕒 ${data.hora} hs</p>` : ''}
-              ${data.repeticion ? `<p style="margin:4px 0 0 0;color:#64748b;font-size:13px;line-height:1.6;">🔁 ${data.repeticion}</p>` : ''}
               ${data.descripcion ? `
                 <div style="border-top:1px solid #e2e8f0;margin:16px 0 0 0;padding-top:16px;">
                   <p style="margin:0;color:#475569;font-size:14px;line-height:1.7;white-space:pre-wrap;">${data.descripcion}</p>
