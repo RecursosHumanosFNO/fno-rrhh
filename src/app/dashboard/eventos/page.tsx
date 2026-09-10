@@ -595,39 +595,68 @@ export default function EventosPage() {
 
         {/* ── Sidebar ──────────────────────────────────────────────────────── */}
         <div className="space-y-4">
-          {/* Fondo oscuro detrás de la hoja, sólo en celular */}
-          {selectedDay && (
-            <div
-              onClick={() => setSelectedDay(null)}
-              className="fixed inset-0 z-30 bg-black/40 lg:hidden [touch-action:none]"
-            />
-          )}
-
-          {/* Panel de día seleccionado.
-              En celular es una hoja que sube desde abajo: la columna del detalle
-              queda DEBAJO del calendario, así que al tocar un día no pasaba nada
-              visible sin scrollear media pantalla. De lg para arriba es la
-              tarjeta de la columna derecha, como siempre. */}
-          {selectedDay && (
-            <div className="card p-5 animate-scale-in
-              fixed inset-x-0 bottom-0 z-40 max-h-[80vh] overflow-y-auto rounded-b-none
-              lg:static lg:z-auto lg:max-h-none lg:overflow-visible lg:rounded-2xl">
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <p className="font-semibold text-slate-700 dark:text-slate-200 min-w-0 truncate">
-                  {formatFecha(selectedDay)}
-                </p>
-                <div className="flex gap-2 shrink-0">
-                  {isAdmin && (
-                    <button onClick={() => openAdd(selectedDay)} className="btn-primary text-sm py-1.5">
-                      <Plus className="w-3.5 h-3.5" /> Agregar
-                    </button>
-                  )}
-                  <button onClick={() => setSelectedDay(null)} className="btn-secondary text-sm py-1.5" aria-label="Cerrar">
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+          {/* Cumpleaños del mes */}
+          <div className="card p-5">
+            <p className="section-title text-base mb-4 flex items-center gap-2">
+              <PartyPopper className="w-4 h-4 text-pink-500" /> Cumpleaños de {MESES_NOMBRE[viewMes]}
+            </p>
+            {cumpleaniosMes.length === 0 ? (
+              <p className="text-slate-400 text-sm text-center py-4">Sin cumpleaños este mes</p>
+            ) : (
+              <div className="space-y-3">
+                {cumpleaniosMes.map(e => {
+                  const nac = parseLocalDate(e.fechaNacimiento)
+                  const esHoyBirth = nac.getDate() === hoy.getDate() && viewMes === hoy.getMonth()
+                  return (
+                    <div key={e.id} className={`flex items-center gap-2.5 p-2.5 rounded-xl transition-colors ${esHoyBirth ? 'bg-pink-50 dark:bg-pink-900/20' : ''}`}>
+                      <div className="w-9 h-9 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center text-pink-600 text-xs font-bold overflow-hidden shrink-0">
+                        {e.foto ? <img loading="lazy" width={36} height={36} src={e.foto} alt="" className="w-9 h-9 object-cover" /> : `${e.nombre.charAt(0)}${e.apellido.charAt(0)}`}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{e.nombre} {e.apellido}</p>
+                        <p className="text-xs text-slate-400">{nac.getDate()}/{viewMes + 1} · {e.cargo}</p>
+                      </div>
+                      {esHoyBirth && <span className="text-lg shrink-0">🎂</span>}
+                    </div>
+                  )
+                })}
               </div>
+            )}
+          </div>
+        </div>
+      </div>
 
+      {/* ── Detalle del día — ventana emergente ───────────────────────────────
+          Antes vivía en la columna derecha: en el celular quedaba debajo del
+          calendario (al tocar un día no se veía nada) y en la computadora era
+          tan angosta que la fecha se cortaba en "10..." y la foto salía
+          recortada. Como ventana, se comporta igual en los dos lados. */}
+      {selectedDay && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4"
+          onClick={() => setSelectedDay(null)}
+        >
+          <div
+            className="card w-full sm:max-w-2xl animate-scale-in max-h-[85vh] overflow-y-auto rounded-b-none sm:rounded-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3 sticky top-0 bg-[#eef8fc] dark:bg-slate-900 z-10">
+              <p className="font-semibold text-slate-700 dark:text-slate-200">
+                {formatFecha(selectedDay)}
+              </p>
+              <div className="flex gap-2 shrink-0">
+                {isAdmin && (
+                  <button onClick={() => openAdd(selectedDay)} className="btn-primary text-sm py-1.5">
+                    <Plus className="w-3.5 h-3.5" /> Agregar
+                  </button>
+                )}
+                <button onClick={() => setSelectedDay(null)} className="btn-secondary text-sm py-1.5" aria-label="Cerrar">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-5">
               {/* Eventos del día */}
               {eventosDia.length === 0 ? (
                 <p className="text-slate-400 text-sm text-center py-4">
@@ -677,26 +706,32 @@ export default function EventosPage() {
                         </div>
                       )}
                       {ev.imagen && (
+                        // object-contain y no cover: los flyers suelen ser
+                        // verticales y con cover se les comía la mitad. El fondo
+                        // rellena lo que sobra a los costados.
                         <img loading="lazy"
                           src={ev.imagen} alt=""
                           onClick={() => setLightbox(ev.imagen!)}
-                          className="mt-3 rounded-lg border border-slate-200 dark:border-slate-700 w-full max-h-56 object-cover cursor-zoom-in hover:opacity-90 transition-opacity"
+                          className="mt-3 rounded-lg border border-slate-200 dark:border-slate-700 w-full max-h-[60vh] object-contain bg-slate-100 dark:bg-slate-800 cursor-zoom-in hover:opacity-90 transition-opacity"
                           title="Ver imagen completa"
                         />
                       )}
+                      {ev.adjuntoUrl && (
+                        <a href={ev.adjuntoUrl} target="_blank" rel="noopener noreferrer" download={ev.adjuntoNombre}
+                          className="inline-flex items-center gap-1.5 mt-3 text-xs font-medium text-brand-700 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/20 hover:bg-brand-100 dark:hover:bg-brand-900/40 rounded-lg px-2.5 py-1.5 transition-colors w-fit">
+                          <Download className="w-3.5 h-3.5" /> {ev.adjuntoNombre || 'Descargar adjunto'}
+                        </a>
+                      )}
+                      {/* Último y a lo ancho: es la acción de la ficha, no un
+                          detalle más metido entre la foto y el adjunto. */}
                       {isAdmin && (
-                        <div className="mt-3">
+                        <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700">
                           <BotonCopiar
                             texto={textoEventoWhatsapp(ev)}
                             imagenUrl={ev.imagen || undefined}
+                            className="w-full justify-center"
                           />
                         </div>
-                      )}
-                      {ev.adjuntoUrl && (
-                        <a href={ev.adjuntoUrl} target="_blank" rel="noopener noreferrer" download={ev.adjuntoNombre}
-                          className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-brand-700 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/20 hover:bg-brand-100 dark:hover:bg-brand-900/40 rounded-lg px-2.5 py-1.5 transition-colors w-fit">
-                          <Download className="w-3.5 h-3.5" /> {ev.adjuntoNombre || 'Descargar adjunto'}
-                        </a>
                       )}
                     </div>
                   ))}
@@ -729,38 +764,9 @@ export default function EventosPage() {
                 )
               })()}
             </div>
-          )}
-
-          {/* Cumpleaños del mes */}
-          <div className="card p-5">
-            <p className="section-title text-base mb-4 flex items-center gap-2">
-              <PartyPopper className="w-4 h-4 text-pink-500" /> Cumpleaños de {MESES_NOMBRE[viewMes]}
-            </p>
-            {cumpleaniosMes.length === 0 ? (
-              <p className="text-slate-400 text-sm text-center py-4">Sin cumpleaños este mes</p>
-            ) : (
-              <div className="space-y-3">
-                {cumpleaniosMes.map(e => {
-                  const nac = parseLocalDate(e.fechaNacimiento)
-                  const esHoyBirth = nac.getDate() === hoy.getDate() && viewMes === hoy.getMonth()
-                  return (
-                    <div key={e.id} className={`flex items-center gap-2.5 p-2.5 rounded-xl transition-colors ${esHoyBirth ? 'bg-pink-50 dark:bg-pink-900/20' : ''}`}>
-                      <div className="w-9 h-9 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center text-pink-600 text-xs font-bold overflow-hidden shrink-0">
-                        {e.foto ? <img loading="lazy" width={36} height={36} src={e.foto} alt="" className="w-9 h-9 object-cover" /> : `${e.nombre.charAt(0)}${e.apellido.charAt(0)}`}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{e.nombre} {e.apellido}</p>
-                        <p className="text-xs text-slate-400">{nac.getDate()}/{viewMes + 1} · {e.cargo}</p>
-                      </div>
-                      {esHoyBirth && <span className="text-lg shrink-0">🎂</span>}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
           </div>
         </div>
-      </div>
+      )}
 
       {/* ── Modal agregar/editar evento ──────────────────────────────────────── */}
       {modal && (
