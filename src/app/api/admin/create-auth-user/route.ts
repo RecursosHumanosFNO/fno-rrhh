@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { serviceClient, getRequester, esGestionPersonal } from '@/lib/serverAuth'
+import { enviarInvitacionAcceso } from '@/lib/invitacionAcceso'
 
 export const runtime = 'nodejs'
 
@@ -30,8 +31,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Si no llega password (fue removido del sync de Supabase por seguridad),
-    // generamos una contraseña temporal fuerte. El usuario deberá usar
-    // "Olvidé mi contraseña" para acceder la primera vez.
+    // generamos una contraseña temporal fuerte que nadie conoce: la persona
+    // define la suya con el link de invitación que sale más abajo.
     const effectivePassword = password || crypto.randomUUID().replace(/-/g, '') + 'Aa1!'
 
     const sb = serviceClient()
@@ -74,7 +75,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Error al crear perfil de usuario' }, { status: 500 })
     }
 
-    return NextResponse.json({ ok: true, authId: authData.user.id })
+    // 3. Invitación para que defina su contraseña.
+    //
+    // Se manda desde acá y no desde cada pantalla porque las cuentas se crean
+    // en tres lugares distintos (aprobar un registro, la ficha del empleado y
+    // el listado): puesto en el server, ninguno se lo puede olvidar.
+    //
+    // Sólo cuando la contraseña la generó el server: si vino una en el body,
+    // quien creó la cuenta ya la eligió y la va a comunicar por su cuenta.
+    let invitacionEnviada: boolean | null = null
+    if (!password) {
+      const { data: emp } = await sb
+        .from('fno_empleados')
+        .select('nombre')
+        .eq('id', empleadoId)
+        .maybeSingle()
+
+      invitacionEnviada = await enviarInvitacionAcceso(sb, {
+        email: email.toLowerCase().trim(),
+        nombre: (emp?.nombre as string) ?? 'Hola',
+      })
+    }
+
+    return NextResponse.json({ ok: true, authId: authData.user.id, invitacionEnviada })
   } catch (err) {
     console.error('[create-auth-user] error:', err)
     return NextResponse.json({ error: 'Error interno' }, { status: 500 })
