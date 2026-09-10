@@ -282,13 +282,18 @@ export async function POST(req: NextRequest) {
           subject: `📅 ${esEdicion ? 'Evento actualizado' : 'Nuevo evento'}: ${raw.titulo}`,
           html: base(`
             <h3 style="color:${BRAND};margin-top:0;">📅 ${esEdicion ? 'Evento actualizado' : 'Nuevo evento en el calendario'}</h3>
-            <div style="background:#f1f5f9;border-radius:8px;padding:16px;margin:20px 0;">
-              <p style="margin:0 0 8px 0;font-weight:700;color:#1e293b;font-size:16px;">${data.titulo}</p>
-              <p style="margin:0 0 8px 0;color:#475569;font-size:13px;">📆 ${data.fecha}${data.hora ? ` · 🕒 ${data.hora}` : ''}</p>
-              ${data.descripcion ? `<p style="margin:0;color:#475569;white-space:pre-wrap;">${data.descripcion}</p>` : ''}
-              ${imagenSegura(raw.imagen) ? `<img src="${esc(imagenSegura(raw.imagen))}" alt="" style="margin-top:12px;max-width:100%;border-radius:8px;display:block;" />` : ''}
+            <div style="background:#f1f5f9;border-radius:8px;padding:20px;margin:20px 0;">
+              <p style="margin:0 0 12px 0;font-weight:700;color:#1e293b;font-size:17px;line-height:1.35;">${data.titulo}</p>
+              <p style="margin:0;color:#475569;font-size:14px;line-height:1.6;">📆 ${data.fecha}</p>
+              ${data.hora ? `<p style="margin:4px 0 0 0;color:#475569;font-size:14px;line-height:1.6;">🕒 ${data.hora} hs</p>` : ''}
+              ${data.repeticion ? `<p style="margin:4px 0 0 0;color:#64748b;font-size:13px;line-height:1.6;">🔁 ${data.repeticion}</p>` : ''}
+              ${data.descripcion ? `
+                <div style="border-top:1px solid #e2e8f0;margin:16px 0 0 0;padding-top:16px;">
+                  <p style="margin:0;color:#475569;font-size:14px;line-height:1.7;white-space:pre-wrap;">${data.descripcion}</p>
+                </div>` : ''}
+              ${imagenSegura(raw.imagen) ? `<img src="${esc(imagenSegura(raw.imagen))}" alt="" style="margin-top:16px;max-width:100%;border-radius:8px;display:block;" />` : ''}
             </div>
-            ${btn('Ver en el calendario', `${PORTAL_URL}/dashboard/eventos`)}
+            ${btn('Ver en el calendario', `${PORTAL_URL}/dashboard/eventos${raw.eventoId ? `?ev=${encodeURIComponent(raw.eventoId)}` : ''}`)}
           `),
         })
       }
