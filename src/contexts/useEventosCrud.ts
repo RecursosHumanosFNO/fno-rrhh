@@ -7,6 +7,7 @@ import * as initial from '@/lib/mockData'
 import { mapEventoToSupabase } from './mappers'
 import type { Canal } from './useAviso'
 import { recortar } from './texto'
+import { textoRepeticion } from '@/lib/recurrencia'
 
 type Aviso = ReturnType<typeof import('./useAviso').useAviso>
 
@@ -44,17 +45,26 @@ export function useEventosCrud({ setEventos, eventosRef, aviso }: {
       titulo: ev.titulo,
       destinatarios: ev.destinatarios,
       canales,
-      textoApp: `📅 ${verbo}: ${ev.titulo} — ${ev.fecha}${ev.hora ? ` ${ev.hora}` : ''}`,
+      // La fecha va formateada: en la campanita se leía "2026-09-10" pegado al
+      // título, y un aviso que hay que descifrar no sirve de aviso.
+      textoApp: `📅 ${verbo}: ${ev.titulo} · ${formatFecha(ev.fecha)}${ev.hora ? `, ${ev.hora}` : ''}`,
       push: {
         titulo: esEdicion ? `${ev.titulo} (actualizado)` : ev.titulo,
-        cuerpo: recortar([`📅 ${formatFecha(ev.fecha)}${ev.hora ? ` ${ev.hora}` : ''}`, ev.descripcion].filter(Boolean).join(' — ')),
-        url: '/dashboard/comunicaciones',
+        cuerpo: recortar([
+          `📅 ${formatFecha(ev.fecha)}${ev.hora ? `, ${ev.hora}` : ''}`,
+          ev.descripcion,
+        ].filter(Boolean).join(' — ')),
+        // Al evento, no a Comunicaciones: es un evento del calendario. Con el id
+        // la app abre esa ficha directamente en vez de dejarte en el mes.
+        url: `/dashboard/eventos?ev=${ev.id}`,
       },
       emailType: 'evento_notificacion',
       emailData: emails => ({
         emails: emails.join(','),
         titulo: ev.titulo, descripcion: ev.descripcion ?? '',
-        fecha: ev.fecha, hora: ev.hora ?? '', imagen: ev.imagen ?? '',
+        fecha: formatFecha(ev.fecha), hora: ev.hora ?? '', imagen: ev.imagen ?? '',
+        repeticion: textoRepeticion(ev) ?? '',
+        eventoId: ev.id,
         esEdicion: esEdicion ? '1' : '',
       }),
     })

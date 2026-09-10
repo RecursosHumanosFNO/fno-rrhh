@@ -20,6 +20,14 @@ export const DESTINOS_PUSH = [
 
 export const DESTINO_PUSH_POR_DEFECTO = '/dashboard'
 
+// Un evento del calendario se puede linkear directo: /dashboard/eventos?ev=<id>.
+// El id se limita a letras, números, guiones y guiones bajos — es lo que genera
+// uid() — para que por acá no entre nada más que eso.
+const DEEP_LINK = /^(\/dashboard\/[a-z-]+)\?ev=[A-Za-z0-9_-]{1,64}$/
+
 export function esDestinoPushValido(url: unknown): url is string {
-  return typeof url === 'string' && DESTINOS_PUSH.some(d => d.url === url)
+  if (typeof url !== 'string') return false
+  if (DESTINOS_PUSH.some(d => d.url === url)) return true
+  const m = DEEP_LINK.exec(url)
+  return !!m && DESTINOS_PUSH.some(d => d.url === m[1])
 }

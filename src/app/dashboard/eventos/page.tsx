@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { EVENTOS_FIJOS_IDS } from '@/contexts/useEventosCrud'
@@ -9,7 +9,7 @@ import ImageLightbox from '@/components/ImageLightbox'
 import Linkify from '@/components/Linkify'
 import { comprimirImagen } from '@/lib/comprimirImagen'
 import { parseLocalDate, EVENTO_TIPO_LABEL, EVENTO_TIPO_COLOR, EVENTO_TIPO_DOT, formatFecha, hoyAR } from '@/lib/utils'
-import { expandirEventos, textoRepeticion, REPETICION_LABEL } from '@/lib/recurrencia'
+import { expandirEventos, ocurrenciasEnRango, textoRepeticion, REPETICION_LABEL } from '@/lib/recurrencia'
 import type { EventoTipo, Evento, EventoRepeticion, NovedadCategoria } from '@/types'
 import {
   Calendar, PartyPopper, Plus, ChevronLeft, ChevronRight,
@@ -208,6 +208,40 @@ export default function EventosPage() {
     const base = expandirEventos(eventosVisibles, selectedDay, selectedDay)
     return selectedDay === `${viewAnio}-06-09` ? [...base, aniversarioPortal] : base
   }, [eventosVisibles, selectedDay, viewAnio, aniversarioPortal])
+
+  // ── Deep link: /dashboard/eventos?ev=<id> ────────────────────────────────
+  //
+  // Es a donde llevan la push, la campanita y el botón del mail. Se lee de
+  // window.location y no con useSearchParams a propósito: esta pantalla es
+  // estática y useSearchParams la obligaría a envolverse en un Suspense.
+  //
+  // Espera a que el sync traiga los eventos: al abrir desde una notificación la
+  // lista todavía está vacía.
+  const deepLinkAplicado = useRef(false)
+  useEffect(() => {
+    if (deepLinkAplicado.current || typeof window === 'undefined') return
+    const id = new URLSearchParams(window.location.search).get('ev')
+    if (!id) { deepLinkAplicado.current = true; return }
+
+    const ev = eventos.find(e => e.id === id)
+    if (!ev) return // todavía no sincronizó; se reintenta cuando lleguen
+
+    // Si se repite, se abre en la ocurrencia que viene, no en la del año en que
+    // se cargó: es lo que la persona espera al tocar el aviso de hoy.
+    const hoyTxt = hoyAR()
+    const proxima = ev.fecha >= hoyTxt
+      ? ev.fecha
+      : ocurrenciasEnRango(ev, hoyTxt, `${Number(hoyTxt.slice(0, 4)) + 5}-12-31`)[0] ?? ev.fecha
+
+    const d = parseLocalDate(proxima)
+    setViewAnio(d.getFullYear())
+    setViewMes(d.getMonth())
+    setSelectedDay(proxima)
+    deepLinkAplicado.current = true
+
+    // Se limpia la query para que recargar no vuelva a arrastrar al mismo día.
+    window.history.replaceState({}, '', '/dashboard/eventos')
+  }, [eventos])
 
   // ── Navegar meses ─────────────────────────────────────────────────────────
   function prevMes() {
@@ -564,20 +598,34 @@ export default function EventosPage() {
 
         {/* ── Sidebar ──────────────────────────────────────────────────────── */}
         <div className="space-y-4">
-          {/* Panel de día seleccionado */}
+          {/* Fondo oscuro detrás de la hoja, sólo en celular */}
           {selectedDay && (
-            <div className="card p-5 animate-scale-in">
-              <div className="flex items-center justify-between mb-4">
-                <p className="font-semibold text-slate-700 dark:text-slate-200">
+            <div
+              onClick={() => setSelectedDay(null)}
+              className="fixed inset-0 z-30 bg-black/40 lg:hidden [touch-action:none]"
+            />
+          )}
+
+          {/* Panel de día seleccionado.
+              En celular es una hoja que sube desde abajo: la columna del detalle
+              queda DEBAJO del calendario, así que al tocar un día no pasaba nada
+              visible sin scrollear media pantalla. De lg para arriba es la
+              tarjeta de la columna derecha, como siempre. */}
+          {selectedDay && (
+            <div className="card p-5 animate-scale-in
+              fixed inset-x-0 bottom-0 z-40 max-h-[80vh] overflow-y-auto rounded-b-none
+              lg:static lg:z-auto lg:max-h-none lg:overflow-visible lg:rounded-2xl">
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <p className="font-semibold text-slate-700 dark:text-slate-200 min-w-0 truncate">
                   {formatFecha(selectedDay)}
                 </p>
-                <div className="flex gap-2">
+                <div className="flex gap-2 shrink-0">
                   {isAdmin && (
                     <button onClick={() => openAdd(selectedDay)} className="btn-primary text-sm py-1.5">
                       <Plus className="w-3.5 h-3.5" /> Agregar
                     </button>
                   )}
-                  <button onClick={() => setSelectedDay(null)} className="btn-secondary text-sm py-1.5">
+                  <button onClick={() => setSelectedDay(null)} className="btn-secondary text-sm py-1.5" aria-label="Cerrar">
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -592,8 +640,8 @@ export default function EventosPage() {
               ) : (
                 <div className="space-y-2">
                   {eventosDia.map(ev => (
-                    <div key={ev.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-                      <div className="flex items-center justify-between gap-2 mb-2">
+                    <div key={ev.id} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                      <div className="flex items-center justify-between gap-2 mb-3">
                         <span className={`badge text-xs ${EVENTO_TIPO_COLOR[ev.tipo]}`}>
                           {EVENTO_TIPO_LABEL[ev.tipo]}
                         </span>
@@ -608,20 +656,29 @@ export default function EventosPage() {
                           </div>
                         )}
                       </div>
-                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                        {ev.titulo}{ev.hora && <span className="font-normal text-slate-400"> · {ev.hora}</span>}
+                      <p className="text-base font-semibold text-slate-800 dark:text-slate-100 leading-snug">
+                        {ev.titulo}
                       </p>
+                      {ev.hora && (
+                        <p className="text-xs text-slate-400 mt-1">🕒 {ev.hora} hs</p>
+                      )}
                       {textoRepeticion(ev) && (
                         <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
                           <Repeat className="w-3 h-3" /> {textoRepeticion(ev)}
                         </p>
                       )}
-                      {ev.descripcion && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed"><Linkify text={ev.descripcion} /></p>}
+                      {ev.descripcion && (
+                        <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+                          <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                            <Linkify text={ev.descripcion} />
+                          </p>
+                        </div>
+                      )}
                       {ev.imagen && (
                         <img loading="lazy"
                           src={ev.imagen} alt=""
                           onClick={() => setLightbox(ev.imagen!)}
-                          className="mt-2 rounded-lg border border-slate-200 dark:border-slate-700 w-full max-h-56 object-cover cursor-zoom-in hover:opacity-90 transition-opacity"
+                          className="mt-3 rounded-lg border border-slate-200 dark:border-slate-700 w-full max-h-56 object-cover cursor-zoom-in hover:opacity-90 transition-opacity"
                           title="Ver imagen completa"
                         />
                       )}

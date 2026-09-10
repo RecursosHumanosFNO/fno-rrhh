@@ -54,12 +54,15 @@ export function useAviso({ empleadosRef, addNotification }: {
     const empleados = empleadosRef.current
 
     if (canales.includes('app')) {
+      // Mismo destino que la push: si no, tocar la campanita llevaba a otra
+      // pantalla que tocar la notificación del celular.
+      const url = push.url
       if (dest.length > 0) {
         dest.forEach(empleadoId => addNotification({
-          texto: textoApp, tipo: 'novedad', empleadoId, soloEmpleado: true,
+          texto: textoApp, tipo: 'novedad', empleadoId, soloEmpleado: true, url,
         }))
       } else {
-        addNotification({ texto: textoApp, tipo: 'novedad' })
+        addNotification({ texto: textoApp, tipo: 'novedad', url })
       }
       enviarPush(push.titulo, push.cuerpo, push.url, dest)
     }
