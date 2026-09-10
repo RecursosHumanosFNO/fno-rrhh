@@ -33,9 +33,9 @@ export function usePendingRegistrationsCrud({
       // policy de RLS. Y como esa misma contraseña terminaba en Auth, leerla
       // era tomar la cuenta.
       //
-      // Ahora la cuenta se crea con una contraseña temporal (create-auth-user
-      // ya la genera si no le mandan ninguna) y la persona define la suya con
-      // "Olvidé mi contraseña", que usa tokens de un solo uso.
+      // Ahora la cuenta se crea con una contraseña temporal que nadie conoce
+      // (create-auth-user ya la genera si no le mandan ninguna) y la persona
+      // define la suya con el link de invitación que le llega por mail.
       supabase.from('fno_pending').insert({
         id: newReg.id, nombre: reg.nombre, apellido: reg.apellido, dni: reg.dni,
         email: reg.email, sector: reg.sector,
@@ -95,10 +95,19 @@ export function usePendingRegistrationsCrud({
         // Sin password: la genera el server y la persona la define por reset.
         body: JSON.stringify({ email: reg.email, userId, empleadoId, role: 'employee', requesterId }),
       }).then(async r => {
+        const cuerpo = await r.json().catch(() => ({}))
         if (!r.ok) {
-          const err = await r.json().catch(() => ({}))
-          console.error('[auth] create-auth-user falló:', r.status, err)
+          console.error('[auth] create-auth-user falló:', r.status, cuerpo)
           addNotification({ texto: `${reg.nombre} se creó como empleado, pero no se pudo crear su cuenta de login. Usá "Crear cuenta de acceso" en su ficha.`, tipo: 'sistema', soloAdmin: true })
+          return
+        }
+        // La cuenta está, pero sin el mail la persona no tiene cómo entrar: hay
+        // que decirlo, no dar por hecho que la invitación salió.
+        if (cuerpo.invitacionEnviada === false) {
+          addNotification({
+            texto: `La cuenta de ${reg.nombre} se creó, pero no se pudo enviar el mail con el link para crear la contraseña. Avisale que use "Olvidé mi contraseña".`,
+            tipo: 'sistema', soloAdmin: true,
+          })
         }
       }).catch(err => console.error('[auth] create-auth-user error de red:', err))
 
@@ -107,7 +116,9 @@ export function usePendingRegistrationsCrud({
     }
 
     addNotification({ texto: `Acceso aprobado para ${reg.nombre} ${reg.apellido}`, tipo: 'registro', soloAdmin: true })
-    sendEmail('registration_approved', { nombre: reg.nombre, email: reg.email })
+    // El mail de bienvenida lo manda create-auth-user junto con el link para
+    // crear la contraseña. Mandar además el de "acceso aprobado" serían dos
+    // correos seguidos diciendo lo mismo, y el útil es el que trae el link.
   }, [setPending, addNotification, pendingRef])
 
   const refreshPending = useCallback(async () => {

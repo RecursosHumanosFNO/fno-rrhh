@@ -44,19 +44,23 @@ export async function POST(req: NextRequest) {
 
   const user = users[0]
 
-  // Throttle por email. La tabla guarda una fila por email (upsert), así que
-  // deducimos cuándo se creó el token vigente a partir de su vencimiento en
-  // vez de sumar una columna nueva.
+  // Throttle por email. Se mira created_at y no el vencimiento: los tokens de
+  // invitación duran una semana, y la cuenta vieja —deducir la creación restando
+  // el TTL de 30 minutos— daba un número absurdamente negativo. O sea que quien
+  // tuviera una invitación pendiente y pidiera un reset se quedaba esperando un
+  // mail que nunca salía, sin ningún error a la vista.
   const { data: previos } = await supabase
     .from('fno_password_resets')
-    .select('expires_at, used')
+    .select('created_at, expires_at, used')
     .eq('email', emailNorm)
     .limit(1)
 
   const previo = previos?.[0]
   if (previo && !previo.used) {
-    const creadoHace = TOKEN_TTL_MS - (new Date(previo.expires_at).getTime() - Date.now())
-    if (creadoHace < REENVIO_MIN_MS) {
+    const creado = previo.created_at
+      ? new Date(previo.created_at).getTime()
+      : new Date(previo.expires_at).getTime() - TOKEN_TTL_MS // filas viejas sin created_at
+    if (Date.now() - creado < REENVIO_MIN_MS) {
       // Mismo cuerpo que el caso normal: no delatamos que hubo throttling.
       return NextResponse.json({ ok: true })
     }
@@ -81,6 +85,9 @@ export async function POST(req: NextRequest) {
     token,
     expires_at: expiresAt,
     used: false,
+    // Explícito: en un upsert que actualiza una fila existente, el default de
+    // la columna no vuelve a aplicarse, y el throttle mira este campo.
+    created_at: new Date().toISOString(),
   })
 
   // Enviar email

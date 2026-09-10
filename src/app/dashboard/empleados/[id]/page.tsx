@@ -332,8 +332,9 @@ export default function EmpleadoDetailPage() {
     setTimeout(() => setResetStatus('idle'), 5000)
   }
 
-  // Crea la cuenta de login para un empleado que no la tenía (Supabase Auth + fno_users)
-  // y le manda un link de reset para que establezca su propia contraseña.
+  // Crea la cuenta de login para un empleado que no la tenía (Supabase Auth +
+  // fno_users). El mail con el link para crear la contraseña lo manda la propia
+  // ruta: así sale igual desde acá, desde el listado y al aprobar un registro.
   async function handleCreateAccount() {
     if (!emp?.email || !user?.empleadoId) return
     setCreateAcctErr('')
@@ -357,12 +358,12 @@ export default function EmpleadoDetailPage() {
         setCreateAcctStatus('error')
         return
       }
-      // Enviar link de reset para que el empleado defina su contraseña (30 min)
-      await fetch('/api/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: emp.email }),
-      }).catch(() => {})
+      // Antes acá se pedía además un reset. Ya no: create-auth-user manda la
+      // invitación, y este pedido extra le pisaba el token de una semana por
+      // uno de media hora.
+      if (data.invitacionEnviada === false) {
+        setCreateAcctErr('La cuenta se creó, pero no se pudo enviar el mail con el link. Pedile que use "Olvidé mi contraseña".')
+      }
       await forceSync() // recargar la lista de usuarios para que aparezca la cuenta
       setCreateAcctStatus('done')
     } catch {
@@ -780,7 +781,7 @@ export default function EmpleadoDetailPage() {
                     <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-100 dark:border-blue-800">
                       <p className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Enviar link de recuperación</p>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
-                        Se enviará un enlace seguro a <strong>{empUser.email}</strong> para que el empleado establezca su propia contraseña. Válido por 30 minutos.
+                        Se le envía un mail a <strong>{empUser.email}</strong> con un link para que cree su propia contraseña. Vale por 7 días.
                       </p>
                       {resetStatus === 'sent' && (
                         <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 rounded-lg px-3 py-2 text-xs flex items-center gap-2 mb-2">
@@ -813,7 +814,7 @@ export default function EmpleadoDetailPage() {
                     <p className="text-sm text-slate-400">Este empleado no tiene cuenta de acceso creada.</p>
                     {createAcctStatus === 'done' ? (
                       <p className="text-sm text-emerald-600 dark:text-emerald-400">
-                        ✓ Cuenta creada. Se le envió un link a <strong>{emp.email}</strong> para que establezca su contraseña (válido 30 min).
+                        ✓ Cuenta creada. Se le envió un mail a <strong>{emp.email}</strong> con el link para crear su contraseña (vale 7 días).
                       </p>
                     ) : (
                       <>

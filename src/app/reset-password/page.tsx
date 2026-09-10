@@ -12,6 +12,9 @@ function ResetPasswordForm() {
   // Dos flujos posibles: ?token= (reset propio iniciado por admin) o ?code= (flujo nativo Supabase desde "Olvidé mi contraseña")
   const token = params.get('token') ?? ''
   const code = params.get('code') ?? ''
+  // ?nuevo=1 lo pone el mail de invitación: es la primera contraseña de la
+  // cuenta, no un reemplazo. Cambia sólo los textos — el mecanismo es el mismo.
+  const esPrimera = params.get('nuevo') === '1'
   const mode: 'token' | 'code' | 'none' = token ? 'token' : code ? 'code' : 'none'
 
   const [status, setStatus] = useState<'loading' | 'valid' | 'invalid' | 'success'>('loading')
@@ -106,7 +109,8 @@ function ResetPasswordForm() {
                 <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
                 <h2 className="text-lg font-semibold text-slate-800 mb-2">Enlace inválido o expirado</h2>
                 <p className="text-slate-500 text-sm mb-6">
-                  Este enlace ya fue utilizado o expiró. Solicitá uno nuevo desde la pantalla de inicio de sesión.
+                  Este enlace ya fue utilizado o expiró. Entrá al portal, tocá &quot;Olvidé mi
+                  contraseña&quot; y poné tu email para recibir uno nuevo.
                 </p>
                 <Link href="/login" className="inline-flex items-center gap-2 bg-[#23597e] text-white px-5 py-2.5 rounded-lg font-medium hover:bg-[#1a4763] transition-colors text-sm">
                   Volver al inicio
@@ -120,8 +124,14 @@ function ResetPasswordForm() {
                   <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
                     <Lock className="w-7 h-7 text-[#23597e]" />
                   </div>
-                  <h2 className="text-xl font-bold text-slate-800">Nueva contraseña</h2>
-                  {email && <p className="text-slate-500 text-sm mt-1">Para la cuenta <strong>{email}</strong></p>}
+                  <h2 className="text-xl font-bold text-slate-800">
+                    {esPrimera ? 'Creá tu contraseña' : 'Nueva contraseña'}
+                  </h2>
+                  {email && (
+                    <p className="text-slate-500 text-sm mt-1">
+                      {esPrimera ? 'Vas a entrar con ' : 'Para la cuenta '}<strong>{email}</strong>
+                    </p>
+                  )}
                 </div>
 
                 {error && (
@@ -131,12 +141,14 @@ function ResetPasswordForm() {
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Nueva contraseña</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    {esPrimera ? 'Tu contraseña' : 'Nueva contraseña'}
+                  </label>
                   <div className="relative">
                     <input
                       type={showPass ? 'text' : 'password'}
                       className="w-full px-4 py-2.5 pr-10 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#23597e]/30 focus:border-[#23597e]"
-                      placeholder="Mínimo 6 caracteres"
+                      placeholder="Mínimo 10 caracteres"
                       value={password}
                       onChange={e => setPassword(e.target.value)}
                       required
@@ -173,8 +185,14 @@ function ResetPasswordForm() {
             {status === 'success' && (
               <div className="text-center py-4">
                 <CheckCircle2 className="w-14 h-14 text-emerald-500 mx-auto mb-4" />
-                <h2 className="text-lg font-semibold text-slate-800 mb-2">¡Contraseña actualizada!</h2>
-                <p className="text-slate-500 text-sm mb-2">Tu contraseña fue cambiada correctamente.</p>
+                <h2 className="text-lg font-semibold text-slate-800 mb-2">
+                  {esPrimera ? '¡Listo, ya podés entrar!' : '¡Contraseña actualizada!'}
+                </h2>
+                <p className="text-slate-500 text-sm mb-2">
+                  {esPrimera
+                    ? 'Tu contraseña quedó guardada. Usala junto con tu email para entrar al portal.'
+                    : 'Tu contraseña fue cambiada correctamente.'}
+                </p>
                 <p className="text-slate-400 text-sm">Redirigiendo al inicio de sesión...</p>
               </div>
             )}

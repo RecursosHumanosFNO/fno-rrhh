@@ -17,7 +17,7 @@ export const runtime = 'nodejs'
  *              arbitrario exigen además rol de administración.
  */
 const TIPOS_PUBLICOS = new Set(['new_registration'])
-const TIPOS_INTERNOS = new Set(['reset_password', 'alerta_sistema'])
+const TIPOS_INTERNOS = new Set(['reset_password', 'alerta_sistema', 'invitacion_acceso'])
 const TIPOS_CUALQUIER_USUARIO = new Set(['new_solicitud', 'password_changed'])
 const TIPOS_COMUNICACIONES = new Set(['evento_notificacion', 'novedad_publicada'])
 // Los recibos de sueldo son la excepción: Gestión de Personal no los maneja.
@@ -132,22 +132,6 @@ export async function POST(req: NextRequest) {
           </table>
           <p style="color:#64748b;font-size:14px;">Ingresá al portal para <strong>aprobar o rechazar</strong> esta solicitud:</p>
           ${btn('Ver solicitudes pendientes', `${PORTAL_URL}/dashboard/empleados`)}
-        `),
-      })
-    }
-
-    /* ── Registro aprobado ─────────────────────────────────────────── */
-    else if (type === 'registration_approved') {
-      await transporter.sendMail({
-        from, to: raw.email,
-        subject: `✅ ¡Tu acceso al Portal RRHH fue aprobado!`,
-        html: base(`
-          <h3 style="color:#10b981;margin-top:0;">¡Bienvenido/a al Portal RRHH!</h3>
-          <p>Hola <strong>${data.nombre}</strong>,</p>
-          <p style="color:#64748b;">Tu solicitud de acceso al Portal de Recursos Humanos de la <strong>Fundación Neuquén Oeste</strong> fue <strong style="color:#10b981;">aprobada</strong> por el equipo de RRHH.</p>
-          <p style="color:#64748b;">Para entrar por primera vez tenés que <strong>crear tu contraseña</strong>: entrá a "Olvidé mi contraseña", poné este mismo email (<strong>${data.email}</strong>) y vas a recibir un link para definirla.</p>
-          ${btn('Crear mi contraseña', `${PORTAL_URL}/login`)}
-          <p style="color:#94a3b8;font-size:13px;margin-top:24px;">Si tenés alguna duda, respondé este email o comunicate con el área de RRHH.</p>
         `),
       })
     }
@@ -315,6 +299,33 @@ export async function POST(req: NextRequest) {
             <p style="margin:8px 0 0 0;color:#94a3b8;font-size:12px;">Publicado por ${data.autor}</p>
           </div>
           ${btn('Ver en el portal', `${PORTAL_URL}/dashboard/comunicaciones`)}
+        `),
+      })
+    }
+
+    /* ── Invitación: crear la contraseña por primera vez ───────────────────── */
+    // Es el reset con otra ropa: mismo token de un solo uso, pero el texto habla
+    // de crear y no de restablecer, y el link dura una semana. Antes esto se
+    // resolvía diciéndole a la persona que usara "Olvidé mi contraseña", que es
+    // pedirle que declare haber olvidado algo que nunca tuvo.
+    else if (type === 'invitacion_acceso') {
+      const url = `${PORTAL_URL}/reset-password?token=${encodeURIComponent(raw.token ?? '')}&nuevo=1`
+      await transporter.sendMail({
+        from, to: raw.email,
+        subject: `🔐 Creá tu contraseña — Portal RRHH FNO`,
+        html: base(`
+          <h3 style="color:${BRAND};margin-top:0;">Ya tenés tu acceso al Portal RRHH</h3>
+          <p>Hola <strong>${data.nombre}</strong>,</p>
+          <p style="color:#64748b;line-height:1.7;">Tu cuenta del Portal de Recursos Humanos de la <strong>Fundación Neuquén Oeste</strong> ya está creada. Sólo falta que elijas tu contraseña.</p>
+          ${btn('Crear mi contraseña', url)}
+          <p style="color:#64748b;font-size:13px;line-height:1.7;margin-top:24px;">
+            Vas a entrar con este email: <strong>${data.email}</strong><br>
+            El link vale por <strong>7 días</strong>. Si se vence, entrá al portal y tocá
+            &quot;Olvidé mi contraseña&quot; para pedir uno nuevo.
+          </p>
+          <div style="background:#fef3c7;border-radius:8px;padding:12px 16px;margin-top:20px;">
+            <p style="margin:0;color:#92400e;font-size:13px;line-height:1.6;">⚠️ No compartas este link: quien lo tenga puede definir la contraseña de tu cuenta.</p>
+          </div>
         `),
       })
     }
