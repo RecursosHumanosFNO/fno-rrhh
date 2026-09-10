@@ -1,40 +1,62 @@
 'use client'
 
 import { useState } from 'react'
-import { Copy, Check, Loader2 } from 'lucide-react'
-import { copiarParaWhatsapp } from '@/lib/compartir'
+import { Copy, Image as ImageIcon, Check, Loader2 } from 'lucide-react'
+import { copiarTexto, copiarImagen } from '@/lib/compartir'
+
+type Estado = 'listo' | 'copiando' | 'ok' | 'error'
 
 /**
- * Copia el texto de una novedad o de un evento listo para pegar en WhatsApp.
+ * Dos botones separados: uno copia el texto y otro la imagen.
  *
- * El aviso de lo que pasó importa tanto como la copia: cuando el navegador no
- * deja llevarse la imagen —pasa seguido en iPhone— hay que decirlo, o alguien
- * pega el mensaje en el grupo convencido de que la foto iba adentro.
+ * Van separados porque el portapapeles no guarda las dos cosas a la vez: al
+ * pegar, el sistema elige un solo formato —y elige la imagen—, así que el texto
+ * se perdía. Ahora se pega el mensaje en el grupo y después la foto.
  */
 export function BotonCopiar({ texto, imagenUrl, className = '' }: {
   texto: string
   imagenUrl?: string
   className?: string
 }) {
-  const [estado, setEstado] = useState<'listo' | 'copiando' | 'ok' | 'ok-sin-foto' | 'error'>('listo')
+  return (
+    <div className={`flex flex-wrap gap-2 ${className}`}>
+      <Boton
+        label="Copiar texto"
+        title="Copia el mensaje listo para pegar en el grupo de WhatsApp"
+        icono={<Copy className="w-4 h-4" />}
+        accion={() => copiarTexto(texto)}
+      />
+      {imagenUrl && (
+        <Boton
+          label="Copiar imagen"
+          title="Copia la foto para pegarla después del mensaje"
+          icono={<ImageIcon className="w-4 h-4" />}
+          accion={() => copiarImagen(imagenUrl)}
+        />
+      )}
+    </div>
+  )
+}
+
+function Boton({ label, title, icono, accion }: {
+  label: string
+  title: string
+  icono: React.ReactNode
+  accion: () => Promise<boolean>
+}) {
+  const [estado, setEstado] = useState<Estado>('listo')
 
   async function copiar() {
     setEstado('copiando')
-    const r = await copiarParaWhatsapp(texto, imagenUrl)
-    const nuevo = r === 'error'
-      ? 'error'
-      : r === 'texto-e-imagen'
-        ? 'ok'
-        : imagenUrl ? 'ok-sin-foto' : 'ok'
-    setEstado(nuevo)
-    setTimeout(() => setEstado('listo'), nuevo === 'ok-sin-foto' ? 5000 : 2500)
+    const ok = await accion()
+    setEstado(ok ? 'ok' : 'error')
+    setTimeout(() => setEstado('listo'), ok ? 2500 : 4000)
   }
 
-  const label = {
-    listo: 'Copiar para WhatsApp',
+  const texto = {
+    listo: label,
     copiando: 'Copiando...',
     ok: '¡Copiado!',
-    'ok-sin-foto': 'Texto copiado — la foto va aparte',
     error: 'No se pudo copiar',
   }[estado]
 
@@ -42,17 +64,17 @@ export function BotonCopiar({ texto, imagenUrl, className = '' }: {
     <button
       onClick={copiar}
       disabled={estado === 'copiando'}
-      title="Copia el mensaje listo para pegar en el grupo de WhatsApp"
+      title={title}
       className={`btn-secondary text-sm py-1.5 disabled:opacity-60 ${
         estado === 'error' ? 'text-red-600 dark:text-red-400' : ''
-      } ${className}`}
+      }`}
     >
       {estado === 'copiando'
         ? <Loader2 className="w-4 h-4 animate-spin" />
-        : estado === 'ok' || estado === 'ok-sin-foto'
+        : estado === 'ok'
           ? <Check className="w-4 h-4 text-emerald-600" />
-          : <Copy className="w-4 h-4" />}
-      <span className="truncate">{label}</span>
+          : icono}
+      <span className="truncate">{texto}</span>
     </button>
   )
 }
