@@ -8,8 +8,10 @@ import { supabase } from '@/lib/supabase'
 import ImageLightbox from '@/components/ImageLightbox'
 import Linkify from '@/components/Linkify'
 import { comprimirImagen } from '@/lib/comprimirImagen'
+import { BotonCopiar } from '@/components/BotonCopiar'
+import { textoEventoWhatsapp } from '@/lib/compartir'
 import { estaProgramada, publicarEnISO, isoAInputLocal, textoProgramada, manianaALasOcho } from '@/contexts/programado'
-import { parseLocalDate, EVENTO_TIPO_LABEL, EVENTO_TIPO_COLOR, EVENTO_TIPO_DOT, formatFecha, hoyAR } from '@/lib/utils'
+import { parseLocalDate, EVENTO_TIPO_LABEL, EVENTO_TIPO_COLOR, formatFecha, hoyAR } from '@/lib/utils'
 import { expandirEventos, ocurrenciasEnRango, textoRepeticion, REPETICION_LABEL } from '@/lib/recurrencia'
 import type { EventoTipo, Evento, EventoRepeticion, NovedadCategoria } from '@/types'
 import {
@@ -35,7 +37,6 @@ const GRUPOS_TIPO_EVENTO: { grupo: string; tipos: EventoTipo[] }[] = [
   { grupo: 'Actividades', tipos: ['deportivo', 'cultural', 'campana'] },
   { grupo: 'Operativos', tipos: ['administrativo', 'mantenimiento', 'simulacro', 'gremial', 'receso', 'otro'] },
 ]
-const TIPOS_EVENTO: EventoTipo[] = GRUPOS_TIPO_EVENTO.flatMap(g => g.tipos)
 
 // Fondo de celda del calendario (más saturado que el badge para que se vea bien)
 const EVENTO_TIPO_CELL_BG: Record<EventoTipo, string> = {
@@ -479,21 +480,6 @@ export default function EventosPage() {
               })}
             </div>
 
-            {/* Leyenda */}
-            <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-              {TIPOS_EVENTO.map(t => (
-                <div key={t} className="flex items-center gap-1.5">
-                  <div className={`w-3 h-3 rounded-sm ${EVENTO_TIPO_CELL_BG[t]}`} />
-                  <span className="text-xs text-slate-500 dark:text-slate-400">
-                    {EVENTO_TIPO_LABEL[t].replace(/^\S+\s/, '')}
-                  </span>
-                </div>
-              ))}
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded-sm bg-pink-200 dark:bg-pink-900/60" />
-                <span className="text-xs text-slate-500 dark:text-slate-400">Cumpleaños</span>
-              </div>
-            </div>
           </div>
 
           {/* Próximos eventos (30 días) */}
@@ -697,6 +683,14 @@ export default function EventosPage() {
                           className="mt-3 rounded-lg border border-slate-200 dark:border-slate-700 w-full max-h-56 object-cover cursor-zoom-in hover:opacity-90 transition-opacity"
                           title="Ver imagen completa"
                         />
+                      )}
+                      {isAdmin && (
+                        <div className="mt-3">
+                          <BotonCopiar
+                            texto={textoEventoWhatsapp(ev)}
+                            imagenUrl={ev.imagen || undefined}
+                          />
+                        </div>
                       )}
                       {ev.adjuntoUrl && (
                         <a href={ev.adjuntoUrl} target="_blank" rel="noopener noreferrer" download={ev.adjuntoNombre}

@@ -8,6 +8,8 @@ import { authFetch } from '@/lib/authFetch'
 import ImageLightbox from '@/components/ImageLightbox'
 import Linkify from '@/components/Linkify'
 import { comprimirImagen } from '@/lib/comprimirImagen'
+import { BotonCopiar } from '@/components/BotonCopiar'
+import { textoNovedadWhatsapp } from '@/lib/compartir'
 import { estaProgramada, publicarEnISO, isoAInputLocal, textoProgramada, manianaALasOcho } from '@/contexts/programado'
 import { DESTINOS_PUSH, DESTINO_PUSH_POR_DEFECTO, esDestinoPushValido } from '@/lib/destinosPush'
 import {
@@ -505,6 +507,16 @@ export default function ComunicacionesPage() {
                   <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
                     Publicado el {formatFecha(n.fechaPublicacion)} · Por {n.autor}
                   </p>
+                  {/* Sólo con la novedad abierta: es donde se decide compartirla,
+                      y arriba la fila de íconos ya está llena. */}
+                  {isSelected && isAdmin && (
+                    <div className="mt-3" onClick={ev => ev.stopPropagation()}>
+                      <BotonCopiar
+                        texto={textoNovedadWhatsapp(n)}
+                        imagenUrl={n.imagen || undefined}
+                      />
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   {isAdmin && (
