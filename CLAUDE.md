@@ -81,6 +81,7 @@ All routes use Node.js runtime and the Supabase **service role key** (never expo
 | `GET /api/cron/cumpleanos` | Vercel cron — birthday notifications |
 | `GET /api/cron/reporte-diario` | Vercel cron — weekly RRHH summary (runs daily, only sends on Mondays) |
 | `GET /api/cron/solicitudes-pendientes` | Vercel cron — reminder about pending requests |
+| `GET /api/cron/publicar-programados` | Publica las novedades/eventos con `publicar_en` vencido y recién ahí manda los avisos. Lo llama **GitHub Actions cada 15 min** (`.github/workflows/publicar-programados.yml`), no Vercel: el plan Hobby permite una sola corrida diaria |
 
 Admin routes verify the requester's role by looking up `fno_users` with their `auth_id` before acting.
 Assigning the `admin` or `rrhh` role is admin-only — `rrhh` can only grant `employee` or `comunicaciones`.
@@ -98,7 +99,7 @@ RLS is enabled on all tables. Service role key bypasses RLS (server-side only).
 | `fno_solicitudes` | Requests (vacation, medical leave, etc.) |
 | `fno_recibos` | Payroll receipt metadata + storage URLs |
 | `fno_recibo_firmas` | Receipt signature audit trail |
-| `fno_novedades` | News/communications |
+| `fno_novedades` | News/communications. `publicar_en` en el futuro = programada: no se ve (RLS) ni avisa hasta esa hora |
 | `fno_eventos` | Calendar events (DB = custom; code = fixed holidays in `mockData.ts`). Los que se repiten guardan UNA fila + cómo se repiten; las ocurrencias se calculan en `src/lib/recurrencia.ts` |
 | `fno_tickets` | RRHH portal requests |
 | `fno_notifs` | In-app notifications |

@@ -8,6 +8,7 @@ import { authFetch } from '@/lib/authFetch'
 import ImageLightbox from '@/components/ImageLightbox'
 import Linkify from '@/components/Linkify'
 import { comprimirImagen } from '@/lib/comprimirImagen'
+import { estaProgramada, publicarEnISO, isoAInputLocal, textoProgramada, manianaALasOcho } from '@/contexts/programado'
 import { DESTINOS_PUSH, DESTINO_PUSH_POR_DEFECTO, esDestinoPushValido } from '@/lib/destinosPush'
 import {
   NOVEDAD_CATEGORIA_COLOR, NOVEDAD_CATEGORIA_LABEL, NOVEDAD_CATEGORIAS,
@@ -33,7 +34,7 @@ import {
   Megaphone, Plus, Pin, Calendar, PartyPopper, AlertTriangle,
   Bell, MessageSquare, X, ChevronRight, Trash2, Edit2, Save, Mail,
   Image as ImageIcon, Loader2, Paperclip, Download, ExternalLink, ChevronDown,
-  Send,
+  Send, Clock,
 } from 'lucide-react'
 
 // Ícono por categoría (las que no estén usan Calendar por defecto)
@@ -70,6 +71,9 @@ const FORM_INICIAL = {
   addToCalendario: false,
   calendarioFecha: '',
   calendarioTipo: 'jornada' as EventoTipo,
+  // Vacío = se publica al guardar. Con fecha y hora, queda esperando: no se ve
+  // ni avisa hasta ese momento (lo publica /api/cron/publicar-programados).
+  publicarEn: '',
 }
 
 export default function ComunicacionesPage() {
@@ -174,7 +178,11 @@ export default function ComunicacionesPage() {
   // Visibilidad: admin/comunicaciones ven todo; un empleado solo ve las novedades
   // sin destinatarios (públicas) o donde su id esté incluido.
   const puedeVerNovedad = (n: Novedad) => {
+    // Programada: la ve sólo quien publica, para poder revisarla antes. Del lado
+    // de la base la regla es la misma (ver la migración de publicación
+    // programada); esto es para que la pantalla acompañe, no la barrera.
     if (isAdmin) return true
+    if (estaProgramada(n)) return false
     const dest = n.destinatarios ?? []
     return dest.length === 0 || (user?.empleadoId ? dest.includes(user.empleadoId) : false)
   }
@@ -224,6 +232,7 @@ export default function ComunicacionesPage() {
         adjuntoNombre: newForm.adjuntoNombre || undefined,
         linkUrl: newForm.linkUrl || undefined,
         destinatarios: newForm.destinatarios,
+        publicarEn: publicarEnISO(newForm.publicarEn),
       }, newForm.notifyChannels)
       setEditId(null)
     } else {
@@ -240,6 +249,7 @@ export default function ComunicacionesPage() {
         adjuntoNombre: newForm.adjuntoNombre || undefined,
         linkUrl: newForm.linkUrl || undefined,
         destinatarios: newForm.destinatarios,
+        publicarEn: publicarEnISO(newForm.publicarEn),
       }, newForm.notifyChannels)
       if (newForm.addToCalendario && newForm.calendarioFecha) {
         addEvento({
@@ -249,6 +259,9 @@ export default function ComunicacionesPage() {
           descripcion: newForm.contenido,
           importante: newForm.importante,
           fijado: newForm.fijado,
+          // El evento se programa junto con la novedad: si la novedad sale el
+          // martes a las 8, el evento no puede aparecer en el calendario hoy.
+          publicarEn: publicarEnISO(newForm.publicarEn),
         }, newForm.notifyChannels)
       }
     }
@@ -265,6 +278,7 @@ export default function ComunicacionesPage() {
       destinatarios: n.destinatarios ?? [],
       imagen: n.imagen ?? '', adjuntoUrl: n.adjuntoUrl ?? '', adjuntoNombre: n.adjuntoNombre ?? '', linkUrl: n.linkUrl ?? '',
       addToCalendario: false, calendarioFecha: '', calendarioTipo: 'jornada',
+      publicarEn: isoAInputLocal(n.publicarEn),
     })
     setShowNueva(true)
   }
@@ -447,6 +461,12 @@ export default function ComunicacionesPage() {
                     {n.importante && (
                       <span className="badge bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
                         ★ Importante
+                      </span>
+                    )}
+                    {/* Sólo la ve quien publica: para el resto todavía no existe */}
+                    {estaProgramada(n) && (
+                      <span className="badge bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">
+                        <Clock className="w-3 h-3 mr-0.5" /> Se publica el {textoProgramada(n.publicarEn)}
                       </span>
                     )}
                   </div>
@@ -689,10 +709,59 @@ export default function ComunicacionesPage() {
               </div>
 
               {/* Canales de notificación (al crear y al editar: reenvía el aviso) */}
+              {/* Publicar ahora o programar */}
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <div className="bg-slate-50 dark:bg-slate-800/60 px-4 py-2.5 border-b border-slate-200 dark:border-slate-700">
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300">¿Cuándo se publica?</p>
+                </div>
+                <div className="p-3 space-y-2">
+                  <label className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                    <input
+                      type="radio"
+                      checked={!newForm.publicarEn}
+                      onChange={() => setNewForm(f => ({ ...f, publicarEn: '' }))}
+                      className="w-4 h-4 text-brand-600 focus:ring-brand-500"
+                    />
+                    <span className="text-sm text-slate-700 dark:text-slate-200">Ahora, al guardar</span>
+                  </label>
+                  <label className="flex items-start gap-3 cursor-pointer p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                    <input
+                      type="radio"
+                      checked={!!newForm.publicarEn}
+                      onChange={() => setNewForm(f => ({
+                        ...f,
+                        // Por defecto, mañana a las 8: es el horario en que
+                        // arranca la jornada y evita mandar avisos de noche.
+                        publicarEn: f.publicarEn || isoAInputLocal(manianaALasOcho()),
+                      }))}
+                      className="w-4 h-4 mt-0.5 text-brand-600 focus:ring-brand-500"
+                    />
+                    <div className="min-w-0">
+                      <span className="text-sm text-slate-700 dark:text-slate-200">Programar para más adelante</span>
+                      {newForm.publicarEn && (
+                        <>
+                          <input
+                            type="datetime-local"
+                            className="form-input text-sm mt-2 w-auto"
+                            value={newForm.publicarEn}
+                            min={isoAInputLocal(new Date().toISOString())}
+                            onChange={e => setNewForm(f => ({ ...f, publicarEn: e.target.value }))}
+                          />
+                          <p className="text-xs text-slate-400 mt-1.5">
+                            Hasta ese momento no la ve nadie más que vos, y los avisos que elijas
+                            abajo salen recién ahí. Se publica sola, con hasta 15 minutos de demora.
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  </label>
+                </div>
+              </div>
+
               <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
                 <div className="bg-slate-50 dark:bg-slate-800/60 px-4 py-2.5 border-b border-slate-200 dark:border-slate-700">
                   <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                    {editId ? 'Reenviar aviso al guardar' : 'Notificaciones al publicar'}
+                    {editId ? 'Reenviar aviso al guardar' : newForm.publicarEn ? 'Notificaciones al publicarse' : 'Notificaciones al publicar'}
                   </p>
                   <p className="text-xs text-slate-400 mt-0.5">
                     {editId
