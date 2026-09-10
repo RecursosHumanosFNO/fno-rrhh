@@ -716,6 +716,14 @@ export default function EventosPage() {
                           title="Ver imagen completa"
                         />
                       )}
+                      {isAdmin && (
+                        <div className="mt-3">
+                          <BotonCopiar
+                            texto={textoEventoWhatsapp(ev)}
+                            imagenUrl={ev.imagen || undefined}
+                          />
+                        </div>
+                      )}
                       {ev.adjuntoUrl && (
                         <a href={ev.adjuntoUrl} target="_blank" rel="noopener noreferrer" download={ev.adjuntoNombre}
                           className="inline-flex items-center gap-1.5 mt-3 text-xs font-medium text-brand-700 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/20 hover:bg-brand-100 dark:hover:bg-brand-900/40 rounded-lg px-2.5 py-1.5 transition-colors w-fit">
