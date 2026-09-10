@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { formatFecha } from '@/lib/utils'
 import { textoRepeticion } from '@/lib/recurrencia'
-import type { Canal, Evento, Novedad } from '@/types'
+import type { Canal } from '@/types'
 import { mapSupabaseToEvento, mapSupabaseToNovedad } from '@/contexts/mappers'
 
 export const runtime = 'nodejs'

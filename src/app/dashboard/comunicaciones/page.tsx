@@ -480,7 +480,7 @@ export default function ComunicacionesPage() {
                       <img loading="lazy"
                         src={n.imagen} alt=""
                         onClick={ev => { ev.stopPropagation(); setLightbox(n.imagen!) }}
-                        className="rounded-xl border border-slate-200 dark:border-slate-700 w-full max-w-lg cursor-zoom-in hover:opacity-90 transition-opacity"
+                        className="rounded-xl border border-slate-200 dark:border-slate-700 w-full max-w-lg max-h-[60vh] object-contain bg-slate-100 dark:bg-slate-800 cursor-zoom-in hover:opacity-90 transition-opacity"
                         title="Ver imagen completa"
                       />
                     </div>
@@ -510,10 +510,11 @@ export default function ComunicacionesPage() {
                   {/* Sólo con la novedad abierta: es donde se decide compartirla,
                       y arriba la fila de íconos ya está llena. */}
                   {isSelected && isAdmin && (
-                    <div className="mt-3" onClick={ev => ev.stopPropagation()}>
+                    <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700" onClick={ev => ev.stopPropagation()}>
                       <BotonCopiar
                         texto={textoNovedadWhatsapp(n)}
                         imagenUrl={n.imagen || undefined}
+                        className="w-full sm:w-auto justify-center"
                       />
                     </div>
                   )}
