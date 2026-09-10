@@ -2,6 +2,7 @@
 // dominio (camelCase). Son funciones puras: viven fuera del contexto para poder
 // probarlas y para no seguir engordando DataContext.
 import type {
+  Canal,
   MensajeSolicitud,
   Empleado, Solicitud, Recibo, Novedad, Ticket, AppNotification, Evento,
   RegistroNovedad, EmpleadoEstado, DesvinculacionInfo, SolicitudTipo,
@@ -170,6 +171,8 @@ export function mapSupabaseToNovedad(row: Record<string, unknown>): Novedad {
     adjuntoNombre: (row.adjunto_nombre as string) || undefined,
     linkUrl: (row.link_url as string) || undefined,
     destinatarios: (row.destinatarios as string[]) ?? [],
+    publicarEn: (row.publicar_en as string) || undefined,
+    avisoCanales: (row.aviso_canales as Canal[]) ?? undefined,
   }
 }
 export function mapNovedadToSupabase(n: Novedad, baseOnly = false) {
@@ -185,6 +188,8 @@ export function mapNovedadToSupabase(n: Novedad, baseOnly = false) {
   return {
     ...base,
     destinatarios: n.destinatarios ?? [],
+    publicar_en: n.publicarEn || null,
+    aviso_canales: n.publicarEn ? (n.avisoCanales ?? []) : null,
   }
 }
 
@@ -238,6 +243,8 @@ export function mapSupabaseToEvento(row: Record<string, unknown>): Evento {
     importante: (row.importante as boolean) ?? false,
     fijado: (row.fijado as boolean) ?? false,
     destinatarios: (row.destinatarios as string[]) ?? [],
+    publicarEn: (row.publicar_en as string) || undefined,
+    avisoCanales: (row.aviso_canales as Canal[]) ?? undefined,
     repeticion: (row.repeticion as Evento['repeticion']) || undefined,
     repeticionCada: (row.repeticion_cada as number) || undefined,
     repeticionHasta: (row.repeticion_hasta as string) || undefined,
@@ -266,6 +273,8 @@ export function mapEventoToSupabase(e: Evento, baseOnly = false) {
     repeticion: e.repeticion ?? null,
     repeticion_cada: e.repeticion ? (e.repeticionCada ?? 1) : null,
     repeticion_hasta: e.repeticionHasta || null,
+    publicar_en: e.publicarEn || null,
+    aviso_canales: e.publicarEn ? (e.avisoCanales ?? []) : null,
   }
 }
 

@@ -8,19 +8,23 @@ import { supabase } from '@/lib/supabase'
 import ImageLightbox from '@/components/ImageLightbox'
 import Linkify from '@/components/Linkify'
 import { comprimirImagen } from '@/lib/comprimirImagen'
+import { estaProgramada, publicarEnISO, isoAInputLocal, textoProgramada, manianaALasOcho } from '@/contexts/programado'
 import { parseLocalDate, EVENTO_TIPO_LABEL, EVENTO_TIPO_COLOR, EVENTO_TIPO_DOT, formatFecha, hoyAR } from '@/lib/utils'
 import { expandirEventos, ocurrenciasEnRango, textoRepeticion, REPETICION_LABEL } from '@/lib/recurrencia'
 import type { EventoTipo, Evento, EventoRepeticion, NovedadCategoria } from '@/types'
 import {
   Calendar, PartyPopper, Plus, ChevronLeft, ChevronRight,
   Edit2, Trash2, X, Save, Image as ImageIcon, Loader2,
-  Paperclip, Download, Pin, Bell, Mail, Lock, Users, Megaphone, Repeat,
+  Paperclip, Download, Pin, Bell, Mail, Lock, Users, Megaphone, Repeat, Clock,
 } from 'lucide-react'
 
 type NotifyChannel = 'app' | 'email'
 type EventoForm = Omit<Evento, 'id'> & {
   notifyChannels: NotifyChannel[]
   addToComunicaciones: boolean
+  // Lo que entrega el <input type="datetime-local">; se convierte a ISO recién
+  // al guardar (ver publicarEnISO).
+  publicarEnLocal: string
 }
 
 // Agrupados para que el select no sea una lista de veinte cosas sueltas.
@@ -92,6 +96,7 @@ function emptyForm(): EventoForm {
     titulo: '', fecha: '', tipo: 'jornada', descripcion: '',
     importante: false, fijado: false, destinatarios: [],
     notifyChannels: [], addToComunicaciones: false,
+    publicarEnLocal: '',
   }
 }
 
@@ -168,6 +173,10 @@ export default function EventosPage() {
   // ── Eventos visibles según destinatarios ─────────────────────────────────
   const eventosVisibles = useMemo(() => {
     return eventos.filter(ev => {
+      // Programado: lo ve sólo quien publica, para poder revisarlo antes de que
+      // salga. La misma regla está en la base (migración de publicación
+      // programada); acá es para que la pantalla acompañe.
+      if (estaProgramada(ev) && !isAdmin) return false
       if (!ev.destinatarios || ev.destinatarios.length === 0) return true
       if (isAdmin) return true
       return ev.destinatarios.includes(empleado?.id ?? '')
@@ -275,6 +284,7 @@ export default function EventosPage() {
       repeticion: ev.repeticion, repeticionCada: ev.repeticionCada,
       repeticionHasta: ev.repeticionHasta,
       notifyChannels: [], addToComunicaciones: false,
+      publicarEnLocal: isoAInputLocal(ev.publicarEn),
     })
     setDestSearch('')
     setModal({ mode: 'edit', evento: ev })
@@ -300,7 +310,8 @@ export default function EventosPage() {
 
   function handleSave() {
     if (!form.titulo.trim() || !form.fecha) return
-    const { notifyChannels, addToComunicaciones, ...eventoData } = form
+    const { notifyChannels, addToComunicaciones, publicarEnLocal, ...resto } = form
+    const eventoData = { ...resto, publicarEn: publicarEnISO(publicarEnLocal) }
     if (modal?.mode === 'edit' && modal.evento) {
       updateEvento(modal.evento.id, eventoData, notifyChannels)
     } else {
@@ -667,6 +678,11 @@ export default function EventosPage() {
                           <Repeat className="w-3 h-3" /> {textoRepeticion(ev)}
                         </p>
                       )}
+                      {estaProgramada(ev) && (
+                        <p className="text-xs text-sky-600 dark:text-sky-400 mt-1 flex items-center gap-1">
+                          <Clock className="w-3 h-3" /> Todavía no publicado — sale el {textoProgramada(ev.publicarEn)}
+                        </p>
+                      )}
                       {ev.descripcion && (
                         <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
                           <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -975,10 +991,63 @@ export default function EventosPage() {
                 </div>
               </div>
 
+              {/* Publicar ahora o programar */}
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <div className="bg-slate-50 dark:bg-slate-800/60 px-4 py-2.5 border-b border-slate-200 dark:border-slate-700">
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300">¿Cuándo se publica?</p>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    No es la fecha del evento, es cuándo aparece en el portal
+                  </p>
+                </div>
+                <div className="p-3 space-y-2">
+                  <label className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                    <input
+                      type="radio"
+                      checked={!form.publicarEnLocal}
+                      onChange={() => setForm(f => ({ ...f, publicarEnLocal: '' }))}
+                      className="w-4 h-4 text-brand-600 focus:ring-brand-500"
+                    />
+                    <span className="text-sm text-slate-700 dark:text-slate-200">Ahora, al guardar</span>
+                  </label>
+                  <label className="flex items-start gap-3 cursor-pointer p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                    <input
+                      type="radio"
+                      checked={!!form.publicarEnLocal}
+                      onChange={() => setForm(f => ({
+                        ...f,
+                        publicarEnLocal: f.publicarEnLocal || isoAInputLocal(manianaALasOcho()),
+                      }))}
+                      className="w-4 h-4 mt-0.5 text-brand-600 focus:ring-brand-500"
+                    />
+                    <div className="min-w-0">
+                      <span className="text-sm text-slate-700 dark:text-slate-200">Programar para más adelante</span>
+                      {form.publicarEnLocal && (
+                        <>
+                          <input
+                            type="datetime-local"
+                            className="form-input text-sm mt-2 w-auto"
+                            value={form.publicarEnLocal}
+                            min={isoAInputLocal(new Date().toISOString())}
+                            onChange={e => setForm(f => ({ ...f, publicarEnLocal: e.target.value }))}
+                          />
+                          <p className="text-xs text-slate-400 mt-1.5">
+                            Hasta ese momento el evento no aparece en el calendario de nadie más que
+                            el tuyo, y los avisos salen recién ahí. Se publica solo, con hasta 15
+                            minutos de demora.
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  </label>
+                </div>
+              </div>
+
               {/* Notificaciones */}
               <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
                 <div className="bg-slate-50 dark:bg-slate-800/60 px-4 py-2.5 border-b border-slate-200 dark:border-slate-700">
-                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Notificaciones al guardar</p>
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    {form.publicarEnLocal ? 'Notificaciones al publicarse' : 'Notificaciones al guardar'}
+                  </p>
                   <p className="text-xs text-slate-400 mt-0.5">Podés marcar más de una</p>
                 </div>
                 <div className="p-3 space-y-2">

@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import type { Empleado, AppNotification } from '@/types'
+import type { Empleado, AppNotification, Canal } from '@/types'
 import { authFetch } from '@/lib/authFetch'
 import { sendEmail } from './email'
 
@@ -20,7 +20,9 @@ function enviarPush(titulo: string, cuerpo: string, url: string, empleadoIds: st
   }).catch(() => { /* el push es no crítico */ })
 }
 
-export type Canal = 'app' | 'email'
+// Definido en types porque lo usan también Novedad y Evento (aviso programado);
+// se reexporta acá para no tocar los imports que ya existían.
+export type { Canal }
 
 type AddNotification = (n: Omit<AppNotification, 'id' | 'fecha' | 'leida'>) => void
 

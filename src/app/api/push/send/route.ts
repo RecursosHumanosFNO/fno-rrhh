@@ -11,10 +11,17 @@ export async function POST(req: NextRequest) {
 
   // Verificar que el solicitante sea admin/comunicaciones — SIEMPRE (validado por JWT).
   // Antes el chequeo solo corría si venía un header; omitirlo saltaba la autorización.
-  const requester = await getRequester(req, supabase)
-  if (!requester) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
-  if (requester.role !== 'admin' && requester.role !== 'comunicaciones') {
-    return NextResponse.json({ error: 'Sin permiso' }, { status: 403 })
+  // El cron de publicaciones programadas no tiene sesión de nadie: se autentica
+  // con el mismo secreto que el resto de los crons, igual que /api/notify.
+  const cronSecret = process.env.CRON_SECRET
+  const esInterno = !!cronSecret && req.headers.get('x-internal-key') === cronSecret
+
+  if (!esInterno) {
+    const requester = await getRequester(req, supabase)
+    if (!requester) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+    if (requester.role !== 'admin' && requester.role !== 'comunicaciones') {
+      return NextResponse.json({ error: 'Sin permiso' }, { status: 403 })
+    }
   }
 
   webpush.setVapidDetails(

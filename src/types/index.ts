@@ -226,7 +226,12 @@ export interface Novedad {
   adjuntoNombre?: string
   linkUrl?: string
   destinatarios?: string[] // IDs de empleados; vacío = visible/notificado para todos
+  publicarEn?: string      // ISO con hora; mientras esté en el futuro, no se ve ni avisa
+  avisoCanales?: Canal[]   // por qué canales avisar cuando llegue ese momento
 }
+
+// Canales de aviso de una publicación programada.
+export type Canal = 'app' | 'email'
 
 export type EventoTipo =
   | 'feriado' | 'jornada' | 'acto' | 'capacitacion' | 'reunion'
@@ -260,6 +265,8 @@ export interface Evento {
   repeticion?: EventoRepeticion   // sin valor = no se repite
   repeticionCada?: number         // 1 = todas; 2 = una sí y una no
   repeticionHasta?: string        // 'YYYY-MM-DD' inclusive; sin valor = sin fin
+  publicarEn?: string             // ISO con hora; hasta entonces no se ve ni avisa
+  avisoCanales?: Canal[]          // por qué canales avisar al publicarse
 }
 
 export interface Ticket {

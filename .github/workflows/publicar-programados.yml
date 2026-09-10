@@ -1,0 +1,53 @@
+name: Publicar novedades y eventos programados
+
+# Publica lo que se cargó con fecha y hora futura, y recién ahí manda los avisos.
+#
+# Corre acá y no en un cron de Vercel porque el plan Hobby permite UNA corrida
+# por día: con eso, "publicar el martes a las 8" no se puede cumplir. Cada quince
+# minutos es suficiente para que nadie note la diferencia.
+#
+# Ojo con el horario de GitHub: los cron de Actions no son puntuales, se corren
+# cuando hay lugar (a veces varios minutos tarde). Por eso el endpoint publica
+# TODO lo que ya venció, no sólo lo del último cuarto de hora.
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch: {}   # Para probarlo a mano desde la pestaña Actions
+
+# Si una corrida se solapa con la anterior, se descarta la nueva: el endpoint es
+# idempotente igual, pero no tiene sentido pisarse.
+concurrency:
+  group: publicar-programados
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    name: Publicar lo programado
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Llamar al portal
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          PORTAL_URL: ${{ vars.PORTAL_URL }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::Falta el secret CRON_SECRET"
+            exit 1
+          fi
+
+          # -L porque portalfno.com redirige con 308 y sin seguirlo la llamada
+          # se queda en el redirect. -w guarda el código HTTP aparte del cuerpo.
+          respuesta=$(curl -sSL -w '\n%{http_code}' \
+            "${PORTAL_URL:-https://portalfno.com}/api/cron/publicar-programados" \
+            -H "Authorization: Bearer $CRON_SECRET")
+
+          codigo=$(echo "$respuesta" | tail -n1)
+          cuerpo=$(echo "$respuesta" | sed '$d')
+          echo "HTTP $codigo — $cuerpo"
+
+          if [ "$codigo" != "200" ]; then
+            echo "::error::El portal respondió $codigo"
+            exit 1
+          fi

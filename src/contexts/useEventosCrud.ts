@@ -7,6 +7,7 @@ import * as initial from '@/lib/mockData'
 import { mapEventoToSupabase } from './mappers'
 import type { Canal } from './useAviso'
 import { recortar } from './texto'
+import { estaProgramada } from './programado'
 import { textoRepeticion } from '@/lib/recurrencia'
 
 type Aviso = ReturnType<typeof import('./useAviso').useAviso>
@@ -71,9 +72,15 @@ export function useEventosCrud({ setEventos, eventosRef, aviso }: {
   }, [aviso])
 
   const addEvento = useCallback((e: Omit<Evento, 'id'>, canales: Canal[] = []) => {
-    const nuevo: Evento = { ...e, id: uid() }
+    // Igual que en novedades: si está programado, el aviso lo manda el cron.
+    const programado = estaProgramada(e)
+    const nuevo: Evento = {
+      ...e,
+      id: uid(),
+      avisoCanales: programado ? canales : undefined,
+    }
     setEventos(prev => [...prev, nuevo].sort(porFecha))
-    avisar(nuevo, canales)
+    if (!programado) avisar(nuevo, canales)
     persistir(nuevo, 'insert')
   }, [setEventos, avisar])
 
@@ -91,7 +98,9 @@ export function useEventosCrud({ setEventos, eventosRef, aviso }: {
       return
     }
     const full: Evento = { ...existente, ...data }
-    avisar(full, canales, true)
+    const programado = estaProgramada(full)
+    if (programado) full.avisoCanales = canales
+    if (!programado) avisar(full, canales, true)
     persistir(full, 'upsert')
   }, [setEventos, eventosRef, avisar])
 

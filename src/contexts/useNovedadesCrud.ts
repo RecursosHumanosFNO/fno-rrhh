@@ -6,6 +6,7 @@ import { borrarImagenMedia } from './storage'
 import { mapNovedadToSupabase } from './mappers'
 import type { Canal } from './useAviso'
 import { recortar } from './texto'
+import { estaProgramada } from './programado'
 
 type Aviso = ReturnType<typeof import('./useAviso').useAviso>
 
@@ -55,9 +56,16 @@ export function useNovedadesCrud({ setNovedades, novedadesRef, aviso }: {
   }, [aviso])
 
   const addNovedad = useCallback((n: Omit<Novedad, 'id'>, canales: Canal[] = []) => {
-    const nueva: Novedad = { ...n, id: uid() }
+    // Programada: los canales se guardan en la fila y el aviso lo manda el cron
+    // cuando llegue la hora. Avisar ahora sería contar lo que todavía no se ve.
+    const programada = estaProgramada(n)
+    const nueva: Novedad = {
+      ...n,
+      id: uid(),
+      avisoCanales: programada ? canales : undefined,
+    }
     setNovedades(prev => [nueva, ...prev])
-    avisar(nueva, canales)
+    if (!programada) avisar(nueva, canales)
     persistir(nueva, 'insert')
   }, [setNovedades, avisar])
 
@@ -68,7 +76,9 @@ export function useNovedadesCrud({ setNovedades, novedadesRef, aviso }: {
     setNovedades(prev => prev.map(n => n.id === id ? { ...n, ...data } : n))
     if (!existente) return
     const full: Novedad = { ...existente, ...data }
-    avisar(full, canales, true)
+    const programada = estaProgramada(full)
+    if (programada) full.avisoCanales = canales
+    if (!programada) avisar(full, canales, true)
     persistir(full, 'upsert')
   }, [setNovedades, novedadesRef, avisar])
 
