@@ -1,5 +1,4 @@
 import { formatFecha } from './utils'
-import { textoRepeticion } from './recurrencia'
 import type { Evento, Novedad } from '@/types'
 
 // ── Copiar para mandar por WhatsApp ──────────────────────────────────────────
@@ -22,14 +21,15 @@ export function textoNovedadWhatsapp(n: Pick<Novedad, 'titulo' | 'contenido' | '
   ].filter(Boolean).join('\n\n')
 }
 
+// La repetición queda afuera a propósito: que un evento esté cargado como "cada
+// año" es configuración del calendario, y esto se pega en los grupos de la
+// Fundación. Al que lo lee le importa la fecha de este evento y nada más.
 export function textoEventoWhatsapp(
-  ev: Pick<Evento, 'titulo' | 'fecha' | 'hora' | 'descripcion' | 'repeticion' | 'repeticionCada' | 'repeticionHasta'>,
+  ev: Pick<Evento, 'titulo' | 'fecha' | 'hora' | 'descripcion'>,
 ): string {
-  const cuando = `📅 ${formatFecha(ev.fecha)}${ev.hora ? ` · 🕒 ${ev.hora} hs` : ''}`
-  const repite = textoRepeticion(ev)
   return [
     `*${limpio(ev.titulo)}*`,
-    [cuando, repite ? `🔁 ${repite}` : ''].filter(Boolean).join('\n'),
+    `📅 ${formatFecha(ev.fecha)}${ev.hora ? ` · 🕒 ${ev.hora} hs` : ''}`,
     limpio(ev.descripcion),
     '_Fundación Neuquén Oeste_',
   ].filter(Boolean).join('\n\n')
