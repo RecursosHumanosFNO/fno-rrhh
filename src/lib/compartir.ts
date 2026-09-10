@@ -35,43 +35,40 @@ export function textoEventoWhatsapp(
   ].filter(Boolean).join('\n\n')
 }
 
-export type ResultadoCopia = 'texto-e-imagen' | 'solo-texto' | 'error'
-
 /**
- * Copia el texto al portapapeles, y la imagen junto con él cuando el navegador
- * lo permite.
+ * Copia sólo el texto.
  *
- * Lo de la imagen es best-effort a propósito: el portapapeles con imagen sólo
- * funciona en contexto seguro, sólo con PNG (por eso se reconvierte), y algunos
- * navegadores lo rechazan si la escritura no sale de un gesto directo. Cuando no
- * se puede, el texto se copia igual y la pantalla avisa que la foto hay que
- * adjuntarla aparte — mejor eso que no copiar nada.
+ * Antes se copiaba texto e imagen en un mismo ítem del portapapeles, con la
+ * idea de que WhatsApp tomara los dos. No funciona: al pegar, el sistema elige
+ * UN formato —y elige la imagen—, así que el texto se perdía siempre. Ahora son
+ * dos acciones separadas: se pega el texto, y después la foto.
  */
-export async function copiarParaWhatsapp(texto: string, imagenUrl?: string): Promise<ResultadoCopia> {
-  const puedeItems = typeof ClipboardItem !== 'undefined' && !!navigator.clipboard?.write
-
-  if (imagenUrl && puedeItems) {
-    try {
-      // El ClipboardItem se arma con promesas y de forma sincrónica: Safari
-      // exige que la llamada salga del mismo gesto del usuario, y si primero se
-      // hace await del fetch, para cuando llega ya perdió el permiso.
-      await navigator.clipboard.write([
-        new ClipboardItem({
-          'text/plain': new Blob([texto], { type: 'text/plain' }),
-          'image/png': aPng(imagenUrl),
-        }),
-      ])
-      return 'texto-e-imagen'
-    } catch {
-      // Sigue de largo: al menos el texto.
-    }
-  }
-
+export async function copiarTexto(texto: string): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(texto)
-    return 'solo-texto'
+    return true
   } catch {
-    return 'error'
+    return false
+  }
+}
+
+/**
+ * Copia la imagen sola.
+ *
+ * El portapapeles sólo acepta PNG, así que lo que esté en otro formato se
+ * reconvierte. El ClipboardItem se arma con una promesa y de forma sincrónica:
+ * Safari exige que la escritura salga del mismo gesto del usuario, y si primero
+ * se hace await del fetch, para cuando llega ya perdió el permiso.
+ */
+export async function copiarImagen(url: string): Promise<boolean> {
+  if (typeof ClipboardItem === 'undefined' || !navigator.clipboard?.write) return false
+  try {
+    await navigator.clipboard.write([
+      new ClipboardItem({ 'image/png': aPng(url) }),
+    ])
+    return true
+  } catch {
+    return false
   }
 }
 
