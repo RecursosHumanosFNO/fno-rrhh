@@ -1,3 +1,4 @@
+import { useEscape } from '@/lib/useEscape'
 import { FileText, Download, X } from 'lucide-react'
 
 // Visor de PDF a pantalla completa (recibos y documentos del empleado).
@@ -12,6 +13,9 @@ export function PdfViewerOverlay({ viewer, onClose }: {
   // que pide "ajustar al ancho" como estado inicial; el pellizco para hacer
   // zoom sigue funcionando igual después. Va en el fragment (#) y no en la
   // query: no viaja al servidor, así que no rompe la firma de la URL.
+  // El componente sólo se monta cuando hay algo que ver, así que ya está abierto.
+  useEscape(true, onClose)
+
   const src = `${viewer.url}#view=FitH`
 
   return (

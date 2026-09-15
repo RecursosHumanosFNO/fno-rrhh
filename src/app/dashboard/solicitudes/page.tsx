@@ -1,5 +1,6 @@
 'use client'
 
+import { useEscape } from '@/lib/useEscape'
 import Link from 'next/link'
 import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -334,6 +335,10 @@ export default function SolicitudesPage() {
     setSubmitToast(true)
     setTimeout(() => setSubmitToast(false), 3500)
   }
+
+  useEscape(showMensaje, () => setShowMensaje(false))
+  useEscape(!!confirmCancel, () => setConfirmCancel(null))
+  useEscape(showNueva, () => setShowNueva(false))
 
   return (
     <div className="page-container">

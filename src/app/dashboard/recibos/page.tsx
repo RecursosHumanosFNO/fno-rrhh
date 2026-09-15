@@ -1,5 +1,6 @@
 'use client'
 
+import { useEscape } from '@/lib/useEscape'
 import Link from 'next/link'
 import React, { useState, useRef, useCallback, useMemo } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -478,6 +479,9 @@ export default function RecibosPage() {
   }
 
   // ──────────────────────────────────────────────────────────────────────
+  useEscape(!!firmaModal, () => { if (!firmando) { setFirmaModal(null); setFirmaAcepto(false) } })
+  useEscape(!!confirmDelete, () => { if (!deleting) setConfirmDelete(null) })
+
   return (
     <div className="page-container">
       {/* Header */}

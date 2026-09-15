@@ -1,3 +1,4 @@
+import { useEscape } from '@/lib/useEscape'
 import React from 'react'
 import Link from 'next/link'
 import {
@@ -112,6 +113,8 @@ export function PedidosRRHH({ isAdmin, user, filteredTickets, baseTickets, ticke
   setTicketForm: (fn: (f: { tipo: TicketTipo; asunto: string; descripcion: string }) => { tipo: TicketTipo; asunto: string; descripcion: string }) => void,
   ticketError: string, handleNuevoTicket: () => void,
 }) {
+  useEscape(showNuevoTicket, () => setShowNuevoTicket(false))
+
   return (
     <>
       {/* Info cards empleado */}

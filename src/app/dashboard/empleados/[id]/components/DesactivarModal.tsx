@@ -1,3 +1,4 @@
+import { useEscape } from '@/lib/useEscape'
 import { UserX, X } from 'lucide-react'
 import type { DesvinculacionMotivo } from '@/types'
 
@@ -32,6 +33,9 @@ export function DesactivarModal({ nombreCompleto, form, setForm, onClose, onConf
   onClose: () => void
   onConfirm: () => void
 }) {
+  // Sólo se monta cuando está abierto.
+  useEscape(true, onClose)
+
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center sm:justify-center sm:p-4">
       <div className="card w-full sm:max-w-lg max-h-[90vh] overflow-y-auto animate-scale-in rounded-t-2xl rounded-b-none sm:rounded-2xl" onClick={e => e.stopPropagation()}>

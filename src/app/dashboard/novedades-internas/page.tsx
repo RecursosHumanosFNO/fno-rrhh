@@ -1,5 +1,6 @@
 'use client'
 
+import { useEscape } from '@/lib/useEscape'
 import Link from 'next/link'
 import { useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
@@ -435,6 +436,9 @@ function NovedadesInternasContent() {
   ).sort((a, b) => b.localeCompare(a))
 
   const usandoRangoFecha = !!(filterFechaDesde || filterFechaHasta)
+
+  useEscape(showForm, () => setShowForm(false))
+  useEscape(!!confirmDeleteId, () => setConfirmDeleteId(null))
 
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto">
