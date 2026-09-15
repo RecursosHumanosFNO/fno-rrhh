@@ -141,16 +141,21 @@ function ResetPasswordForm() {
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  <label htmlFor="password-nueva" className="block text-sm font-medium text-slate-700 mb-1.5">
                     {esPrimera ? 'Tu contraseña' : 'Nueva contraseña'}
                   </label>
                   <div className="relative">
                     <input
+                      id="password-nueva"
+                      name="new-password"
                       type={showPass ? 'text' : 'password'}
                       className="w-full px-4 py-2.5 pr-10 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#23597e]/30 focus:border-[#23597e]"
                       placeholder="Mínimo 10 caracteres"
                       value={password}
                       onChange={e => setPassword(e.target.value)}
+                      // Le dice al gestor de contraseñas que ofrezca generar una
+                      // nueva, en vez de autocompletar la vieja.
+                      autoComplete="new-password"
                       required
                     />
                     <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
@@ -160,13 +165,16 @@ function ResetPasswordForm() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Confirmar contraseña</label>
+                  <label htmlFor="password-confirmar" className="block text-sm font-medium text-slate-700 mb-1.5">Confirmar contraseña</label>
                   <input
+                    id="password-confirmar"
+                    name="confirm-password"
                     type="password"
                     className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#23597e]/30 focus:border-[#23597e]"
                     placeholder="Repetí la contraseña"
                     value={confirm}
                     onChange={e => setConfirm(e.target.value)}
+                    autoComplete="new-password"
                     required
                   />
                 </div>

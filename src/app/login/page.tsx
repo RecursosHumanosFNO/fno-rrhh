@@ -133,19 +133,19 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="form-label">Correo electrónico</label>
+              <label htmlFor="login-email" className="form-label">Correo electrónico</label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input type="email" className="form-input pl-10" placeholder="tu@email.com"
+                <input id="login-email" name="email" type="email" className="form-input pl-10" placeholder="tu@email.com"
                   value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" />
               </div>
             </div>
 
             <div>
-              <label className="form-label">Contraseña</label>
+              <label htmlFor="login-password" className="form-label">Contraseña</label>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input type={showPass ? 'text' : 'password'} className="form-input pl-10 pr-10"
+                <input id="login-password" name="password" type={showPass ? 'text' : 'password'} className="form-input pl-10 pr-10"
                   placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" />
                 <button type="button" onClick={() => setShowPass(!showPass)}
                   className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
@@ -156,7 +156,7 @@ export default function LoginPage() {
 
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)}
+                <input id="login-remember" name="remember" type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)}
                   className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" />
                 <span className="text-sm text-slate-600 dark:text-slate-400">Recordar sesión</span>
               </label>
@@ -234,12 +234,20 @@ function ForgotPasswordLink() {
                     Ocurrió un error. Intentá de nuevo o contactá a RRHH.
                   </p>
                 )}
+                {/* El placeholder no reemplaza a la etiqueta: desaparece al
+                    escribir y un lector de pantalla no lo anuncia. Como el
+                    texto del modal ya explica qué va acá, la etiqueta queda
+                    para quien no ve la pantalla. */}
+                <label htmlFor="recuperar-email" className="sr-only">Correo electrónico</label>
                 <input
+                  id="recuperar-email"
+                  name="email"
                   type="email"
                   className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-lg text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500"
                   placeholder="tu@email.com"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
+                  autoComplete="email"
                   required
                 />
                 <div className="flex gap-2">

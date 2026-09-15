@@ -213,8 +213,13 @@ export default function FundacionPage() {
           </div>
         </div>
         <div className="relative">
+          {/* Las medidas son las reales del archivo. Sin ellas el navegador le
+              reserva cero alto y, al cargar, empuja todo lo que sigue: el texto
+              de abajo pega un salto justo cuando lo estás por leer. */}
           <img loading="lazy"
             src="/sede.jpg"
+            width={2560}
+            height={1920}
             alt="Sede Fundación Neuquén Oeste"
             className="w-full object-cover max-h-[480px]"
           />
