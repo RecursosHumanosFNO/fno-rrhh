@@ -37,15 +37,22 @@ jobs:
             exit 1
           fi
 
-          # -L porque portalfno.com redirige con 308 y sin seguirlo la llamada
-          # se queda en el redirect. -w guarda el código HTTP aparte del cuerpo.
-          respuesta=$(curl -sSL -w '\n%{http_code}' \
+          # --location-trusted y no -L a secas: portalfno.com contesta un 308, y
+          # al seguirlo hacia otro host curl descarta el Authorization por las
+          # dudas de a quién se lo está mandando. El portal recibía la llamada
+          # sin llave y devolvía 401 con la llave bien puesta en los dos lados.
+          # Acá el destino es nuestro propio dominio, así que la llave puede
+          # viajar. Se imprime url_effective para que la próxima vez que esto
+          # falle se vea a dónde terminó yendo.
+          respuesta=$(curl -sS --location-trusted -w '\n%{http_code} %{url_effective}' \
             "${PORTAL_URL:-https://portalfno.com}/api/cron/publicar-programados" \
             -H "Authorization: Bearer $CRON_SECRET")
 
-          codigo=$(echo "$respuesta" | tail -n1)
+          ultima=$(echo "$respuesta" | tail -n1)
+          codigo=${ultima%% *}
+          destino=${ultima#* }
           cuerpo=$(echo "$respuesta" | sed '$d')
-          echo "HTTP $codigo — $cuerpo"
+          echo "HTTP $codigo ($destino) — $cuerpo"
 
           if [ "$codigo" != "200" ]; then
             echo "::error::El portal respondió $codigo"
