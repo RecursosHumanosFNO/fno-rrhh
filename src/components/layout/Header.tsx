@@ -1,5 +1,6 @@
 'use client'
 
+import { useEscape } from '@/lib/useEscape'
 import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
@@ -39,6 +40,10 @@ export default function Header({ onMenuToggle }: HeaderProps) {
   }
   const [query, setQuery] = useState('')
   const [showSearch, setShowSearch] = useState(false)
+  // Los tres desplegables se cierran juntos, igual que al hacer clic afuera.
+  useEscape(showSearch || showNotifs || showDropdown, () => {
+    setShowSearch(false); setQuery(''); setShowNotifs(false); setShowDropdown(false)
+  })
 
   const isAdmin = user?.role === 'admin'
 

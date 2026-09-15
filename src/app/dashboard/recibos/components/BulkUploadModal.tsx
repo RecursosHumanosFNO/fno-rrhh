@@ -1,3 +1,4 @@
+import { useEscape } from '@/lib/useEscape'
 import React from 'react'
 import {
   X, CheckCircle2, AlertCircle, Upload, Loader2, FileText, Trash2, Plus,
@@ -45,6 +46,9 @@ export function BulkUploadModal({
   onReset: () => void
   onClose: () => void
 }) {
+  // Sólo se monta cuando está abierto.
+  useEscape(true, onClose)
+
   const sinAsignar = rows.filter(r => !r.empleadoId).length
   const conAsignar = rows.filter(r => r.empleadoId).length
   const aEnviar = rows.filter(r => r.empleadoId && r.selected).length

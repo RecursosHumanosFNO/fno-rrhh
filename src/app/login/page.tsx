@@ -1,5 +1,6 @@
 'use client'
 
+import { useEscape } from '@/lib/useEscape'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
@@ -191,6 +192,7 @@ export default function LoginPage() {
 // ── Componente "Olvidé mi contraseña" ─────────────────────────────────────────
 function ForgotPasswordLink() {
   const [open, setOpen] = useState(false)
+  useEscape(open, () => { setOpen(false); setStatus('idle'); setEmail('') })
   const [email, setEmail] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'sent' | 'error'>('idle')
 

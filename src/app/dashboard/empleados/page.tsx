@@ -1,5 +1,6 @@
 'use client'
 
+import { useEscape } from '@/lib/useEscape'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
@@ -134,6 +135,7 @@ export default function EmpleadosPage() {
     if (user?.role !== 'admin' && user?.role !== 'rrhh') router.replace('/dashboard')
   }, [user, router])
 
+
   if (user?.role !== 'admin' && user?.role !== 'rrhh') return null
 
   return <EmpleadosContent />
@@ -174,6 +176,7 @@ function EmpleadosContent() {
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [view, setView] = useState<'grid' | 'list'>('grid')
   const [showNuevo, setShowNuevo] = useState(false)
+  useEscape(showNuevo, () => { setShowNuevo(false); setCreateError('') })
   const [showPending, setShowPending] = useState(false)
   const [mainTab, setMainTab] = useState<'activos' | 'historial'>('activos')
 

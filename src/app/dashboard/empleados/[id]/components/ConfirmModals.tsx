@@ -1,3 +1,4 @@
+import { useEscape } from '@/lib/useEscape'
 import { UserCheck, Trash2, Loader2, Shield } from 'lucide-react'
 
 type Rol = 'admin' | 'employee' | 'comunicaciones' | 'rrhh'
@@ -7,6 +8,7 @@ export function ReactivarModal({ nombreCompleto, onClose, onConfirm }: {
   onClose: () => void
   onConfirm: () => void
 }) {
+  useEscape(true, onClose)
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="card w-full max-w-sm animate-scale-in" onClick={e => e.stopPropagation()}>
@@ -40,6 +42,7 @@ export function EliminarModal({ nombreCompleto, deleting, error, onClose, onConf
   onClose: () => void
   onConfirm: () => void
 }) {
+  useEscape(true, () => { if (!deleting) onClose() })
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
       onClick={() => { if (!deleting) onClose() }}>
@@ -78,6 +81,7 @@ export function ConfirmarRolModal({ rol, nombre, onClose, onConfirm }: {
   onClose: () => void
   onConfirm: () => void
 }) {
+  useEscape(true, onClose)
   const fondo = rol === 'admin' ? 'bg-amber-100 dark:bg-amber-900/30'
     : rol === 'comunicaciones' ? 'bg-blue-100 dark:bg-blue-900/30'
     : rol === 'rrhh' ? 'bg-emerald-100 dark:bg-emerald-900/30'

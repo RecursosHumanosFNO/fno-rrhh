@@ -1,5 +1,6 @@
 'use client'
 
+import { useEscape } from '@/lib/useEscape'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
@@ -32,6 +33,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     document.body.style.overflow = 'hidden'
     return () => { document.body.style.overflow = previo }
   }, [mobileOpen])
+
+  useEscape(mobileOpen, () => setMobileOpen(false))
 
   const esperandoEmpleado = isAuthenticated && user?.role !== 'admin' && !empleado
   if (isLoading || !isAuthenticated || !synced || esperandoEmpleado) {

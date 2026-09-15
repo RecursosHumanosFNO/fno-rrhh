@@ -1,5 +1,6 @@
 'use client'
 
+import { useEscape } from '@/lib/useEscape'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useData } from '@/contexts/DataContext'
@@ -30,6 +31,8 @@ export default function RegistrosPendientesPage() {
   useEffect(() => {
     if (user && user.role !== 'admin' && user.role !== 'rrhh') router.replace('/dashboard')
   }, [user, router])
+
+  useEscape(!!confirmAction, () => setConfirmAction(null))
 
   if (user?.role !== 'admin' && user?.role !== 'rrhh') return null
 

@@ -1,5 +1,6 @@
 'use client'
 
+import { useEscape } from '@/lib/useEscape'
 import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
@@ -332,6 +333,9 @@ export default function ComunicacionesPage() {
       setPushSending(false)
     }
   }
+
+  useEscape(showNueva, () => setShowNueva(false))
+  useEscape(showPush, () => { setShowPush(false); setPushResult(null) })
 
   return (
     <div className="page-container">

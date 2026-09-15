@@ -1,3 +1,4 @@
+import { useEscape } from '@/lib/useEscape'
 import { X, CheckCircle2, AlertCircle, Upload, Loader2 } from 'lucide-react'
 import type { Empleado } from '@/types'
 
@@ -31,6 +32,9 @@ export function UploadReciboModal({
   onClose: () => void
   onSubir: () => void
 }) {
+  // Sólo se monta cuando está abierto.
+  useEscape(true, onClose)
+
   const subiendo = status === 'uploading'
 
   return (

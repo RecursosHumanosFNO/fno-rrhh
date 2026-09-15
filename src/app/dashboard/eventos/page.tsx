@@ -1,5 +1,6 @@
 'use client'
 
+import { useEscape } from '@/lib/useEscape'
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
@@ -370,6 +371,10 @@ export default function EventosPage() {
   }, [cumpleaniosMes])
 
   const hoyStr = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`
+
+  useEscape(!!selectedDay, () => setSelectedDay(null))
+  useEscape(!!modal, () => setModal(null))
+  useEscape(!!confirmDelete, () => setConfirmDelete(null))
 
   return (
     <div className="page-container">

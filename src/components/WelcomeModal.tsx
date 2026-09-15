@@ -1,5 +1,6 @@
 'use client'
 
+import { useEscape } from '@/lib/useEscape'
 import { useEffect, useState } from 'react'
 import { Sparkles, X, FileText, ClipboardList, Bell, HeadphonesIcon } from 'lucide-react'
 
@@ -23,6 +24,8 @@ export function WelcomeModal({ nombre, empleadoId }: Props) {
     localStorage.setItem(key, '1')
     setOpen(false)
   }
+
+  useEscape(open, cerrar)
 
   if (!open) return null
 
