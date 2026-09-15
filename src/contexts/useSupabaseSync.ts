@@ -38,6 +38,29 @@ const INTERVALO_SYNC_MS = 600_000
 // está el aviso.
 const TOPE = 2000
 
+/**
+ * authFetch, pero sin salir a pedir nada cuando no hay sesión.
+ *
+ * Este sync corre también en /login y /registro, donde todavía no hay con qué
+ * autenticarse. Las rutas privadas contestaban 401 y el resultado se descartaba
+ * igual, así que el pedido no servía para nada: sólo gastaba una ida y vuelta
+ * por visita y dejaba un error rojo en la consola que parecía —y nos hizo
+ * perseguir— una falla del portal.
+ *
+ * El resultado es el mismo que antes (null), por eso no cambia lo que se ve.
+ */
+async function fetchPrivado(url: string): Promise<unknown | null> {
+  if (!supabase) return null
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) return null
+    const r = await authFetch(url)
+    return r.ok ? await r.json() : null
+  } catch {
+    return null
+  }
+}
+
 function avisaMax(nombre: string, filas: unknown[] | null) {
   if (filas && filas.length >= TOPE) {
     console.warn(`[sync] ${nombre} llegó al tope de ${TOPE} filas: el sync está recortando datos. Hay que paginar.`)
@@ -68,9 +91,7 @@ export function useSupabaseSync(setters: Setters) {
         // también en /login y /registro, sin sesión: por eso ya no salen por la
         // anon key sino por una ruta que mira el rol en el JWT y le devuelve
         // una lista vacía a quien no maneja RRHH.
-        authFetch('/api/pendientes')
-          .then(r => r.ok ? r.json() : null)
-          .catch(() => null),
+        fetchPrivado('/api/pendientes'),
         // Sólo el directorio: lo que cualquier compañero legítimamente
         // necesita (nombre, sector, cargo, foto, cumpleaños). El DNI, el CBU,
         // la dirección y la desvinculación salieron de acá y llegan por
@@ -96,9 +117,7 @@ export function useSupabaseSync(setters: Setters) {
         // Fuera del Promise.all no: se pide en paralelo con el resto para no
         // sumarle otra vuelta al sync. Si falla, el directorio igual se muestra
         // y lo sensible queda vacío — degradado, no roto.
-        authFetch('/api/empleados-detalle')
-          .then(r => r.ok ? r.json() : null)
-          .catch(() => null),
+        fetchPrivado('/api/empleados-detalle'),
       ])
 
       // Supabase es siempre la fuente de verdad — actualizar aunque el array
