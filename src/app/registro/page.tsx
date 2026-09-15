@@ -115,42 +115,44 @@ export default function RegistroPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="form-label">Nombre *</label>
-                <input className="form-input" placeholder="María" value={form.nombre} onChange={e => update('nombre', e.target.value)} />
+                <label htmlFor="registro-nombre" className="form-label">Nombre *</label>
+                <input id="registro-nombre" name="nombre" autoComplete="given-name" className="form-input" placeholder="María" value={form.nombre} onChange={e => update('nombre', e.target.value)} />
               </div>
               <div>
-                <label className="form-label">Apellido *</label>
-                <input className="form-input" placeholder="García" value={form.apellido} onChange={e => update('apellido', e.target.value)} />
+                <label htmlFor="registro-apellido" className="form-label">Apellido *</label>
+                <input id="registro-apellido" name="apellido" autoComplete="family-name" className="form-input" placeholder="García" value={form.apellido} onChange={e => update('apellido', e.target.value)} />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="form-label">DNI *</label>
-                <input className="form-input" placeholder="XX.XXX.XXX" value={form.dni} onChange={e => update('dni', e.target.value)} />
+                <label htmlFor="registro-dni" className="form-label">DNI *</label>
+                <input id="registro-dni" name="dni" className="form-input" placeholder="XX.XXX.XXX" value={form.dni} onChange={e => update('dni', e.target.value)} />
               </div>
               <div>
-                <label className="form-label">Teléfono</label>
-                <input className="form-input" placeholder="299-XXXXXXX" value={form.telefono} onChange={e => update('telefono', e.target.value)} />
+                <label htmlFor="registro-telefono" className="form-label">Teléfono</label>
+                <input id="registro-telefono" name="telefono" type="tel" autoComplete="tel" className="form-input" placeholder="299-XXXXXXX" value={form.telefono} onChange={e => update('telefono', e.target.value)} />
               </div>
             </div>
 
             <div>
-              <label className="form-label">Email *</label>
-              <input className="form-input" type="email" placeholder="tu@email.com" value={form.email} onChange={e => update('email', e.target.value)} />
+              <label htmlFor="registro-email" className="form-label">Email *</label>
+              <input id="registro-email" name="email" autoComplete="email" className="form-input" type="email" placeholder="tu@email.com" value={form.email} onChange={e => update('email', e.target.value)} />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="form-label">Sector *</label>
-                <select className="form-select" value={form.sector} onChange={e => update('sector', e.target.value)}>
+                <label htmlFor="registro-sector" className="form-label">Sector *</label>
+                <select id="registro-sector" name="sector" className="form-select" value={form.sector} onChange={e => update('sector', e.target.value)}>
                   <option value="">Seleccionar</option>
                   {SECTORES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
               <div>
-                <label className="form-label">Cargo *</label>
+                <label htmlFor="registro-cargo" className="form-label">Cargo *</label>
                 <select
+                  id="registro-cargo"
+                  name="cargo"
                   className="form-select"
                   value={form.cargo}
                   onChange={e => update('cargo', e.target.value)}
