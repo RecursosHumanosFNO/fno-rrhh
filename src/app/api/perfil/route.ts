@@ -37,8 +37,19 @@ export async function POST(req: NextRequest) {
       // informativa y el empleado la carga al completar su perfil.
       'jornada',
     ]
+    // En la base queda la URL de Storage, no la imagen: cualquier cosa de este
+    // tamaño es basura o abuso. El tope es holgado a propósito —una foto vieja
+    // guardada como data URL ronda los 150 KB— para no rechazar nada legítimo.
+    const MAX_FOTO = 2 * 1024 * 1024
+    for (const campo of ['foto', 'foto_cover']) {
+      const v = (data as Record<string, unknown>)[campo]
+      if (typeof v === 'string' && v.length > MAX_FOTO) {
+        return NextResponse.json({ error: 'La imagen es demasiado grande' }, { status: 413 })
+      }
+    }
+
     // Admins pueden editar todo; empleados solo sus campos permitidos
-    const update: Record<string, unknown> = { id: empleadoId }
+    const update: Record<string, unknown> = {}
     if (esAdmin) {
       Object.assign(update, data)
     } else {
@@ -46,6 +57,11 @@ export async function POST(req: NextRequest) {
         if (campo in data) update[campo] = (data as Record<string, unknown>)[campo]
       }
     }
+    // El id va al final y pisa lo que venga en `data`: si no, un `id` en el
+    // cuerpo mandaba el upsert a otra ficha que la de la autorización. Hoy no
+    // es escalada —quien llega acá con esAdmin ya puede editar a cualquiera—
+    // pero deja que la fila que se escribe no sea la que se verificó.
+    update.id = empleadoId
 
     // Estado previo: sólo interesa cuando efectivamente cambia. Un guardado
     // común de la ficha manda `estado` sin querer cambiarlo (el mapper siempre

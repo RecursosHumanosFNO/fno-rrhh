@@ -248,7 +248,7 @@ function EmpleadosContent() {
 
   async function handleCreate() {
     if (!form.nombre || !form.apellido || !form.email || !form.sector || !form.cargo) return
-    if (form.password.length < 6) { setCreateError('La contraseña inicial debe tener al menos 6 caracteres.'); return }
+    if (form.password.length < 10) { setCreateError('La contraseña inicial debe tener al menos 10 caracteres.'); return }
 
     setCreateError('')
     setCreating(true)

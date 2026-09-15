@@ -90,7 +90,7 @@ function ResetPasswordForm() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(145deg, #49d8b7 0%, #3078ac 100%)' }}>
       <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl overflow-hidden">
           <div className="bg-[#23597e] p-6 text-center">
             <h1 className="text-xl font-bold text-white">Fundación Neuquén Oeste</h1>
             <p className="text-blue-200 text-sm mt-1">Portal de Recursos Humanos</p>
@@ -100,15 +100,15 @@ function ResetPasswordForm() {
             {status === 'loading' && (
               <div className="text-center py-8">
                 <Loader2 className="w-10 h-10 text-brand-600 animate-spin mx-auto mb-3" />
-                <p className="text-slate-500">Verificando enlace...</p>
+                <p className="text-slate-500 dark:text-slate-400">Verificando enlace...</p>
               </div>
             )}
 
             {status === 'invalid' && (
               <div className="text-center py-4">
                 <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-                <h2 className="text-lg font-semibold text-slate-800 mb-2">Enlace inválido o expirado</h2>
-                <p className="text-slate-500 text-sm mb-6">
+                <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2">Enlace inválido o expirado</h2>
+                <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
                   Este enlace ya fue utilizado o expiró. Entrá al portal, tocá &quot;Olvidé mi
                   contraseña&quot; y poné tu email para recibir uno nuevo.
                 </p>
@@ -124,11 +124,11 @@ function ResetPasswordForm() {
                   <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
                     <Lock className="w-7 h-7 text-[#23597e]" />
                   </div>
-                  <h2 className="text-xl font-bold text-slate-800">
+                  <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">
                     {esPrimera ? 'Creá tu contraseña' : 'Nueva contraseña'}
                   </h2>
                   {email && (
-                    <p className="text-slate-500 text-sm mt-1">
+                    <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
                       {esPrimera ? 'Vas a entrar con ' : 'Para la cuenta '}<strong>{email}</strong>
                     </p>
                   )}
@@ -141,7 +141,7 @@ function ResetPasswordForm() {
                 )}
 
                 <div>
-                  <label htmlFor="password-nueva" className="block text-sm font-medium text-slate-700 mb-1.5">
+                  <label htmlFor="password-nueva" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                     {esPrimera ? 'Tu contraseña' : 'Nueva contraseña'}
                   </label>
                   <div className="relative">
@@ -149,7 +149,7 @@ function ResetPasswordForm() {
                       id="password-nueva"
                       name="new-password"
                       type={showPass ? 'text' : 'password'}
-                      className="w-full px-4 py-2.5 pr-10 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#23597e]/30 focus:border-[#23597e]"
+                      className="w-full px-4 py-2.5 pr-10 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#23597e]/30 focus:border-[#23597e]"
                       placeholder="Mínimo 10 caracteres"
                       value={password}
                       onChange={e => setPassword(e.target.value)}
@@ -158,19 +158,19 @@ function ResetPasswordForm() {
                       autoComplete="new-password"
                       required
                     />
-                    <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                    <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500">
                       {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
 
                 <div>
-                  <label htmlFor="password-confirmar" className="block text-sm font-medium text-slate-700 mb-1.5">Confirmar contraseña</label>
+                  <label htmlFor="password-confirmar" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Confirmar contraseña</label>
                   <input
                     id="password-confirmar"
                     name="confirm-password"
                     type="password"
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#23597e]/30 focus:border-[#23597e]"
+                    className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#23597e]/30 focus:border-[#23597e]"
                     placeholder="Repetí la contraseña"
                     value={confirm}
                     onChange={e => setConfirm(e.target.value)}
@@ -193,15 +193,15 @@ function ResetPasswordForm() {
             {status === 'success' && (
               <div className="text-center py-4">
                 <CheckCircle2 className="w-14 h-14 text-emerald-500 mx-auto mb-4" />
-                <h2 className="text-lg font-semibold text-slate-800 mb-2">
+                <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2">
                   {esPrimera ? '¡Listo, ya podés entrar!' : '¡Contraseña actualizada!'}
                 </h2>
-                <p className="text-slate-500 text-sm mb-2">
+                <p className="text-slate-500 dark:text-slate-400 text-sm mb-2">
                   {esPrimera
                     ? 'Tu contraseña quedó guardada. Usala junto con tu email para entrar al portal.'
                     : 'Tu contraseña fue cambiada correctamente.'}
                 </p>
-                <p className="text-slate-400 text-sm">Redirigiendo al inicio de sesión...</p>
+                <p className="text-slate-400 dark:text-slate-500 text-sm">Redirigiendo al inicio de sesión...</p>
               </div>
             )}
           </div>
