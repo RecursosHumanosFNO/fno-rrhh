@@ -24,6 +24,12 @@ const withSerwist = require('@serwist/next').default({
   // Los .map no se sirven en producción porque Sentry está con hideSourceMaps,
   // y los build manifests tampoco son públicos: si entran al precache, rompen
   // la instalación.
+  //
+  // OJO: esta lista filtra los assets que emite webpack, NO lo que haya en
+  // public/. Todo lo que esté en public/ entra al precache sí o sí, así que un
+  // archivo suelto ahí que el servidor no sirva rompe la instalación del worker
+  // y las push dejan de andar. Pasó con un public/workbox-*.js.map que quedó
+  // commiteado por error; por eso ahora está en .gitignore.
   exclude: [
     /\.map$/,
     /^build-manifest\.json$/,

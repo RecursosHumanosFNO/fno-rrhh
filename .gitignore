@@ -36,6 +36,11 @@ _login*.png
 *.tsbuildinfo
 next-env.d.ts
 
-# PWA: el worker lo genera Serwist en cada build a partir de src/app/sw.ts
+# PWA: el worker lo genera Serwist en cada build a partir de src/app/sw.ts.
+# Los workbox-*.js van acá también: cualquier archivo suelto que quede en
+# public/ entra al precache, y si el servidor no lo sirve la instalación del
+# worker falla entera (ver el comentario en next.config.js).
 /public/sw.js
 /public/sw.js.map
+/public/workbox-*.js
+/public/workbox-*.js.map
