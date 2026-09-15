@@ -19,6 +19,11 @@ const ROLES_QUE_PUEDE_DAR_RRHH = ['employee', 'comunicaciones']
 // POST /api/admin/create-auth-user
 // Crea un usuario en Supabase Auth y su registro en fno_users.
 // El requester se valida por JWT.
+// Igual que en /api/reset-password: seis caracteres se prueban por fuerza
+// bruta en minutos, y esta contraseña abre recibos de sueldo y datos
+// personales de terceros.
+const LARGO_MINIMO_PASSWORD = 10
+
 export async function POST(req: NextRequest) {
   try {
     const { email, password, userId, empleadoId, role } = await req.json().catch(() => ({}))
@@ -28,6 +33,17 @@ export async function POST(req: NextRequest) {
     }
     if (!ROLES_VALIDOS.includes(role)) {
       return NextResponse.json({ error: 'Rol inválido' }, { status: 400 })
+    }
+
+    // El mismo mínimo que exige /api/reset-password. Estaba sólo en la pantalla
+    // —y pedía seis—, así que la puerta más directa para crear una cuenta era
+    // también la que admitía la contraseña más débil, y un POST a mano se
+    // saltaba incluso ese seis.
+    if (password && String(password).length < LARGO_MINIMO_PASSWORD) {
+      return NextResponse.json(
+        { error: `La contraseña debe tener al menos ${LARGO_MINIMO_PASSWORD} caracteres` },
+        { status: 400 },
+      )
     }
 
     // Si no llega password (fue removido del sync de Supabase por seguridad),
