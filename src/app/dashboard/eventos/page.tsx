@@ -1,5 +1,6 @@
 'use client'
 
+import { useDialogos } from '@/components/Dialogos'
 import { useEscape } from '@/lib/useEscape'
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -105,6 +106,7 @@ function emptyForm(): EventoForm {
 export default function EventosPage() {
   const { user, empleado } = useAuth()
   const { empleados, eventos, addEvento, updateEvento, deleteEvento, addNovedad } = useData()
+  const { avisar, confirmar } = useDialogos()
   const isAdmin = user?.role === 'admin' || user?.role === 'comunicaciones'
 
   const hoy = new Date()
@@ -131,7 +133,7 @@ export default function EventosPage() {
       // superar el límite del bucket. Se comprime antes de subir, salvo GIF.
       const esGif = file.type === 'image/gif'
       if (esGif && file.size > 8 * 1024 * 1024) {
-        alert('El GIF no puede superar los 8 MB.')
+        avisar('El GIF no puede superar los 8 MB.')
         return
       }
       const subida = esGif ? file : await comprimirImagen(file, 1600)
@@ -144,10 +146,10 @@ export default function EventosPage() {
         const { data } = supabase.storage.from('fno-media').getPublicUrl(path)
         setForm(f => ({ ...f, imagen: data.publicUrl }))
       } else {
-        alert('No se pudo subir la imagen: ' + error.message)
+        avisar('No se pudo subir la imagen: ' + error.message)
       }
     } catch (e) {
-      alert('No se pudo procesar la imagen: ' + (e instanceof Error ? e.message : 'error desconocido'))
+      avisar('No se pudo procesar la imagen: ' + (e instanceof Error ? e.message : 'error desconocido'))
     } finally {
       setUploadingImg(false)
     }
@@ -155,7 +157,7 @@ export default function EventosPage() {
 
   async function handleFileUpload(file: File) {
     if (!supabase) return
-    if (file.size > 15 * 1024 * 1024) { alert('El archivo no puede superar los 15 MB.'); return }
+    if (file.size > 15 * 1024 * 1024) { avisar('El archivo no puede superar los 15 MB.'); return }
     setUploadingFile(true)
     try {
       const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
@@ -165,7 +167,7 @@ export default function EventosPage() {
         const { data } = supabase.storage.from('fno-media').getPublicUrl(path)
         setForm(f => ({ ...f, adjuntoUrl: data.publicUrl, adjuntoNombre: file.name }))
       } else {
-        alert('No se pudo subir el archivo: ' + error.message)
+        avisar('No se pudo subir el archivo: ' + error.message)
       }
     } finally {
       setUploadingFile(false)

@@ -1,5 +1,6 @@
 'use client'
 
+import { useDialogos } from '@/components/Dialogos'
 import { useEscape } from '@/lib/useEscape'
 import Link from 'next/link'
 import { useState, useRef, useCallback } from 'react'
@@ -112,6 +113,7 @@ export default function NovedadesInternasPage() {
 
 function NovedadesInternasContent() {
   const { empleados, registrosNovedad, addRegistroNovedad, updateRegistroNovedad, deleteRegistroNovedad } = useData()
+  const { avisar, confirmar } = useDialogos()
 
   // ── Filtros ───────────────────────────────────────────────────────────────
   const [busqueda, setBusqueda] = useState('')
@@ -350,7 +352,7 @@ function NovedadesInternasContent() {
       const res = await authFetch('/api/registro-foto', { method: 'POST', body })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data?.path) {
-        alert(data?.error ?? 'No se pudo subir la imagen')
+        avisar(data?.error ?? 'No se pudo subir la imagen')
         return
       }
       setForm(f => ({ ...f, fotoUrl: data.path }))

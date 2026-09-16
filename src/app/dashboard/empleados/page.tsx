@@ -1,5 +1,6 @@
 'use client'
 
+import { useDialogos } from '@/components/Dialogos'
 import { useEscape } from '@/lib/useEscape'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -176,6 +177,7 @@ function EmpleadosContent() {
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [view, setView] = useState<'grid' | 'list'>('grid')
   const [showNuevo, setShowNuevo] = useState(false)
+  const { confirmar } = useDialogos()
   useEscape(showNuevo, () => { setShowNuevo(false); setCreateError('') })
   const [showPending, setShowPending] = useState(false)
   const [mainTab, setMainTab] = useState<'activos' | 'historial'>('activos')
@@ -407,10 +409,14 @@ function EmpleadosContent() {
                     <CheckCircle2 className="w-4 h-4" /> Aprobar
                   </button>
                   <button
-                    onClick={() => {
-                      if (window.confirm(`¿Rechazar la solicitud de acceso de ${reg.nombre} ${reg.apellido}? Esta acción no se puede deshacer.`)) {
-                        rejectPendingRegistration(reg.id)
-                      }
+                    onClick={async () => {
+                      const ok = await confirmar({
+                        titulo: '¿Rechazar la solicitud de acceso?',
+                        mensaje: `${reg.nombre} ${reg.apellido}\nEsta acción no se puede deshacer.`,
+                        confirmar: 'Rechazar',
+                        tono: 'peligro',
+                      })
+                      if (ok) rejectPendingRegistration(reg.id)
                     }}
                     className="btn-danger text-sm py-1.5 px-3"
                     title="Rechazar"

@@ -162,9 +162,6 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'No se pudo actualizar la contraseña' }, { status: 500 })
   }
 
-  // Limpiar password en fno_users (ya no se usa para login)
-  await supabase.from('fno_users').update({ password: '' }).eq('email', reset.email)
-
   // Marcar token como usado
   await supabase
     .from('fno_password_resets')
