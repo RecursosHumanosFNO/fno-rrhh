@@ -2,6 +2,7 @@
 
 import { useEscape } from '@/lib/useEscape'
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/components/ThemeProvider'
@@ -207,6 +208,11 @@ function ForgotPasswordLink() {
   // justo en la única pantalla donde pueden resolverlo solos.
   async function handleSend(e: React.FormEvent) {
     e.preventDefault()
+    // Este formulario vive dentro del de login. Con el portal ya no están
+    // anidados en el DOM, pero React propaga los eventos por el árbol de
+    // componentes igual: sin esto, el submit de acá llega al onSubmit del
+    // login y dispara un intento de inicio de sesión.
+    e.stopPropagation()
     if (!email) return
     setStatus('loading')
     setErrorMsg('')
@@ -235,7 +241,14 @@ function ForgotPasswordLink() {
         ¿Olvidaste tu contraseña?
       </button>
 
-      {open && (
+      {/* Va por portal a <body>.
+          Este componente se dibuja dentro del <form> de login, así que sin
+          esto el formulario del modal quedaba ANIDADO dentro de otro: HTML
+          inválido. Al apretar Enter el navegador no sabe cuál enviar y termina
+          disparando el de afuera, el de iniciar sesión. Resultado: el pedido de
+          recuperación no salía nunca —ni aparecía en los logs del servidor— y
+          la pantalla no mostraba ni éxito ni error. */}
+      {open && createPortal(
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { setOpen(false); setStatus('idle'); setEmail('') }}>
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1">Recuperar contraseña</h3>
@@ -285,7 +298,8 @@ function ForgotPasswordLink() {
               </form>
             )}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   )
