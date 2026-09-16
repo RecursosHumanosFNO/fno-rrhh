@@ -5,7 +5,6 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/components/ThemeProvider'
-import { supabase } from '@/lib/supabase'
 import { Eye, EyeOff, Lock, Mail, AlertCircle, ExternalLink, Sun, Moon } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -192,19 +191,42 @@ export default function LoginPage() {
 // ── Componente "Olvidé mi contraseña" ─────────────────────────────────────────
 function ForgotPasswordLink() {
   const [open, setOpen] = useState(false)
-  useEscape(open, () => { setOpen(false); setStatus('idle'); setEmail('') })
   const [email, setEmail] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'sent' | 'error'>('idle')
+  const [errorMsg, setErrorMsg] = useState('')
 
+  useEscape(open, () => { setOpen(false); setStatus('idle'); setEmail('') })
+
+  // Va por /api/reset-password (Gmail) y no por supabase.auth.
+  //
+  // Había dos sistemas de recuperación en paralelo: el admin mandaba el link
+  // desde la ficha del empleado por esta ruta, y acá se usaba el mail que manda
+  // Supabase por su cuenta. El de Supabase, sin SMTP propio configurado, tiene
+  // un tope de unos pocos envíos por hora para TODO el proyecto y entrega mal.
+  // Resultado: a RRHH le funcionaba y a los empleados no les llegaba nada,
+  // justo en la única pantalla donde pueden resolverlo solos.
   async function handleSend(e: React.FormEvent) {
     e.preventDefault()
-    if (!email || !supabase) return
+    if (!email) return
     setStatus('loading')
-    const { error } = await supabase.auth.resetPasswordForEmail(
-      email.toLowerCase().trim(),
-      { redirectTo: `${window.location.origin}/api/auth/callback?next=/reset-password` },
-    )
-    setStatus(error ? 'error' : 'sent')
+    setErrorMsg('')
+    try {
+      const res = await fetch('/api/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.toLowerCase().trim() }),
+      })
+      const d = await res.json().catch(() => ({}))
+      if (res.ok && d.ok) {
+        setStatus('sent')
+      } else {
+        setErrorMsg(d.error ?? '')
+        setStatus('error')
+      }
+    } catch {
+      setErrorMsg('')
+      setStatus('error')
+    }
   }
 
   return (
@@ -233,7 +255,7 @@ function ForgotPasswordLink() {
               <form onSubmit={handleSend} className="space-y-4">
                 {status === 'error' && (
                   <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">
-                    Ocurrió un error. Intentá de nuevo o contactá a RRHH.
+                    {errorMsg || 'Ocurrió un error. Intentá de nuevo o contactá a RRHH.'}
                   </p>
                 )}
                 {/* El placeholder no reemplaza a la etiqueta: desaparece al
