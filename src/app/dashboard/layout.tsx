@@ -9,6 +9,7 @@ import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 import PullToRefresh from '@/components/PullToRefresh'
 import { PushPrompt } from '@/components/PushPrompt'
+import { ProveedorDialogos } from '@/components/Dialogos'
 import { cn } from '@/lib/utils'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -49,6 +50,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
+    <ProveedorDialogos>
     <div className="min-h-screen">
       {/* Mobile overlay — fade in/out */}
       <div
@@ -79,5 +81,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       <PullToRefresh />
     </div>
+    </ProveedorDialogos>
   )
 }

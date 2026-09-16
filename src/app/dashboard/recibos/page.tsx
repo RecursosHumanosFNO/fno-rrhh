@@ -1,5 +1,6 @@
 'use client'
 
+import { useDialogos } from '@/components/Dialogos'
 import { useEscape } from '@/lib/useEscape'
 import Link from 'next/link'
 import React, { useState, useRef, useCallback, useMemo } from 'react'
@@ -27,6 +28,7 @@ import { PdfViewerOverlay } from '@/components/PdfViewerOverlay'
 export default function RecibosPage() {
   const { user } = useAuth()
   const { empleados, recibos, addRecibo, deleteRecibo, addNotification, firmas, firmarRecibo } = useData()
+  const { avisar, confirmar } = useDialogos()
   const isAdmin = user?.role === 'admin'
   const [adminTab, setAdminTab] = useState<'todos' | 'mis'>('todos')
   // viewAsAdmin: controla el modo de visualización (admin con tab "mis" ve la vista de empleado)
@@ -427,7 +429,7 @@ export default function RecibosPage() {
   // attachment, o sea que el archivo se guarda en vez de abrirse.
   async function pedirUrl(r: ReciboLink, descargar?: string): Promise<string | null> {
     if (!r.archivoUrl) {
-      alert(`El recibo "${r.archivo}" no tiene PDF adjunto.\n\nPedile a RRHH que lo vuelva a cargar.`)
+      avisar(`El recibo "${r.archivo}" no tiene PDF adjunto.\n\nPedile a RRHH que lo vuelva a cargar.`)
       return null
     }
     try {
@@ -437,10 +439,10 @@ export default function RecibosPage() {
         body: JSON.stringify({ path: r.archivoUrl, descargar }),
       })
       const data = await res.json()
-      if (!res.ok || !data.url) { alert('No se pudo obtener el link del recibo.'); return null }
+      if (!res.ok || !data.url) { avisar('No se pudo obtener el link del recibo.'); return null }
       return data.url as string
     } catch {
-      alert('Error de conexión.')
+      avisar('Error de conexión.')
       return null
     }
   }

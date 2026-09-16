@@ -1,5 +1,6 @@
 'use client'
 
+import { useDialogos } from '@/components/Dialogos'
 import { useEscape } from '@/lib/useEscape'
 import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -82,6 +83,7 @@ const FORM_INICIAL = {
 export default function ComunicacionesPage() {
   const { user } = useAuth()
   const { novedades, eventos, empleados, addNovedad, updateNovedad, deleteNovedad, addEvento, addNotification, forceSync } = useData()
+  const { avisar, confirmar } = useDialogos()
   useEffect(() => { forceSync() }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const isAdmin = user?.role === 'admin' || user?.role === 'comunicaciones'
 
@@ -115,7 +117,7 @@ export default function ComunicacionesPage() {
       // por <canvas> lo aplana a un solo frame y le rompe la animación.
       const esGif = file.type === 'image/gif'
       if (esGif && file.size > 8 * 1024 * 1024) {
-        alert('El GIF no puede superar los 8 MB.')
+        avisar('El GIF no puede superar los 8 MB.')
         return
       }
       const subida = esGif ? file : await comprimirImagen(file, 1600)
@@ -128,10 +130,10 @@ export default function ComunicacionesPage() {
         const { data } = supabase.storage.from('fno-media').getPublicUrl(path)
         setNewForm(f => ({ ...f, imagen: data.publicUrl }))
       } else {
-        alert('No se pudo subir la imagen: ' + error.message)
+        avisar('No se pudo subir la imagen: ' + error.message)
       }
     } catch (e) {
-      alert('No se pudo procesar la imagen: ' + (e instanceof Error ? e.message : 'error desconocido'))
+      avisar('No se pudo procesar la imagen: ' + (e instanceof Error ? e.message : 'error desconocido'))
     } finally {
       setUploadingImg(false)
     }
@@ -139,7 +141,7 @@ export default function ComunicacionesPage() {
 
   async function handleFileUpload(file: File) {
     if (!supabase) return
-    if (file.size > 15 * 1024 * 1024) { alert('El archivo no puede superar los 15 MB.'); return }
+    if (file.size > 15 * 1024 * 1024) { avisar('El archivo no puede superar los 15 MB.'); return }
     setUploadingFile(true)
     try {
       const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
@@ -149,7 +151,7 @@ export default function ComunicacionesPage() {
         const { data } = supabase.storage.from('fno-media').getPublicUrl(path)
         setNewForm(f => ({ ...f, adjuntoUrl: data.publicUrl, adjuntoNombre: file.name }))
       } else {
-        alert('No se pudo subir el archivo: ' + error.message)
+        avisar('No se pudo subir el archivo: ' + error.message)
       }
     } finally {
       setUploadingFile(false)
@@ -545,11 +547,15 @@ export default function ComunicacionesPage() {
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={ev => {
+                        onClick={async ev => {
                           ev.stopPropagation()
-                          if (window.confirm(`¿Eliminar la comunicación "${n.titulo}"? Esta acción no se puede deshacer.`)) {
-                            deleteNovedad(n.id)
-                          }
+                          const ok = await confirmar({
+                            titulo: '¿Eliminar la comunicación?',
+                            mensaje: `"${n.titulo}"\nEsta acción no se puede deshacer.`,
+                            confirmar: 'Eliminar',
+                            tono: 'peligro',
+                          })
+                          if (ok) deleteNovedad(n.id)
                         }}
                         className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 transition-colors"
                         title="Eliminar"

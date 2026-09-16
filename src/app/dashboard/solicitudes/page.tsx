@@ -1,5 +1,6 @@
 'use client'
 
+import { useDialogos } from '@/components/Dialogos'
 import { useEscape } from '@/lib/useEscape'
 import Link from 'next/link'
 import { useState } from 'react'
@@ -141,6 +142,7 @@ async function descargarMensajePDF(emp: Empleado, asunto: string, mensaje: strin
 export default function SolicitudesPage() {
   const { user } = useAuth()
   const { empleados, solicitudes, addSolicitud, approveSolicitud, rejectSolicitud, editSolicitud, cancelSolicitud, responderSolicitud, tickets, addTicket, respondTicket, addNotification, addRegistroNovedad } = useData()
+  const { avisar, confirmar } = useDialogos()
   const isAdmin = user?.role === 'admin' || user?.role === 'rrhh'
   const [activeTab, setActiveTab] = useState<'solicitudes' | 'pedidos'>('solicitudes')
 
@@ -250,7 +252,7 @@ export default function SolicitudesPage() {
     const sol = solicitudes.find(s => s.id === id)
     const emp = sol ? empleados.find(e => e.id === sol.empleadoId) : undefined
     if (emp?.estado === 'inactivo') {
-      alert('No se puede aprobar: el empleado está dado de baja.')
+      avisar('No se puede aprobar: el empleado está dado de baja.')
       return
     }
     setResolviendo(id)

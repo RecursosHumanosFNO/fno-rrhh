@@ -1,5 +1,6 @@
 'use client'
 
+import { useDialogos } from '@/components/Dialogos'
 import { useState, useRef, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
@@ -35,6 +36,7 @@ export default function EmpleadoDetailPage() {
   const { user } = useAuth()
   const router = useRouter()
   const { empleados, solicitudes, recibos, users, updateEmpleado, deleteEmpleado, setUserRole, desactivarEmpleado, reactivarEmpleado, forceSync } = useData()
+  const { avisar, confirmar } = useDialogos()
 
   const [tab, setTab] = useState(0)
   const [editMode, setEditMode] = useState(false)
@@ -243,8 +245,14 @@ export default function EmpleadoDetailPage() {
   }
 
   // Elimina la foto del empleado — también borra de Storage si aplica
-  function handleDeletePhoto() {
-    if (!window.confirm('¿Eliminar la foto de perfil de este empleado? Esta acción no se puede deshacer.')) return
+  async function handleDeletePhoto() {
+    const ok = await confirmar({
+      titulo: '¿Eliminar la foto de perfil?',
+      mensaje: 'Esta acción no se puede deshacer.',
+      confirmar: 'Eliminar',
+      tono: 'peligro',
+    })
+    if (!ok) return
     const current = profileFoto
     if (current?.includes('fno-media')) {
       supabase?.storage.from('fno-media').remove([`fotos/${emp!.id}/perfil.jpg`]).catch(() => {})
@@ -308,9 +316,9 @@ export default function EmpleadoDetailPage() {
       })
       const data = await res.json()
       if (data.url) setPdfViewer({ url: data.url, label: `Recibo — ${r.archivo}` })
-      else alert('No se pudo obtener el link del recibo.')
+      else avisar('No se pudo obtener el link del recibo.')
     } catch {
-      alert('Error de conexión.')
+      avisar('Error de conexión.')
     } finally {
       setDownloadingReciboId(null)
     }
