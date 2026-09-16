@@ -30,15 +30,31 @@ export async function POST(req: NextRequest) {
 
   const emailNorm = String(email).toLowerCase().trim()
 
-  // Verificar que el usuario existe
+  // Verificar que el usuario existe.
+  //
+  // ilike y no eq: para las personas el email no distingue mayúsculas, pero
+  // Postgres sí. Una fila guardada como "Nombre@gmail.com" no la encontraba
+  // esta búsqueda en minúsculas, y como al email desconocido se le contesta
+  // ok:true sin mandar nada, el resultado era una pantalla que decía "¡Email
+  // enviado!" y ningún mail, para siempre y sin ningún rastro.
+  //
+  // Los comodines de LIKE van escapados: sin eso, un email con guion bajo
+  // —juan_perez@…, que es de lo más común— haría que el _ matchee cualquier
+  // carácter y la búsqueda pudiera traer la cuenta de otra persona.
+  const patron = emailNorm.replace(/[\\%_]/g, c => `\\${c}`)
   const { data: users } = await supabase
     .from('fno_users')
     .select('id, email, empleado_id')
-    .eq('email', emailNorm)
+    .ilike('email', patron)
     .limit(1)
 
   if (!users || users.length === 0) {
-    // Responder igual para no revelar si el email existe
+    // Al que pide se le contesta igual que en el caso bueno: si respondiéramos
+    // distinto, cualquiera podría averiguar qué direcciones tienen cuenta. Pero
+    // queda anotado del lado del servidor, porque hasta ahora este camino era
+    // indistinguible de un envío exitoso incluso para nosotros, y es
+    // exactamente el que hay que mirar cuando alguien dice "no me llega nada".
+    console.warn('[reset-password] sin cuenta para ese email; no se envía nada')
     return NextResponse.json({ ok: true })
   }
 
