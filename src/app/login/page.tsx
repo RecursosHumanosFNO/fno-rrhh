@@ -28,9 +28,20 @@ export default function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
-    if (!email || !password) { setError('Completá todos los campos.'); return }
+
+    // Los valores salen de los campos y no del estado, por lo mismo que en el
+    // formulario de recuperación: el autocompletado del navegador escribe
+    // directo en el DOM sin avisarle a React. Acá el síntoma era todavía más
+    // desconcertante que allá —"Completá todos los campos" con los dos campos
+    // visiblemente llenos— y dejaba afuera a quien entra con el gestor de
+    // contraseñas, que es como entra casi todo el mundo desde el celular.
+    const datos = new FormData(e.currentTarget as HTMLFormElement)
+    const emailFinal = (String(datos.get('email') ?? '') || email).trim()
+    const passFinal = String(datos.get('password') ?? '') || password
+
+    if (!emailFinal || !passFinal) { setError('Completá todos los campos.'); return }
     setLoading(true)
-    const result = await login(email, password, remember)
+    const result = await login(emailFinal, passFinal, remember)
     setLoading(false)
     if (result === 'ok') router.replace('/dashboard')
     else if (result === 'pendiente') setError('Tu solicitud de acceso está pendiente de aprobación por el administrador.')
@@ -213,14 +224,32 @@ function ForgotPasswordLink() {
     // componentes igual: sin esto, el submit de acá llega al onSubmit del
     // login y dispara un intento de inicio de sesión.
     e.stopPropagation()
-    if (!email) return
+
+    // El valor sale del campo y no del estado de React.
+    //
+    // Cuando el autocompletado de Google rellena un input, escribe el valor
+    // directo en el DOM sin disparar el evento que React escucha: en pantalla
+    // se ve el mail, pero el estado sigue vacío. Con `if (!email) return` eso
+    // salía por la puerta de atrás —sin envío, sin error, sin nada— y sólo
+    // funcionaba escribiendo a mano. El campo es la única fuente que refleja
+    // las dos formas de llenarlo.
+    const form = e.currentTarget as HTMLFormElement
+    const delCampo = String(new FormData(form).get('email') ?? '')
+    const destino = (delCampo || email).toLowerCase().trim()
+
+    if (!destino) {
+      setErrorMsg('Ingresá tu correo electrónico.')
+      setStatus('error')
+      return
+    }
+
     setStatus('loading')
     setErrorMsg('')
     try {
       const res = await fetch('/api/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.toLowerCase().trim() }),
+        body: JSON.stringify({ email: destino }),
       })
       const d = await res.json().catch(() => ({}))
       if (res.ok && d.ok) {
