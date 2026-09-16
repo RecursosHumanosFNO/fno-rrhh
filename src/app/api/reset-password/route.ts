@@ -90,19 +90,48 @@ export async function POST(req: NextRequest) {
     created_at: new Date().toISOString(),
   })
 
-  // Enviar email
-  await fetch(`${PORTAL_URL}/api/notify`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      // Llamada server-to-server: no hay usuario logueado (olvidó la contraseña).
-      ...(process.env.CRON_SECRET ? { 'x-internal-key': process.env.CRON_SECRET } : {}),
-    },
-    body: JSON.stringify({
-      type: 'reset_password',
-      data: { email: emailNorm, nombre, token },
-    }),
-  }).catch(() => null)
+  // Enviar email.
+  //
+  // Antes esto era un fetch con .catch(() => null) y un ok:true fijo. Dos
+  // agujeros: .catch sólo atrapa fallos de red —un 401 de /api/notify es una
+  // respuesta normal y pasaba de largo— y el ok:true se devolvía igual hubiera
+  // salido el mail o no. La pantalla decía "¡Email enviado!" siempre, así que
+  // un problema de envío era invisible: la persona esperaba un mail que no
+  // existía y nadie se enteraba de que había algo roto.
+  let enviado = false
+  try {
+    const res = await fetch(`${PORTAL_URL}/api/notify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        // Llamada server-to-server: no hay usuario logueado (olvidó la contraseña).
+        ...(process.env.CRON_SECRET ? { 'x-internal-key': process.env.CRON_SECRET } : {}),
+      },
+      body: JSON.stringify({
+        type: 'reset_password',
+        data: { email: emailNorm, nombre, token },
+      }),
+    })
+    const cuerpo = await res.json().catch(() => ({}))
+    enviado = res.ok && cuerpo?.ok !== false
+    if (!enviado) {
+      console.error('[reset-password] notify falló:', res.status, JSON.stringify(cuerpo))
+    }
+  } catch (err) {
+    console.error('[reset-password] notify:', err)
+  }
+
+  // Decir la verdad cuando el envío falla tiene un costo: como al email
+  // desconocido se le contesta ok:true sin intentar nada, un error de envío
+  // revela que esa dirección existe. Con 31 empleados y casillas
+  // institucionales que ya son públicas, ese dato no vale nada; mentirle a
+  // alguien que está esperando poder entrar, sí.
+  if (!enviado) {
+    return NextResponse.json(
+      { ok: false, error: 'No pudimos enviar el email. Probá de nuevo en unos minutos o escribile a RRHH.' },
+      { status: 502 },
+    )
+  }
 
   return NextResponse.json({ ok: true })
 }
