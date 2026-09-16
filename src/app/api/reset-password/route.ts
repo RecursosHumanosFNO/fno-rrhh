@@ -53,6 +53,10 @@ export async function POST(req: NextRequest) {
     .from('fno_password_resets')
     .select('created_at, expires_at, used')
     .eq('email', emailNorm)
+    // Ordenado a propósito: sin esto, si alguna vez quedara más de una fila
+    // para el mismo email, "la primera" sería la que quisiera Postgres y el
+    // freno miraría un pedido cualquiera en vez del último.
+    .order('created_at', { ascending: false })
     .limit(1)
 
   const previo = previos?.[0]
@@ -61,8 +65,19 @@ export async function POST(req: NextRequest) {
       ? new Date(previo.created_at).getTime()
       : new Date(previo.expires_at).getTime() - TOKEN_TTL_MS // filas viejas sin created_at
     if (Date.now() - creado < REENVIO_MIN_MS) {
-      // Mismo cuerpo que el caso normal: no delatamos que hubo throttling.
-      return NextResponse.json({ ok: true })
+      // Antes acá se devolvía ok:true para no delatar que hubo freno. El
+      // efecto era el peor posible: la pantalla decía "¡Email enviado!" y no
+      // se mandaba nada, así que alguien que no recibió el primero y probaba
+      // de nuevo enseguida quedaba en un bucle mudo. Se lo decimos: el dato
+      // que se filtra es el mismo que ya filtra un envío fallido, y esto es
+      // lo que desbloquea a la persona.
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'Ya te enviamos un link recién. Revisá tu casilla y la carpeta de spam; si no llegó, esperá un minuto y volvé a intentar.',
+        },
+        { status: 429 },
+      )
     }
   }
 
