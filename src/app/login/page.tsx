@@ -11,7 +11,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 
 export default function LoginPage() {
-  const { login } = useAuth()
+  const { login, loginConGoogle, motivoRechazo } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const router = useRouter()
 
@@ -24,6 +24,21 @@ export default function LoginPage() {
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [googleCargando, setGoogleCargando] = useState(false)
+
+  // `motivoRechazo` lo deja el AuthContext cuando Supabase pudo abrir la sesión
+  // pero el portal no reconoce ese correo. Sin eso la persona volvía al login
+  // sin ninguna explicación, que con Google es el caso más probable: entrar con
+  // la cuenta personal en vez de la que dio en RRHH.
+
+  async function handleGoogle() {
+    setError('')
+    setGoogleCargando(true)
+    const err = await loginConGoogle()
+    // Si salió bien el navegador ya se está yendo a Google; el spinner queda
+    // hasta que se va, a propósito.
+    if (err) { setError(err); setGoogleCargando(false) }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -136,6 +151,13 @@ export default function LoginPage() {
             <p className="text-slate-500 dark:text-slate-400 mt-1">Ingresá con tus credenciales institucionales</p>
           </div>
 
+          {!error && motivoRechazo && (
+            <div className="flex items-start gap-2.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 rounded-lg px-4 py-3 mb-5 text-sm animate-fade-in">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              {motivoRechazo}
+            </div>
+          )}
+
           {error && (
             <div className="flex items-start gap-2.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-lg px-4 py-3 mb-5 text-sm animate-fade-in">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -181,6 +203,41 @@ export default function LoginPage() {
               ) : 'Ingresar al Portal'}
             </button>
           </form>
+
+          {/* ── Entrar con Google ───────────────────────────────────────────
+              Va DESPUÉS y fuera del <form>: adentro, un botón sin type="button"
+              se comporta como submit, y además ya nos pasó que anidar cosas en
+              este formulario rompa lo de adentro. */}
+          <div className="mt-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+              <span className="text-xs text-slate-400">o</span>
+              <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+            </div>
+
+            <button
+              type="button"
+              onClick={handleGoogle}
+              disabled={googleCargando}
+              className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-60"
+            >
+              {googleCargando ? (
+                <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
+              ) : (
+                <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden>
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.76h3.57c2.08-1.92 3.28-4.74 3.28-8.09Z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.76c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23Z"/>
+                  <path fill="#FBBC05" d="M5.84 14.11a6.6 6.6 0 0 1 0-4.22V7.05H2.18a11 11 0 0 0 0 9.9l3.66-2.84Z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1a11 11 0 0 0-9.82 6.05l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38Z"/>
+                </svg>
+              )}
+              {googleCargando ? 'Abriendo Google...' : 'Continuar con Google'}
+            </button>
+
+            <p className="text-xs text-slate-400 mt-2 text-center">
+              Usá la cuenta de Google del correo que le diste a RRHH.
+            </p>
+          </div>
 
           <div className="mt-6 text-center">
             <p className="text-sm text-slate-500 dark:text-slate-400">

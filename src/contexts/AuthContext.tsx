@@ -5,10 +5,14 @@ import type { User, Empleado, AuthState, UserRole } from '@/types'
 import { useData } from './DataContext'
 import { supabase } from '@/lib/supabase'
 import { marcarRecordar } from '@/lib/authStorage'
+import { authFetch } from '@/lib/authFetch'
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string, remember: boolean) => Promise<'ok' | 'pendiente' | 'error' | 'timeout' | 'desactivada'>
+  loginConGoogle: () => Promise<string | null>
   logout: () => void
+  /** Por qué una sesión válida no da acceso al portal (entró con un mail que no está dado de alta, por ejemplo). */
+  motivoRechazo: string
   updateEmpleado: (data: Partial<Empleado>) => void
   isLoading: boolean
 }
@@ -27,15 +31,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Cache foto/fotoCover fetched async so they survive the empleado sync race
   const fotoCache = useRef<{ foto: string; fotoCover: string } | null>(null)
 
+  // Motivo por el que una sesión válida de Supabase no da acceso al portal.
+  // Se usa para explicarle a la persona qué pasó en vez de devolverla al login
+  // sin decir nada, que es lo que ocurría cuando el perfil no aparecía.
+  const [motivoRechazo, setMotivoRechazo] = useState('')
+
   // Obtiene el perfil del usuario desde fno_users usando su Supabase Auth ID
   const loadProfile = useCallback(async (authUserId: string): Promise<User | null> => {
     if (!supabase) return null
-    const { data } = await supabase
-      .from('fno_users')
-      .select('id, email, role, empleado_id')
-      .eq('auth_id', authUserId)
-      .maybeSingle()
+
+    const buscar = async () => {
+      const { data } = await supabase!
+        .from('fno_users')
+        .select('id, email, role, empleado_id')
+        .eq('auth_id', authUserId)
+        .maybeSingle()
+      return data
+    }
+
+    let data = await buscar()
+
+    // Sin fila para este auth_id puede ser una primera entrada con Google:
+    // Supabase le dio a la misma persona un id nuevo, distinto del que tiene
+    // guardado su cuenta del portal. El server decide si corresponde atarlos
+    // —sólo si el email ya pertenece a un acceso aprobado y verificado— y
+    // recién ahí volvemos a buscar.
+    if (!data) {
+      try {
+        const res = await authFetch('/api/auth/vincular', { method: 'POST' })
+        const cuerpo = await res.json().catch(() => ({}))
+        if (res.ok && cuerpo.ok) {
+          data = await buscar()
+        } else if (cuerpo.error) {
+          setMotivoRechazo(String(cuerpo.error))
+        }
+      } catch { /* sin red: se resuelve como "sin perfil", igual que antes */ }
+    }
+
     if (!data) return null
+    setMotivoRechazo('')
     return {
       id: data.id as string,
       email: data.email as string,
@@ -74,6 +108,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               }))
             } else {
               setAuth({ user: null, empleado: null, isAuthenticated: false })
+              // Sesión válida en Supabase pero sin acceso al portal: es el caso
+              // de entrar con Google con una cuenta que RRHH no dio de alta. Se
+              // cierra, porque si no queda una media sesión que vuelve a
+              // rebotar en cada carga y tapa el selector de cuentas de Google,
+              // dejando a la persona sin forma evidente de probar con la otra.
+              // El motivo ya quedó guardado y lo muestra el login.
+              supabase?.auth.signOut().catch(() => {})
             }
           } else {
             setAuth({ user: null, empleado: null, isAuthenticated: false })
@@ -226,6 +267,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [empleados, loadProfile])
 
+  /**
+   * Entrar con la cuenta de Google.
+   *
+   * Devuelve un mensaje de error, o null si la redirección arrancó bien (en ese
+   * caso el navegador se va a Google y no vuelve por acá).
+   *
+   * Quién puede entrar no lo decide Google: lo decide RRHH. Google sólo prueba
+   * que la persona es dueña de ese correo; que ese correo tenga acceso al
+   * portal se verifica después, del lado del server (ver /api/auth/vincular).
+   */
+  const loginConGoogle = useCallback(async (): Promise<string | null> => {
+    if (!supabase) return 'No se pudo conectar.'
+    // Entrar con Google es un gesto explícito de "esta es mi máquina": se
+    // recuerda la sesión, igual que el check tildado por defecto del formulario.
+    marcarRecordar(true)
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/dashboard`,
+        // Muestra el selector de cuentas: en un celular compartido o con varias
+        // cuentas de Google encima, entrar con la equivocada y no entender por
+        // qué el portal te rechaza es el error más fácil de cometer.
+        queryParams: { prompt: 'select_account' },
+      },
+    })
+    if (error) {
+      marcarRecordar(false)
+      return error.message || 'No se pudo abrir el acceso con Google.'
+    }
+    return null
+  }, [])
+
   const logout = useCallback(() => {
     marcarRecordar(false)
     if (supabase) supabase.auth.signOut().catch(() => {})
@@ -250,7 +323,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [auth.empleado, updateEmpData])
 
   return (
-    <AuthContext.Provider value={{ ...auth, login, logout, updateEmpleado, isLoading }}>
+    <AuthContext.Provider value={{ ...auth, login, loginConGoogle, logout, updateEmpleado, isLoading, motivoRechazo }}>
       {children}
     </AuthContext.Provider>
   )
