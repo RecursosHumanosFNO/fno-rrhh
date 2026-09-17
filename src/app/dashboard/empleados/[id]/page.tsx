@@ -43,6 +43,7 @@ export default function EmpleadoDetailPage() {
   const [downloadingReciboId, setDownloadingReciboId] = useState<string | null>(null)
   const [pdfViewer, setPdfViewer] = useState<{ url: string; label: string } | null>(null)
   const [resetStatus, setResetStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const [resetError, setResetError] = useState('')
   const [createAcctStatus, setCreateAcctStatus] = useState<'idle' | 'creating' | 'done' | 'error'>('idle')
   const [createAcctErr, setCreateAcctErr] = useState('')
   const [roleStatus, setRoleStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
@@ -324,20 +325,35 @@ export default function EmpleadoDetailPage() {
     }
   }
 
+  // Manda la invitación de siete días, no el reset de treinta minutos.
+  //
+  // Antes iba por /api/reset-password: un link que vencía en media hora y que
+  // en el mail habla de "restablecer" una contraseña que, en el caso más común
+  // —alguien a quien se le aprobó el acceso y nunca entró—, nunca existió. Y la
+  // pantalla decía "Vale por 7 días", así que RRHH le prometía una semana a la
+  // persona y el link se moría esa misma tarde.
   async function handleSendResetEmail() {
-    if (!empUser?.email) return
+    if (!emp?.id) return
     setResetStatus('sending')
+    setResetError('')
     try {
-      const res = await fetch('/api/reset-password', {
+      const res = await authFetch('/api/admin/reenviar-invitacion', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: empUser.email }),
-      }).then(r => r.json()).catch(() => ({ ok: false }))
-      setResetStatus(res.ok ? 'sent' : 'error')
+        body: JSON.stringify({ empleadoId: emp.id }),
+      })
+      const d = await res.json().catch(() => ({}))
+      if (res.ok && d.ok) {
+        setResetStatus('sent')
+      } else {
+        setResetError(d.error ?? '')
+        setResetStatus('error')
+      }
     } catch {
+      setResetError('')
       setResetStatus('error')
     }
-    setTimeout(() => setResetStatus('idle'), 5000)
+    setTimeout(() => setResetStatus('idle'), 6000)
   }
 
   // Crea la cuenta de login para un empleado que no la tenía (Supabase Auth +
@@ -787,7 +803,7 @@ export default function EmpleadoDetailPage() {
 
                     {/* Secure reset via email */}
                     <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-100 dark:border-blue-800">
-                      <p className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Enviar link de recuperación</p>
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Enviar link para crear la contraseña</p>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
                         Se le envía un mail a <strong>{empUser.email}</strong> con un link para que cree su propia contraseña. Vale por 7 días.
                       </p>
@@ -798,7 +814,7 @@ export default function EmpleadoDetailPage() {
                       )}
                       {resetStatus === 'error' && (
                         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-400 rounded-lg px-3 py-2 text-xs flex items-center gap-2 mb-2">
-                          <AlertCircle className="w-4 h-4 shrink-0" /> No se pudo enviar. Verificá que el email esté configurado.
+                          <AlertCircle className="w-4 h-4 shrink-0" /> {resetError || 'No se pudo enviar. Verificá que el email esté configurado.'}
                         </div>
                       )}
                       <button
@@ -811,7 +827,7 @@ export default function EmpleadoDetailPage() {
                         ) : resetStatus === 'sent' ? (
                           <><CheckCircle2 className="w-4 h-4" /> Enviado</>
                         ) : (
-                          <><Mail className="w-4 h-4" /> Enviar link de reset</>
+                          <><Mail className="w-4 h-4" /> Enviar link para crear contraseña</>
                         )}
                       </button>
                     </div>
