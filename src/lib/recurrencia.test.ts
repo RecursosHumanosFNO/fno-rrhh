@@ -119,3 +119,62 @@ describe('textoRepeticion', () => {
     expect(textoRepeticion({})).toBeNull()
   })
 })
+
+describe('semanal con días elegidos', () => {
+  // 2026-10-06 es martes.
+  const martesYJueves = {
+    fecha: '2026-10-06',
+    repeticion: 'semanal' as const,
+    repeticionDias: [2, 4], // martes y jueves
+  }
+
+  it('cae en los dos días de cada semana', () => {
+    expect(ocurrenciasEnRango(martesYJueves, '2026-10-01', '2026-10-17')).toEqual([
+      '2026-10-06', '2026-10-08',
+      '2026-10-13', '2026-10-15',
+    ])
+  })
+
+  it('no inventa ocurrencias anteriores a la fecha del evento', () => {
+    // Elige lunes y miércoles pero el evento se carga un martes: el lunes de esa
+    // primera semana ya pasó y no tiene que aparecer.
+    const r = ocurrenciasEnRango(
+      { fecha: '2026-10-06', repeticion: 'semanal', repeticionDias: [1, 3] },
+      '2026-09-01', '2026-10-10',
+    )
+    expect(r).toEqual(['2026-10-07'])
+  })
+
+  it('respeta la fecha de fin', () => {
+    const r = ocurrenciasEnRango(
+      { ...martesYJueves, repeticionHasta: '2026-10-13' },
+      '2026-10-01', '2026-12-31',
+    )
+    expect(r).toEqual(['2026-10-06', '2026-10-08', '2026-10-13'])
+  })
+
+  it('aplica el "cada N" a las semanas', () => {
+    const r = ocurrenciasEnRango(
+      { ...martesYJueves, repeticionCada: 2 },
+      '2026-10-01', '2026-10-24',
+    )
+    // Semana del 6 y semana del 20; la del 13 se saltea.
+    expect(r).toEqual(['2026-10-06', '2026-10-08', '2026-10-20', '2026-10-22'])
+  })
+
+  it('sin días elegidos se comporta como antes', () => {
+    const r = ocurrenciasEnRango(
+      { fecha: '2026-10-06', repeticion: 'semanal', repeticionDias: [] },
+      '2026-10-01', '2026-10-21',
+    )
+    expect(r).toEqual(['2026-10-06', '2026-10-13', '2026-10-20'])
+  })
+
+  it('lo describe en castellano', () => {
+    expect(textoRepeticion(martesYJueves)).toBe('Todos los martes y jueves')
+    expect(textoRepeticion({ ...martesYJueves, repeticionHasta: '2026-12-20' }))
+      .toBe('Todos los martes y jueves, hasta el 20/12/2026')
+    expect(textoRepeticion({ repeticion: 'semanal', repeticionDias: [1, 3, 5] }))
+      .toBe('Todos los lunes, miércoles y viernes')
+  })
+})

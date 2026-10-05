@@ -840,6 +840,8 @@ export default function EventosPage() {
                         // no dejar un "hasta" colgado de una serie que ya no existe.
                         repeticionCada: v ? (f.repeticionCada ?? 1) : undefined,
                         repeticionHasta: v ? f.repeticionHasta : undefined,
+                        // Los días sólo existen en la semanal.
+                        repeticionDias: v === 'semanal' ? f.repeticionDias : undefined,
                       }))
                     }}
                   >
@@ -866,6 +868,53 @@ export default function EventosPage() {
                     </>
                   )}
                 </div>
+
+                {form.repeticion === 'semanal' && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label className="form-label mb-0 shrink-0">
+                      Días <span className="text-slate-400 font-normal">(opcional)</span>
+                    </label>
+                    {DIAS_SEMANA.map((nombre, dia) => {
+                      const elegido = form.repeticionDias?.includes(dia) ?? false
+                      return (
+                        <button
+                          key={dia}
+                          type="button"
+                          onClick={() => setForm(f => {
+                            const actuales = f.repeticionDias ?? []
+                            const nuevos = actuales.includes(dia)
+                              ? actuales.filter(d => d !== dia)
+                              : [...actuales, dia].sort((a, b) => a - b)
+                            // Sin ninguno marcado vuelve a "el mismo día que la
+                            // fecha", que es el comportamiento de siempre.
+                            return { ...f, repeticionDias: nuevos.length ? nuevos : undefined }
+                          })}
+                          aria-pressed={elegido}
+                          className={`w-11 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                            elegido
+                              ? 'bg-brand-700 border-brand-700 text-white dark:bg-teal-600 dark:border-teal-600'
+                              : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700'
+                          }`}
+                        >
+                          {nombre}
+                        </button>
+                      )
+                    })}
+                    {form.repeticionDias?.length ? (
+                      <button
+                        type="button"
+                        onClick={() => setForm(f => ({ ...f, repeticionDias: undefined }))}
+                        className="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                      >
+                        Limpiar
+                      </button>
+                    ) : (
+                      <span className="text-xs text-slate-400">
+                        Sin marcar, cae el mismo día de la semana que la fecha.
+                      </span>
+                    )}
+                  </div>
+                )}
 
                 {form.repeticion && (
                   <div className="flex flex-wrap items-center gap-3">

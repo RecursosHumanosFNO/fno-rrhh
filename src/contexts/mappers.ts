@@ -248,6 +248,7 @@ export function mapSupabaseToEvento(row: Record<string, unknown>): Evento {
     repeticion: (row.repeticion as Evento['repeticion']) || undefined,
     repeticionCada: (row.repeticion_cada as number) || undefined,
     repeticionHasta: (row.repeticion_hasta as string) || undefined,
+    repeticionDias: Array.isArray(row.repeticion_dias) ? (row.repeticion_dias as number[]) : undefined,
   }
 }
 export function mapEventoToSupabase(e: Evento, baseOnly = false) {
@@ -273,6 +274,9 @@ export function mapEventoToSupabase(e: Evento, baseOnly = false) {
     repeticion: e.repeticion ?? null,
     repeticion_cada: e.repeticion ? (e.repeticionCada ?? 1) : null,
     repeticion_hasta: e.repeticionHasta || null,
+    // Sólo tiene sentido en la semanal; en las otras se guarda vacío para que no
+    // quede un resto de cuando la serie era semanal.
+    repeticion_dias: e.repeticion === 'semanal' && e.repeticionDias?.length ? e.repeticionDias : null,
     publicar_en: e.publicarEn || null,
     aviso_canales: e.publicarEn ? (e.avisoCanales ?? []) : null,
   }

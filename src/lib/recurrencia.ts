@@ -32,7 +32,7 @@ function diasDelMes(anio: number, mes: number): number {
  * Un evento sin repetición devuelve su fecha si entra en el rango, o nada.
  */
 export function ocurrenciasEnRango(
-  ev: Pick<Evento, 'fecha' | 'repeticion' | 'repeticionCada' | 'repeticionHasta'>,
+  ev: Pick<Evento, 'fecha' | 'repeticion' | 'repeticionCada' | 'repeticionHasta' | 'repeticionDias'>,
   desde: string,
   hasta: string,
 ): string[] {
@@ -48,6 +48,37 @@ export function ocurrenciasEnRango(
   const cada = Math.max(1, Math.floor(ev.repeticionCada ?? 1))
   const [anio0, mes0, dia0] = partes(ev.fecha)
   const salida: string[] = []
+
+  // Semanal con días elegidos: "los martes y jueves". Se recorre semana por
+  // semana desde la del evento y dentro de cada una se emiten los días marcados.
+  // Va aparte del resto porque es el único caso donde una vuelta del ciclo
+  // produce más de una fecha.
+  if (ev.repeticion === 'semanal' && ev.repeticionDias?.length) {
+    const dias = [...new Set(ev.repeticionDias)].filter(d => d >= 0 && d <= 6).sort((a, b) => a - b)
+    if (dias.length === 0) return []
+
+    // Domingo de la semana del evento: ancla estable para contar las semanas.
+    const base = new Date(anio0, mes0 - 1, dia0)
+    const domingo = new Date(base)
+    domingo.setDate(base.getDate() - base.getDay())
+
+    for (let semana = 0; semana < MAX_OCURRENCIAS; semana++) {
+      let pasadoElTope = false
+      for (const d of dias) {
+        const f = new Date(domingo)
+        f.setDate(domingo.getDate() + semana * cada * 7 + d)
+        const fecha = aTexto(f.getFullYear(), f.getMonth() + 1, f.getDate())
+        // La serie no existe antes de la fecha del evento: si alguien eligió el
+        // lunes y cargó el evento un miércoles, esa primera semana arranca el
+        // miércoles, no el lunes de atrás.
+        if (fecha < ev.fecha) continue
+        if (fecha > tope) { pasadoElTope = true; break }
+        if (fecha >= desde) salida.push(fecha)
+      }
+      if (pasadoElTope) break
+    }
+    return salida
+  }
 
   for (let i = 0; i < MAX_OCURRENCIAS; i++) {
     let fecha: string | null = null
@@ -106,12 +137,27 @@ export const REPETICION_LABEL: Record<EventoRepeticion, string> = {
   anual: 'Cada año',
 }
 
+const DIAS_LARGOS = ['domingos', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábados'] as const
+
 /** Texto corto para mostrar en la ficha del evento. */
-export function textoRepeticion(ev: Pick<Evento, 'repeticion' | 'repeticionCada' | 'repeticionHasta'>): string | null {
+export function textoRepeticion(
+  ev: Pick<Evento, 'repeticion' | 'repeticionCada' | 'repeticionHasta' | 'repeticionDias'>,
+): string | null {
   if (!ev.repeticion) return null
   const cada = Math.max(1, Math.floor(ev.repeticionCada ?? 1))
   const unidad = ev.repeticion === 'semanal' ? 'semanas' : ev.repeticion === 'mensual' ? 'meses' : 'años'
-  const base = cada === 1 ? REPETICION_LABEL[ev.repeticion] : `Cada ${cada} ${unidad}`
+
+  let base: string
+  if (ev.repeticion === 'semanal' && ev.repeticionDias?.length) {
+    const dias = [...new Set(ev.repeticionDias)].filter(d => d >= 0 && d <= 6).sort((a, b) => a - b)
+    const nombres = dias.map(d => DIAS_LARGOS[d])
+    const lista = nombres.length === 1
+      ? nombres[0]
+      : `${nombres.slice(0, -1).join(', ')} y ${nombres[nombres.length - 1]}`
+    base = cada === 1 ? `Todos los ${lista}` : `Cada ${cada} semanas, los ${lista}`
+  } else {
+    base = cada === 1 ? REPETICION_LABEL[ev.repeticion] : `Cada ${cada} ${unidad}`
+  }
   if (!ev.repeticionHasta) return base
   const [a, m, d] = partes(ev.repeticionHasta)
   return `${base}, hasta el ${d}/${m}/${a}`
