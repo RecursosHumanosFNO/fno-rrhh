@@ -265,6 +265,10 @@ export interface Evento {
   repeticion?: EventoRepeticion   // sin valor = no se repite
   repeticionCada?: number         // 1 = todas; 2 = una sí y una no
   repeticionHasta?: string        // 'YYYY-MM-DD' inclusive; sin valor = sin fin
+  // Sólo para 'semanal': días de la semana en los que cae, 0=domingo … 6=sábado.
+  // Sin valor = el mismo día que la fecha del evento. Sirve para "los martes y
+  // jueves", que con un solo día por serie obligaba a cargar dos eventos.
+  repeticionDias?: number[]
   publicarEn?: string             // ISO con hora; hasta entonces no se ve ni avisa
   avisoCanales?: Canal[]          // por qué canales avisar al publicarse
 }
