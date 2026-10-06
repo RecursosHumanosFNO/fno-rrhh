@@ -1,24 +1,53 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { SECTORES, CARGOS_POR_SECTOR } from '@/lib/mockData'
-import { ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react'
+import { CheckCircle2, AlertCircle, Clock, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 
+// Segundo paso del camino Google → datos → RRHH → portal.
+//
+// Antes era una pantalla suelta donde la persona escribía su email y elegía una
+// contraseña. Ahora se llega acá sólo con sesión de Google ya abierta, y el
+// correo viene de ahí: no se escribe y no se puede cambiar. Eso cierra de raíz
+// el caso de alguien pidiendo acceso con el mail de otro, y de paso garantiza
+// que el correo con el que RRHH lo aprueba es exactamente con el que va a
+// entrar.
 export default function RegistroPage() {
-  const { addPendingRegistration, getUserByEmail, getPendingByEmail } = useData()
+  const { addPendingRegistration } = useData()
+  const { estadoAcceso, datosGoogle, isLoading, isAuthenticated, logout } = useAuth()
   const router = useRouter()
 
   const [form, setForm] = useState({
-    nombre: '', apellido: '', dni: '', email: '',
+    nombre: '', apellido: '', dni: '',
     sector: '', cargo: '', telefono: '',
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+
+  // Sin sesión no hay nada que completar: el camino empieza en el login.
+  // Y quien ya tiene acceso no tiene por qué volver a pedirlo.
+  useEffect(() => {
+    if (isLoading) return
+    if (isAuthenticated) { router.replace('/dashboard'); return }
+    if (estadoAcceso !== 'sin-cuenta' && estadoAcceso !== 'pendiente') router.replace('/login')
+  }, [isLoading, isAuthenticated, estadoAcceso, router])
+
+  // Google ya sabe cómo se llama: se precarga y queda editable, porque el
+  // nombre de la cuenta personal no siempre es el que corresponde al legajo.
+  useEffect(() => {
+    if (!datosGoogle) return
+    setForm(f => ({
+      ...f,
+      nombre: f.nombre || datosGoogle.nombre,
+      apellido: f.apellido || datosGoogle.apellido,
+    }))
+  }, [datosGoogle])
 
   function update(field: string, value: string) {
     if (field === 'sector') {
@@ -34,17 +63,13 @@ export default function RegistroPage() {
     e.preventDefault()
     setError('')
 
-    if (!form.nombre || !form.apellido || !form.dni || !form.email || !form.sector || !form.cargo)
+    if (!form.nombre || !form.apellido || !form.dni || !form.sector || !form.cargo)
       return setError('Completá todos los campos obligatorios.')
 
-    const emailNorm = form.email.toLowerCase().trim()
-    if (getUserByEmail(emailNorm))
-      return setError('Ya existe una cuenta con ese email.')
-    if (getPendingByEmail(emailNorm))
-      return setError('Ya hay una solicitud pendiente con ese email.')
+    const emailNorm = (datosGoogle?.email ?? '').toLowerCase().trim()
+    if (!emailNorm) return setError('No pudimos leer tu correo. Entrá de nuevo con Google.')
 
     setLoading(true)
-    await new Promise(r => setTimeout(r, 600))
     addPendingRegistration({
       nombre: form.nombre, apellido: form.apellido, dni: form.dni,
       email: emailNorm,
@@ -52,6 +77,40 @@ export default function RegistroPage() {
     })
     setLoading(false)
     setSuccess(true)
+  }
+
+  // Mientras se resuelve la sesión no se decide nada: sin esto, el formulario
+  // parpadea un instante antes de que el efecto redirija a quien no corresponde.
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-6">
+        <Loader2 className="w-8 h-8 text-brand-600 animate-spin" />
+      </div>
+    )
+  }
+
+  // Ya mandó sus datos y espera a RRHH. Es el estado en el que va a quedar
+  // cada vez que entre hasta que lo aprueben, así que tiene que decir algo
+  // claro y no devolverle el formulario en blanco para que lo cargue de nuevo.
+  if (estadoAcceso === 'pendiente' && !success) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-6">
+        <div className="max-w-md w-full card p-8 text-center">
+          <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Clock className="w-8 h-8 text-amber-600 dark:text-amber-400" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">Tu solicitud está en revisión</h2>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
+            Ya recibimos tus datos. El área de Recursos Humanos tiene que aprobarlos
+            antes de que puedas entrar. Cuando lo hagan, entrás con Google como ahora
+            y ya vas a ver el portal.
+          </p>
+          <button onClick={() => { logout(); router.replace('/login') }} className="btn-secondary w-full justify-center">
+            Cerrar sesión
+          </button>
+        </div>
+      </div>
+    )
   }
 
   if (success) {
@@ -65,9 +124,9 @@ export default function RegistroPage() {
           <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
             Tu solicitud de acceso fue enviada correctamente. El área de Recursos Humanos revisará tus datos y activará tu cuenta. Recibirás una notificación cuando esté lista.
           </p>
-          <Link href="/login" className="btn-primary w-full justify-center">
-            Volver al inicio de sesión
-          </Link>
+          <button onClick={() => { logout(); router.replace('/login') }} className="btn-secondary w-full justify-center">
+            Cerrar sesión
+          </button>
         </div>
       </div>
     )
@@ -89,14 +148,28 @@ export default function RegistroPage() {
         </div>
 
         <div className="card p-6">
-          <Link href="/login" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 mb-5">
-            <ArrowLeft className="w-4 h-4" /> Volver al login
-          </Link>
-
-          <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-1">Crear cuenta</h2>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
-            Completá tus datos. El administrador de RRHH deberá aprobar tu acceso antes de que puedas ingresar.
+          <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-1">Completá tus datos</h2>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mb-5">
+            Entraste con Google. Falta que nos digas quién sos para que RRHH
+            pueda darte acceso.
           </p>
+
+          {/* El correo no se escribe: lo confirmó Google al entrar. */}
+          <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 px-4 py-3 mb-5">
+            <div className="min-w-0">
+              <p className="text-xs text-slate-400">Entrando como</p>
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">
+                {datosGoogle?.email ?? '—'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => { logout(); router.replace('/login') }}
+              className="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 shrink-0"
+            >
+              No soy yo
+            </button>
+          </div>
 
           {error && (
             <div className="flex items-start gap-2.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-lg px-4 py-3 mb-5 text-sm">
@@ -135,11 +208,6 @@ export default function RegistroPage() {
               </div>
             </div>
 
-            <div>
-              <label htmlFor="registro-email" className="form-label">Email *</label>
-              <input id="registro-email" name="email" autoComplete="email" className="form-input" type="email" placeholder="tu@email.com" value={form.email} onChange={e => update('email', e.target.value)} />
-            </div>
-
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label htmlFor="registro-sector" className="form-label">Sector *</label>
@@ -164,11 +232,11 @@ export default function RegistroPage() {
               </div>
             </div>
 
-            {/* La contraseña ya no se pide acá: guardarla hasta la aprobación
-                obligaba a tenerla en claro en la base. Se define al final, por
-                el mismo flujo de "Olvidé mi contraseña". */}
+            {/* No hay contraseña en ninguna parte del camino: al portal se
+                entra con la cuenta de Google que la persona ya usó para llegar
+                hasta acá. */}
             <p className="text-sm text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3">
-              Cuando RRHH apruebe tu solicitud vas a recibir un email para crear tu contraseña.
+              Cuando RRHH apruebe tu solicitud te avisamos por mail y entrás con esta misma cuenta de Google. No hay contraseña que crear.
             </p>
 
             <button type="submit" className="btn-primary w-full justify-center py-3 mt-2" disabled={loading}>

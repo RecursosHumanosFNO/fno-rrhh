@@ -8,11 +8,14 @@ import { marcarRecordar } from '@/lib/authStorage'
 import { authFetch } from '@/lib/authFetch'
 
 interface AuthContextType extends AuthState {
-  login: (email: string, password: string, remember: boolean) => Promise<'ok' | 'pendiente' | 'error' | 'timeout' | 'desactivada'>
   loginConGoogle: () => Promise<string | null>
   logout: () => void
-  /** Por qué una sesión válida no da acceso al portal (entró con un mail que no está dado de alta, por ejemplo). */
+  /** En qué punto del camino Google → datos → RRHH → portal está esta sesión. */
+  estadoAcceso: 'ok' | 'sin-cuenta' | 'pendiente' | 'rechazado'
+  /** Por qué una sesión válida no da acceso (cuenta desactivada, por ejemplo). */
   motivoRechazo: string
+  /** Lo que Google ya sabe de la persona, para precargar el formulario de datos. */
+  datosGoogle: { email: string; nombre: string; apellido: string } | null
   updateEmpleado: (data: Partial<Empleado>) => void
   isLoading: boolean
 }
@@ -28,13 +31,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAuthenticated: false,
   })
   const [isLoading, setIsLoading] = useState(true)
+  // El callback de onAuthStateChange corre diferido y con el closure del render
+  // en que se suscribió: sin el ref leería siempre el estado inicial.
+  const estadoRef = useRef<'ok' | 'sin-cuenta' | 'pendiente' | 'rechazado'>('ok')
   // Cache foto/fotoCover fetched async so they survive the empleado sync race
   const fotoCache = useRef<{ foto: string; fotoCover: string } | null>(null)
 
-  // Motivo por el que una sesión válida de Supabase no da acceso al portal.
-  // Se usa para explicarle a la persona qué pasó en vez de devolverla al login
-  // sin decir nada, que es lo que ocurría cuando el perfil no aparecía.
+  // En qué punto del camino está alguien con sesión de Google válida:
+  //   'sin-cuenta' → entró, pero todavía no cargó sus datos (va al formulario)
+  //   'pendiente'  → ya los cargó y espera que RRHH lo apruebe
+  //   'rechazado'  → cuenta desactivada o correo sin verificar: no pasa
+  // El flujo es Google → datos → RRHH → portal, así que los dos primeros no son
+  // un rechazo sino un paso intermedio, y echarlos al login sería dejarlos sin
+  // forma de avanzar.
+  const [estadoAcceso, setEstadoAccesoRaw] = useState<'ok' | 'sin-cuenta' | 'pendiente' | 'rechazado'>('ok')
+  const setEstadoAcceso = useCallback((v: 'ok' | 'sin-cuenta' | 'pendiente' | 'rechazado') => {
+    estadoRef.current = v
+    setEstadoAccesoRaw(v)
+  }, [])
   const [motivoRechazo, setMotivoRechazo] = useState('')
+  const [datosGoogle, setDatosGoogle] = useState<{ email: string; nombre: string; apellido: string } | null>(null)
 
   // Obtiene el perfil del usuario desde fno_users usando su Supabase Auth ID
   const loadProfile = useCallback(async (authUserId: string): Promise<User | null> => {
@@ -62,13 +78,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const cuerpo = await res.json().catch(() => ({}))
         if (res.ok && cuerpo.ok) {
           data = await buscar()
-        } else if (cuerpo.error) {
-          setMotivoRechazo(String(cuerpo.error))
+        } else if (cuerpo.motivo === 'sin-cuenta' || cuerpo.motivo === 'pendiente') {
+          setEstadoAcceso(cuerpo.motivo)
+          setDatosGoogle({
+            email: String(cuerpo.email ?? ''),
+            nombre: String(cuerpo.nombre ?? ''),
+            apellido: String(cuerpo.apellido ?? ''),
+          })
+        } else {
+          setEstadoAcceso('rechazado')
+          if (cuerpo.error) setMotivoRechazo(String(cuerpo.error))
         }
       } catch { /* sin red: se resuelve como "sin perfil", igual que antes */ }
     }
 
     if (!data) return null
+    setEstadoAcceso('ok')
     setMotivoRechazo('')
     return {
       id: data.id as string,
@@ -108,13 +133,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               }))
             } else {
               setAuth({ user: null, empleado: null, isAuthenticated: false })
-              // Sesión válida en Supabase pero sin acceso al portal: es el caso
-              // de entrar con Google con una cuenta que RRHH no dio de alta. Se
-              // cierra, porque si no queda una media sesión que vuelve a
-              // rebotar en cada carga y tapa el selector de cuentas de Google,
-              // dejando a la persona sin forma evidente de probar con la otra.
-              // El motivo ya quedó guardado y lo muestra el login.
-              supabase?.auth.signOut().catch(() => {})
+              // La sesión se cierra SÓLO cuando no hay nada más que hacer
+              // (cuenta desactivada, correo sin verificar). Si la persona
+              // todavía tiene que cargar sus datos o espera la aprobación de
+              // RRHH, la sesión es justamente lo que le permite seguir: cerrarla
+              // la devolvería al login en loop, sin forma de avanzar.
+              if (estadoRef.current === 'rechazado') {
+                supabase?.auth.signOut().catch(() => {})
+              }
             }
           } else {
             setAuth({ user: null, empleado: null, isAuthenticated: false })
@@ -196,76 +222,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
   }, [auth.user?.empleadoId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const login = useCallback(async (
-    email: string,
-    password: string,
-    remember: boolean,
-  ): Promise<'ok' | 'pendiente' | 'error' | 'timeout' | 'desactivada'> => {
-    const normalEmail = email.toLowerCase().trim()
-
-    // ¿Tiene una solicitud de acceso esperando aprobación? La lista ya no se
-    // baja al navegador (traía DNI y teléfono de todos), así que se pregunta por
-    // este email y nada más. Si la consulta falla, seguimos con el login normal.
-    const esPendiente = await fetch('/api/pendientes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: normalEmail }),
-    })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => d?.pendiente === true)
-      .catch(() => false)
-    if (esPendiente) return 'pendiente'
-
-    if (!supabase) return 'error'
-
-    try {
-      // Timeout de 15s: evita spinner infinito si Supabase está pausado o con latencia
-      const timeout = new Promise<'timeout'>(resolve => setTimeout(() => resolve('timeout'), 15000))
-      // Guardar flags ANTES de llamar a Supabase: onAuthStateChange dispara un
-      // setTimeout(0) durante signInWithPassword y necesita leer estos flags ya
-      // presentes, o de lo contrario los ve vacíos y llama signOut() (race condition).
-      // Tiene que quedar marcado ANTES de pedirle la sesión a Supabase: es lo
-      // que decide en qué storage se guarda el token.
-      marcarRecordar(remember)
-
-      const attempt = (async (): Promise<'ok' | 'error' | 'desactivada'> => {
-        const { data, error } = await supabase!.auth.signInWithPassword({ email: normalEmail, password })
-        if (error || !data.user) {
-          marcarRecordar(false)
-          return 'error'
-        }
-        // Cargar el perfil y dejar la sesión lista ANTES de devolver 'ok'.
-        // (onAuthStateChange está diferido, así que sin esto el dashboard
-        //  no vería isAuthenticated=true al primer intento)
-        const profile = await loadProfile(data.user.id)
-        if (!profile) return 'error'
-        // Verificar directamente en Supabase para evitar race condition con el sync
-        const { data: empRow } = await supabase!
-          .from('fno_empleados').select('estado, nombre, apellido').eq('id', profile.empleadoId).maybeSingle()
-        if (empRow?.estado === 'inactivo') {
-          await supabase!.auth.signOut()
-          return 'desactivada'
-        }
-        const emp = empleados.find(e => e.id === profile.empleadoId) ?? null
-        setAuth({ user: profile, empleado: emp, isAuthenticated: true })
-        // Registrar login en fno_logins (no bloquea el flujo).
-        // Nombre tomado de la query directa (no del sync) para no caer al email
-        // cuando el listado de empleados aún no terminó de cargar.
-        const nombreLogin = empRow?.nombre
-          ? `${empRow.nombre} ${empRow.apellido ?? ''}`.trim()
-          : emp ? `${emp.nombre} ${emp.apellido}` : normalEmail
-        supabase!.from('fno_logins').insert({
-          empleado_id: profile.empleadoId,
-          nombre: nombreLogin,
-          email: normalEmail,
-        }).then()
-        return 'ok'
-      })().catch(() => 'error' as const)
-      return await Promise.race([attempt, timeout])
-    } catch {
-      return 'error'
-    }
-  }, [empleados, loadProfile])
 
   /**
    * Entrar con la cuenta de Google.
@@ -323,7 +279,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [auth.empleado, updateEmpData])
 
   return (
-    <AuthContext.Provider value={{ ...auth, login, loginConGoogle, logout, updateEmpleado, isLoading, motivoRechazo }}>
+    <AuthContext.Provider value={{ ...auth, loginConGoogle, logout, updateEmpleado, isLoading, estadoAcceso, motivoRechazo, datosGoogle }}>
       {children}
     </AuthContext.Provider>
   )

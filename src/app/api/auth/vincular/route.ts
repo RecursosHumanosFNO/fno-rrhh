@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
       || (user.user_metadata as Record<string, unknown> | null)?.email_verified === true
     if (!verificado) {
       return NextResponse.json(
-        { ok: false, error: 'Tu proveedor no confirmó el correo.' },
+        { ok: false, motivo: 'sin-verificar', error: 'Tu proveedor no confirmó el correo.' },
         { status: 403 },
       )
     }
@@ -63,10 +63,25 @@ export async function POST(req: NextRequest) {
       .maybeSingle()
 
     if (!cuenta) {
-      return NextResponse.json(
-        { ok: false, error: 'Tu correo no figura entre los accesos del portal. Pedile a RRHH que te dé de alta.' },
-        { status: 403 },
-      )
+      // No es un rechazo definitivo: es alguien que entró con Google y todavía
+      // no pidió el acceso, o lo pidió y RRHH no lo aprobó. El cliente los
+      // manda al formulario de datos en vez de echarlos, así que hace falta
+      // distinguirlos de una cuenta desactivada.
+      const { data: pendiente } = await sb
+        .from('fno_pending')
+        .select('id')
+        .ilike('email', patron)
+        .maybeSingle()
+
+      const meta = (user.user_metadata ?? {}) as Record<string, unknown>
+      return NextResponse.json({
+        ok: false,
+        motivo: pendiente ? 'pendiente' : 'sin-cuenta',
+        email,
+        // Lo que Google ya sabe, para no hacerle escribir el nombre de nuevo.
+        nombre: typeof meta.given_name === 'string' ? meta.given_name : '',
+        apellido: typeof meta.family_name === 'string' ? meta.family_name : '',
+      })
     }
 
     if (cuenta.empleado_id) {
@@ -77,7 +92,7 @@ export async function POST(req: NextRequest) {
         .maybeSingle()
       if (emp?.estado === 'inactivo') {
         return NextResponse.json(
-          { ok: false, error: 'Tu cuenta está desactivada. Comunicate con RRHH.' },
+          { ok: false, motivo: 'inactivo', error: 'Tu cuenta está desactivada. Comunicate con RRHH.' },
           { status: 403 },
         )
       }

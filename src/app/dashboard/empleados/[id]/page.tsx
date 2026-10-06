@@ -386,7 +386,7 @@ export default function EmpleadoDetailPage() {
       // invitación, y este pedido extra le pisaba el token de una semana por
       // uno de media hora.
       if (data.invitacionEnviada === false) {
-        setCreateAcctErr('La cuenta se creó, pero no se pudo enviar el mail con el link. Pedile que use "Olvidé mi contraseña".')
+        setCreateAcctErr('La cuenta se creó, pero no se pudo enviar el aviso por mail. Decile que ya puede entrar con su cuenta de Google.')
       }
       await forceSync() // recargar la lista de usuarios para que aparezca la cuenta
       setCreateAcctStatus('done')
@@ -803,13 +803,13 @@ export default function EmpleadoDetailPage() {
 
                     {/* Secure reset via email */}
                     <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-100 dark:border-blue-800">
-                      <p className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Enviar link para crear la contraseña</p>
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Reenviar aviso de acceso</p>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
-                        Se le envía un mail a <strong>{empUser.email}</strong> con un link para que cree su propia contraseña. Vale por 7 días.
+                        Se le avisa por mail a <strong>{empUser.email}</strong> que ya puede entrar. Al portal se entra con la cuenta de Google de ese mismo correo.
                       </p>
                       {resetStatus === 'sent' && (
                         <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 rounded-lg px-3 py-2 text-xs flex items-center gap-2 mb-2">
-                          <CheckCircle2 className="w-4 h-4 shrink-0" /> Link enviado correctamente al email del empleado.
+                          <CheckCircle2 className="w-4 h-4 shrink-0" /> Aviso enviado correctamente al email del empleado.
                         </div>
                       )}
                       {resetStatus === 'error' && (
@@ -827,7 +827,7 @@ export default function EmpleadoDetailPage() {
                         ) : resetStatus === 'sent' ? (
                           <><CheckCircle2 className="w-4 h-4" /> Enviado</>
                         ) : (
-                          <><Mail className="w-4 h-4" /> Enviar link para crear contraseña</>
+                          <><Mail className="w-4 h-4" /> Reenviar aviso de acceso</>
                         )}
                       </button>
                     </div>
@@ -838,7 +838,7 @@ export default function EmpleadoDetailPage() {
                     <p className="text-sm text-slate-400">Este empleado no tiene cuenta de acceso creada.</p>
                     {createAcctStatus === 'done' ? (
                       <p className="text-sm text-emerald-600 dark:text-emerald-400">
-                        ✓ Cuenta creada. Se le envió un mail a <strong>{emp.email}</strong> con el link para crear su contraseña (vale 7 días).
+                        ✓ Cuenta creada. Se le avisó por mail a <strong>{emp.email}</strong> que ya puede entrar con su cuenta de Google.
                       </p>
                     ) : (
                       <>
@@ -849,13 +849,13 @@ export default function EmpleadoDetailPage() {
                         >
                           {createAcctStatus === 'creating'
                             ? <><Loader2 className="w-4 h-4 animate-spin" /> Creando cuenta...</>
-                            : <><Mail className="w-4 h-4" /> Crear cuenta de acceso y enviar link</>}
+                            : <><Mail className="w-4 h-4" /> Crear cuenta de acceso y avisarle</>}
                         </button>
                         {createAcctStatus === 'error' && (
                           <p className="text-sm text-red-500 dark:text-red-400">{createAcctErr}</p>
                         )}
                         <p className="text-xs text-slate-400">
-                          Se creará la cuenta de login con el email <strong>{emp.email || '(sin email)'}</strong> y se le enviará un link para que defina su contraseña.
+                          Se creará la cuenta con el email <strong>{emp.email || '(sin email)'}</strong> y se le avisará que ya puede entrar. Tiene que usar la cuenta de Google de ese correo.
                         </p>
                       </>
                     )}

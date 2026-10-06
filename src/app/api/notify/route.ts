@@ -303,28 +303,26 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    /* ── Invitación: crear la contraseña por primera vez ───────────────────── */
-    // Es el reset con otra ropa: mismo token de un solo uso, pero el texto habla
-    // de crear y no de restablecer, y el link dura una semana. Antes esto se
-    // resolvía diciéndole a la persona que usara "Olvidé mi contraseña", que es
-    // pedirle que declare haber olvidado algo que nunca tuvo.
+    /* ── Acceso habilitado ─────────────────────────────────────────────────── */
+    // Ya no manda a crear una contraseña: al portal se entra con la cuenta de
+    // Google y no hay contraseña que crear. Tampoco lleva token, así que no es
+    // un link que vence ni que haya que cuidar de compartir — el único secreto
+    // es la cuenta de Google de la persona, que ya es suya.
     else if (type === 'invitacion_acceso') {
-      const url = `${PORTAL_URL}/reset-password?token=${encodeURIComponent(raw.token ?? '')}&nuevo=1`
       await transporter.sendMail({
         from, to: raw.email,
-        subject: `🔐 Creá tu contraseña — Portal RRHH FNO`,
+        subject: `✅ Ya podés entrar al Portal RRHH`,
         html: base(`
-          <h3 style="color:${BRAND};margin-top:0;">Ya tenés tu acceso al Portal RRHH</h3>
+          <h3 style="color:${BRAND};margin-top:0;">Tu acceso al Portal RRHH está listo</h3>
           <p>Hola <strong>${data.nombre}</strong>,</p>
-          <p style="color:#64748b;line-height:1.7;">Tu cuenta del Portal de Recursos Humanos de la <strong>Fundación Neuquén Oeste</strong> ya está creada. Sólo falta que elijas tu contraseña.</p>
-          ${btn('Crear mi contraseña', url)}
+          <p style="color:#64748b;line-height:1.7;">RRHH aprobó tu acceso al Portal de Recursos Humanos de la <strong>Fundación Neuquén Oeste</strong>. Ya podés entrar.</p>
+          ${btn('Entrar al Portal', `${PORTAL_URL}/login`)}
           <p style="color:#64748b;font-size:13px;line-height:1.7;margin-top:24px;">
-            Vas a entrar con este email: <strong>${data.email}</strong><br>
-            El link vale por <strong>7 días</strong>. Si se vence, entrá al portal y tocá
-            &quot;Olvidé mi contraseña&quot; para pedir uno nuevo.
+            Tocá <strong>&quot;Continuar con Google&quot;</strong> y elegí la cuenta de
+            <strong>${data.email}</strong>. No hay contraseña que recordar.
           </p>
-          <div style="background:#fef3c7;border-radius:8px;padding:12px 16px;margin-top:20px;">
-            <p style="margin:0;color:#92400e;font-size:13px;line-height:1.6;">⚠️ No compartas este link: quien lo tenga puede definir la contraseña de tu cuenta.</p>
+          <div style="background:#f1f5f9;border-radius:8px;padding:12px 16px;margin-top:20px;">
+            <p style="margin:0;color:#475569;font-size:13px;line-height:1.6;">Tiene que ser esa misma cuenta de Google: si entrás con otra, el portal no te va a reconocer.</p>
           </div>
         `),
       })
