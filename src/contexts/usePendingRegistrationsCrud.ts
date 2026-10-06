@@ -105,7 +105,7 @@ export function usePendingRegistrationsCrud({
         // que decirlo, no dar por hecho que la invitación salió.
         if (cuerpo.invitacionEnviada === false) {
           addNotification({
-            texto: `La cuenta de ${reg.nombre} se creó, pero no se pudo enviar el mail con el link para crear la contraseña. Avisale que use "Olvidé mi contraseña".`,
+            texto: `La cuenta de ${reg.nombre} se creó, pero no se pudo enviar el aviso por mail. Decile que ya puede entrar con su cuenta de Google.`,
             tipo: 'sistema', soloAdmin: true,
           })
         }

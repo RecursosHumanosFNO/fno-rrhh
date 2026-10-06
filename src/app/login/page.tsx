@@ -1,35 +1,34 @@
 'use client'
 
-import { useEscape } from '@/lib/useEscape'
-import { useState } from 'react'
-import { createPortal } from 'react-dom'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/components/ThemeProvider'
-import { Eye, EyeOff, Lock, Mail, AlertCircle, ExternalLink, Sun, Moon } from 'lucide-react'
+import { AlertCircle, ExternalLink, Sun, Moon } from 'lucide-react'
 import Image from 'next/image'
-import Link from 'next/link'
 
+// Única forma de entrar: la cuenta de Google.
+//
+// Antes convivían las dos. La contraseña arrastraba todo un aparato —mails con
+// links que vencen, "olvidé mi contraseña", reenvíos— que fue, de lejos, lo que
+// más problemas dio para que la gente simplemente pudiera entrar. Con Google no
+// hay nada que recordar ni que reenviar, y el correo lo verifica Google, así que
+// desaparece de paso el camino por el que alguien podía declarar un mail ajeno.
 export default function LoginPage() {
-  const { login, loginConGoogle, motivoRechazo } = useAuth()
+  const { loginConGoogle, estadoAcceso, motivoRechazo } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const router = useRouter()
 
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  // Viene tildado: es un portal interno que se usa desde el celular propio, y
-  // el default anterior (destildado) hacía que la sesión se perdiera al cerrar
-  // la app salvo que alguien se acordara de marcarlo.
-  const [remember, setRemember] = useState(true)
-  const [showPass, setShowPass] = useState(false)
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [googleCargando, setGoogleCargando] = useState(false)
 
-  // `motivoRechazo` lo deja el AuthContext cuando Supabase pudo abrir la sesión
-  // pero el portal no reconoce ese correo. Sin eso la persona volvía al login
-  // sin ninguna explicación, que con Google es el caso más probable: entrar con
-  // la cuenta personal en vez de la que dio en RRHH.
+  // Con sesión de Google pero sin cuenta del portal, el paso siguiente es
+  // cargar los datos. Son parte del camino, no un rechazo.
+  useEffect(() => {
+    if (estadoAcceso === 'sin-cuenta' || estadoAcceso === 'pendiente') {
+      router.replace('/registro')
+    }
+  }, [estadoAcceso, router])
 
   async function handleGoogle() {
     setError('')
@@ -40,30 +39,6 @@ export default function LoginPage() {
     if (err) { setError(err); setGoogleCargando(false) }
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setError('')
-
-    // Los valores salen de los campos y no del estado, por lo mismo que en el
-    // formulario de recuperación: el autocompletado del navegador escribe
-    // directo en el DOM sin avisarle a React. Acá el síntoma era todavía más
-    // desconcertante que allá —"Completá todos los campos" con los dos campos
-    // visiblemente llenos— y dejaba afuera a quien entra con el gestor de
-    // contraseñas, que es como entra casi todo el mundo desde el celular.
-    const datos = new FormData(e.currentTarget as HTMLFormElement)
-    const emailFinal = (String(datos.get('email') ?? '') || email).trim()
-    const passFinal = String(datos.get('password') ?? '') || password
-
-    if (!emailFinal || !passFinal) { setError('Completá todos los campos.'); return }
-    setLoading(true)
-    const result = await login(emailFinal, passFinal, remember)
-    setLoading(false)
-    if (result === 'ok') router.replace('/dashboard')
-    else if (result === 'pendiente') setError('Tu solicitud de acceso está pendiente de aprobación por el administrador.')
-    else if (result === 'timeout') setError('El servidor está tardando en responder. Esperá un minuto y volvé a intentar.')
-    else if (result === 'desactivada') setError('⛔ Tu cuenta está desactivada. Comunicate con el área de RRHH para más información.')
-    else setError('Email o contraseña incorrectos.')
-  }
 
   return (
     <div className="min-h-screen flex">
@@ -165,56 +140,8 @@ export default function LoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label htmlFor="login-email" className="form-label">Correo electrónico</label>
-              <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input id="login-email" name="email" type="email" className="form-input pl-10" placeholder="tu@email.com"
-                  value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" />
-              </div>
-            </div>
 
-            <div>
-              <label htmlFor="login-password" className="form-label">Contraseña</label>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input id="login-password" name="password" type={showPass ? 'text' : 'password'} className="form-input pl-10 pr-10"
-                  placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" />
-                <button type="button" onClick={() => setShowPass(!showPass)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                  {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input id="login-remember" name="remember" type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" />
-                <span className="text-sm text-slate-600 dark:text-slate-400">Recordar sesión</span>
-              </label>
-              <ForgotPasswordLink />
-            </div>
-
-            <button type="submit" className="btn-primary w-full justify-center py-3" disabled={loading}>
-              {loading ? (
-                <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Ingresando...</>
-              ) : 'Ingresar al Portal'}
-            </button>
-          </form>
-
-          {/* ── Entrar con Google ───────────────────────────────────────────
-              Va DESPUÉS y fuera del <form>: adentro, un botón sin type="button"
-              se comporta como submit, y además ya nos pasó que anidar cosas en
-              este formulario rompa lo de adentro. */}
           <div className="mt-5">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
-              <span className="text-xs text-slate-400">o</span>
-              <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
-            </div>
-
             <button
               type="button"
               onClick={handleGoogle}
@@ -239,12 +166,11 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <div className="mt-6 text-center">
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              ¿Primera vez en el sistema?{' '}
-              <Link href="/registro" className="text-brand-600 dark:text-brand-400 font-medium hover:underline">
-                Crear cuenta
-              </Link>
+          <div className="mt-6 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-4">
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">¿Primera vez?</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              Entrá con tu cuenta de Google igual. Te vamos a pedir tus datos y
+              RRHH va a revisar tu solicitud antes de darte acceso.
             </p>
           </div>
 
@@ -254,139 +180,5 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
-  )
-}
-
-// ── Componente "Olvidé mi contraseña" ─────────────────────────────────────────
-function ForgotPasswordLink() {
-  const [open, setOpen] = useState(false)
-  const [email, setEmail] = useState('')
-  const [status, setStatus] = useState<'idle' | 'loading' | 'sent' | 'error'>('idle')
-  const [errorMsg, setErrorMsg] = useState('')
-
-  useEscape(open, () => { setOpen(false); setStatus('idle'); setEmail('') })
-
-  // Va por /api/reset-password (Gmail) y no por supabase.auth.
-  //
-  // Había dos sistemas de recuperación en paralelo: el admin mandaba el link
-  // desde la ficha del empleado por esta ruta, y acá se usaba el mail que manda
-  // Supabase por su cuenta. El de Supabase, sin SMTP propio configurado, tiene
-  // un tope de unos pocos envíos por hora para TODO el proyecto y entrega mal.
-  // Resultado: a RRHH le funcionaba y a los empleados no les llegaba nada,
-  // justo en la única pantalla donde pueden resolverlo solos.
-  async function handleSend(e: React.FormEvent) {
-    e.preventDefault()
-    // Este formulario vive dentro del de login. Con el portal ya no están
-    // anidados en el DOM, pero React propaga los eventos por el árbol de
-    // componentes igual: sin esto, el submit de acá llega al onSubmit del
-    // login y dispara un intento de inicio de sesión.
-    e.stopPropagation()
-
-    // El valor sale del campo y no del estado de React.
-    //
-    // Cuando el autocompletado de Google rellena un input, escribe el valor
-    // directo en el DOM sin disparar el evento que React escucha: en pantalla
-    // se ve el mail, pero el estado sigue vacío. Con `if (!email) return` eso
-    // salía por la puerta de atrás —sin envío, sin error, sin nada— y sólo
-    // funcionaba escribiendo a mano. El campo es la única fuente que refleja
-    // las dos formas de llenarlo.
-    const form = e.currentTarget as HTMLFormElement
-    const delCampo = String(new FormData(form).get('email') ?? '')
-    const destino = (delCampo || email).toLowerCase().trim()
-
-    if (!destino) {
-      setErrorMsg('Ingresá tu correo electrónico.')
-      setStatus('error')
-      return
-    }
-
-    setStatus('loading')
-    setErrorMsg('')
-    try {
-      const res = await fetch('/api/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: destino }),
-      })
-      const d = await res.json().catch(() => ({}))
-      if (res.ok && d.ok) {
-        setStatus('sent')
-      } else {
-        setErrorMsg(d.error ?? '')
-        setStatus('error')
-      }
-    } catch {
-      setErrorMsg('')
-      setStatus('error')
-    }
-  }
-
-  return (
-    <>
-      <button type="button" onClick={() => setOpen(true)} className="text-sm text-brand-600 dark:text-brand-400 hover:underline font-medium">
-        ¿Olvidaste tu contraseña?
-      </button>
-
-      {/* Va por portal a <body>.
-          Este componente se dibuja dentro del <form> de login, así que sin
-          esto el formulario del modal quedaba ANIDADO dentro de otro: HTML
-          inválido. Al apretar Enter el navegador no sabe cuál enviar y termina
-          disparando el de afuera, el de iniciar sesión. Resultado: el pedido de
-          recuperación no salía nunca —ni aparecía en los logs del servidor— y
-          la pantalla no mostraba ni éxito ni error. */}
-      {open && createPortal(
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { setOpen(false); setStatus('idle'); setEmail('') }}>
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1">Recuperar contraseña</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">
-              Ingresá tu email y te enviaremos un link para crear una nueva contraseña.
-            </p>
-            {status === 'sent' ? (
-              <div className="text-center py-4">
-                <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <span className="text-2xl">✉️</span>
-                </div>
-                <p className="font-medium text-slate-800 dark:text-slate-100 mb-1">¡Email enviado!</p>
-                <p className="text-sm text-slate-500 dark:text-slate-400">Revisá tu bandeja de entrada. El link es válido por 30 minutos.</p>
-                <button onClick={() => { setOpen(false); setStatus('idle') }} className="mt-4 text-sm text-brand-600 dark:text-brand-400 hover:underline">Cerrar</button>
-              </div>
-            ) : (
-              <form onSubmit={handleSend} className="space-y-4">
-                {status === 'error' && (
-                  <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">
-                    {errorMsg || 'Ocurrió un error. Intentá de nuevo o contactá a RRHH.'}
-                  </p>
-                )}
-                {/* El placeholder no reemplaza a la etiqueta: desaparece al
-                    escribir y un lector de pantalla no lo anuncia. Como el
-                    texto del modal ya explica qué va acá, la etiqueta queda
-                    para quien no ve la pantalla. */}
-                <label htmlFor="recuperar-email" className="sr-only">Correo electrónico</label>
-                <input
-                  id="recuperar-email"
-                  name="email"
-                  type="email"
-                  className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-lg text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500"
-                  placeholder="tu@email.com"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  autoComplete="email"
-                  required
-                />
-                <div className="flex gap-2">
-                  <button type="button" onClick={() => { setOpen(false); setStatus('idle') }} className="flex-1 px-4 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                    Cancelar
-                  </button>
-                  <button type="submit" disabled={status === 'loading'} className="flex-1 bg-brand-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-brand-600 transition-colors disabled:opacity-60">
-                    {status === 'loading' ? 'Enviando...' : 'Enviar link'}
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>,
-        document.body,
-      )}
-    </>
   )
 }
