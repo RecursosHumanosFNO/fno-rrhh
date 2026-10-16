@@ -2,7 +2,7 @@
 
 import { useDialogos } from '@/components/Dialogos'
 import { useEscape } from '@/lib/useEscape'
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useRouter } from 'next/navigation'
@@ -87,8 +87,8 @@ function exportarExcel(empleados: Empleado[]) {
   XLSX.writeFile(wb, `empleados_fno_${hoy}.xlsx`)
 }
 
-function EmpleadoCard({ emp, foto }: { emp: Empleado; foto?: string }) {
-  const fotoSrc = foto || emp.foto
+function EmpleadoCard({ emp }: { emp: Empleado }) {
+  const fotoSrc = emp.foto
   return (
     <Link href={`/dashboard/empleados/${emp.id}`} className="card-hover p-5 flex flex-col gap-3">
       <div className="flex items-start justify-between">
@@ -149,20 +149,11 @@ function EmpleadosContent() {
     approvePendingRegistration, rejectPendingRegistration,
   } = useData()
 
-  // Mapa id → foto: cargado una vez al montar (el sync masivo no incluye fotos)
-  const [fotoMap, setFotoMap] = useState<Record<string, string>>({})
-  const fotosFetched = useRef(false)
-  useEffect(() => {
-    if (fotosFetched.current || !supabase) return
-    fotosFetched.current = true
-    supabase.from('fno_empleados').select('id, foto').then(({ data }) => {
-      if (!data) return
-      const map: Record<string, string> = {}
-      for (const row of data) if (row.foto) map[row.id as string] = row.foto as string
-      setFotoMap(map)
-    })
-  }, [])
-
+  // Antes acá había un segundo pedido a fno_empleados sólo para traer las
+  // fotos, porque el sync general no las incluía. Hoy sí las trae (viajan en el
+  // "directorio", junto con nombre y sector), así que ese pedido descargaba la
+  // lista completa de nuevo en cada carga de la pantalla para nada. Además la
+  // vista de tabla nunca lo usaba: leía emp.foto, como ahora todas.
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState('')
 
@@ -208,7 +199,7 @@ function EmpleadosContent() {
     nombre: '', apellido: '', dni: '', email: '', telefono: '',
     fechaNacimiento: '', sector: '', cargo: '', tipoContrato: 'Contrato' as const,
     jornada: 'Full Time' as const, fechaIngreso: hoyAR(),
-    supervisor: '', password: 'cambiar123',
+    supervisor: '',
   })
 
   function norm(s: string) { return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase() }
@@ -250,7 +241,6 @@ function EmpleadosContent() {
 
   async function handleCreate() {
     if (!form.nombre || !form.apellido || !form.email || !form.sector || !form.cargo) return
-    if (form.password.length < 10) { setCreateError('La contraseña inicial debe tener al menos 10 caracteres.'); return }
 
     setCreateError('')
     setCreating(true)
@@ -296,7 +286,11 @@ function EmpleadosContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: emailNorm,
-          password: form.password,
+          // Sin password a propósito: el servidor le pone una al azar que nadie
+          // conoce. Antes acá iba "cambiar123" para todos, y aunque la pantalla
+          // de login ya sea sólo Google, Supabase sigue aceptando entrar con
+          // email y contraseña por su propia API: cualquiera que supiera ese
+          // valor entraba con la cuenta de cualquier empleado nuevo.
           userId: uid(),
           empleadoId: empId,
           role: 'employee',
@@ -325,7 +319,7 @@ function EmpleadosContent() {
         nombre: '', apellido: '', dni: '', email: '', telefono: '',
         fechaNacimiento: '', sector: '', cargo: '', tipoContrato: 'Contrato',
         jornada: 'Full Time', fechaIngreso: hoyAR(),
-        supervisor: '', password: 'cambiar123',
+        supervisor: '',
       })
     } catch {
       setCreating(false)
@@ -349,13 +343,17 @@ function EmpleadosContent() {
           </p>
         </div>
         <div className="flex gap-2">
+          {/* El Excel sale de la pestaña que estás viendo. Antes exportaba
+              siempre los activos, incluso parado en el historial de bajas. */}
           <button
-            onClick={() => exportarExcel(filtered)}
+            onClick={() => exportarExcel(mainTab === 'historial' ? inactivosFiltrados : filtered)}
             className="btn-secondary"
-            title={hasFilters ? `Exportar ${filtered.length} empleados (filtrados)` : `Exportar todos (${allEmpleados.length})`}
+            title={mainTab === 'historial'
+              ? `Exportar el historial de bajas (${inactivosFiltrados.length})`
+              : hasFilters ? `Exportar ${filtered.length} empleados (filtrados)` : `Exportar todos los activos (${filtered.length})`}
           >
             <Download className="w-4 h-4" />
-            Exportar{hasFilters ? ` (${filtered.length})` : ''}
+            Exportar{mainTab === 'historial' ? ` (${inactivosFiltrados.length})` : hasFilters ? ` (${filtered.length})` : ''}
           </button>
           <button onClick={() => setShowNuevo(true)} className="btn-primary">
             <Plus className="w-4 h-4" /> Nuevo empleado
@@ -544,6 +542,9 @@ function EmpleadosContent() {
           <option value="">Todos los estados</option>
           <option value="activo">Activo</option>
           <option value="licencia">En Licencia</option>
+          {/* Faltaba: un empleado de vacaciones aparecía en la lista con su
+              badge, pero no había manera de filtrar por ese estado. */}
+          <option value="vacaciones">De Vacaciones</option>
         </select>
         <button
           onClick={() => setShowAdvanced(v => !v)}
@@ -625,7 +626,7 @@ function EmpleadosContent() {
           if (!agrupar) {
             return (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {filtered.map(emp => <EmpleadoCard key={emp.id} emp={emp} foto={fotoMap[emp.id]} />)}
+                {filtered.map(emp => <EmpleadoCard key={emp.id} emp={emp} />)}
               </div>
             )
           }
@@ -647,7 +648,7 @@ function EmpleadosContent() {
                     <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {grupos[sector].map(emp => <EmpleadoCard key={emp.id} emp={emp} foto={fotoMap[emp.id]} />)}
+                    {grupos[sector].map(emp => <EmpleadoCard key={emp.id} emp={emp} />)}
                   </div>
                 </div>
               ))}
@@ -787,10 +788,11 @@ function EmpleadosContent() {
                 <label className="form-label">Fecha de ingreso *</label>
                 <input className="form-input" type="date" value={form.fechaIngreso} onChange={e => setForm(f => ({ ...f, fechaIngreso: e.target.value }))} />
               </div>
-              <div>
-                <label className="form-label">Contraseña inicial</label>
-                <input className="form-input" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="cambiar123" />
-                <p className="text-xs text-slate-400 mt-1">El empleado podrá cambiarla con el link de recuperación o desde su perfil.</p>
+              <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-3">
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  No hace falta contraseña: la persona entra al portal con la
+                  cuenta de Google del correo que pongas acá arriba.
+                </p>
               </div>
               <div className="flex gap-2 justify-end pt-2">
                 <button onClick={() => { setShowNuevo(false); setCreateError('') }} disabled={creating} className="btn-secondary disabled:opacity-50">Cancelar</button>

@@ -311,7 +311,16 @@ export default function ComunicacionesPage() {
           empleadoIds: pushModo === 'algunos' ? pushDestinatarios : [],
         }),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
+
+      // Antes acá no se miraba si el pedido había salido bien: con un 403 o un
+      // error del servidor la pantalla igual decía "Enviado a undefined
+      // dispositivos" y dejaba la notificación en la campanita como si hubiera
+      // avisado a alguien.
+      if (!res.ok || typeof data.sent !== 'number') {
+        setPushResult(`Error: ${data.error ?? 'no se pudo enviar la notificación.'}`)
+        return
+      }
 
       // La push sólo llega a quien la tenga activada y se pierde si el aviso
       // pasa desapercibido. Dejamos además una notificación en la campanita,
@@ -336,7 +345,10 @@ export default function ComunicacionesPage() {
     }
   }
 
-  useEscape(showNueva, () => setShowNueva(false))
+  // handleCerrarModal y no setShowNueva(false): cerrar con Escape dejaba el
+  // editId puesto, así que el siguiente "Publicar novedad" abría el formulario
+  // en modo edición con los datos de la anterior y, al guardar, la pisaba.
+  useEscape(showNueva, handleCerrarModal)
   useEscape(showPush, () => { setShowPush(false); setPushResult(null) })
 
   return (
@@ -400,6 +412,14 @@ export default function ComunicacionesPage() {
                       <span className="badge bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                         <Calendar className="w-3 h-3 mr-0.5 inline" /> Del calendario
                       </span>
+                      {/* La novedad programada ya avisaba que todavía no salió;
+                          el evento programado no, y se veía igual que uno
+                          publicado aunque nadie más lo esté viendo. */}
+                      {estaProgramada(e) && (
+                        <span className="badge bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">
+                          <Clock className="w-3 h-3 mr-0.5" /> Se publica el {textoProgramada(e.publicarEn)}
+                        </span>
+                      )}
                     </div>
                     <h3 className="font-semibold text-slate-800 dark:text-slate-100">{e.titulo}</h3>
                     {e.imagen ? (
