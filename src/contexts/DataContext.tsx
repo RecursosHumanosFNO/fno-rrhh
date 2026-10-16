@@ -69,7 +69,7 @@ interface DataContextType {
   // Usuarios / Registro
   setUserRole: (empleadoId: string, role: UserRole) => void
   addPendingRegistration: (reg: Omit<PendingRegistration, 'id' | 'fechaSolicitud'>) => void
-  approvePendingRegistration: (id: string) => Promise<void>
+  approvePendingRegistration: (id: string) => Promise<string | null>
   rejectPendingRegistration: (id: string) => void
   getUserByEmail: (email: string) => User | undefined
   getPendingByEmail: (email: string) => PendingRegistration | undefined

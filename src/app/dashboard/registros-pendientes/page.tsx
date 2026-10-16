@@ -1,6 +1,7 @@
 'use client'
 
 import { useEscape } from '@/lib/useEscape'
+import { useDialogos } from '@/components/Dialogos'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useData } from '@/contexts/DataContext'
@@ -16,6 +17,7 @@ export default function RegistrosPendientesPage() {
   const { user } = useAuth()
   const { pendingRegistrations, approvePendingRegistration, rejectPendingRegistration, refreshPending } = useData()
   const router = useRouter()
+  const { avisar } = useDialogos()
 
   const [confirmAction, setConfirmAction] = useState<{ type: 'approve' | 'reject'; reg: PendingRegistration } | null>(null)
   const [processing, setProcessing] = useState<string | null>(null)
@@ -36,14 +38,22 @@ export default function RegistrosPendientesPage() {
 
   if (user?.role !== 'admin' && user?.role !== 'rrhh') return null
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!confirmAction) return
     const { type, reg } = confirmAction
     setProcessing(reg.id)
     setConfirmAction(null)
 
     if (type === 'approve') {
-      approvePendingRegistration(reg.id)
+      // Se espera el resultado antes de decir "aprobado". Antes el cartel verde
+      // salía al instante, aunque después fallara la creación de la cuenta: la
+      // pantalla decía que sí y la persona no podía entrar.
+      const err = await approvePendingRegistration(reg.id)
+      if (err) {
+        setProcessing(null)
+        avisar(err, 'error')
+        return
+      }
       setToast({ type: 'approve', nombre: `${reg.nombre} ${reg.apellido}` })
     } else {
       rejectPendingRegistration(reg.id)

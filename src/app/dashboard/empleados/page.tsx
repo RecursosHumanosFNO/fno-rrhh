@@ -168,7 +168,7 @@ function EmpleadosContent() {
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [view, setView] = useState<'grid' | 'list'>('grid')
   const [showNuevo, setShowNuevo] = useState(false)
-  const { confirmar } = useDialogos()
+  const { confirmar, avisar } = useDialogos()
   useEscape(showNuevo, () => { setShowNuevo(false); setCreateError('') })
   const [showPending, setShowPending] = useState(false)
   const [mainTab, setMainTab] = useState<'activos' | 'historial'>('activos')
@@ -400,7 +400,10 @@ function EmpleadosContent() {
                 </div>
                 <div className="flex gap-1.5 shrink-0">
                   <button
-                    onClick={() => approvePendingRegistration(reg.id)}
+                    onClick={async () => {
+                      const err = await approvePendingRegistration(reg.id)
+                      if (err) avisar(err, 'error')
+                    }}
                     className="btn-success text-sm py-1.5 px-3"
                     title="Aprobar acceso"
                   >
