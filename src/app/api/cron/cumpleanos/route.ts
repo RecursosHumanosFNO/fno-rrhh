@@ -63,11 +63,16 @@ export async function GET(req: NextRequest) {
 
   const hoy = hoyAR() // "MM-DD"
 
-  // Traer todos los empleados activos con email y fecha de nacimiento
+  // Todos los que siguen en la fundación, con email y fecha de nacimiento.
+  //
+  // neq('inactivo') y no eq('activo'): estar de licencia o de vacaciones no es
+  // dejar de cumplir años, y antes a esa gente no le llegaba el saludo. El
+  // único que no se saluda es el desvinculado. Es el mismo criterio que usa el
+  // calendario para mostrar los cumpleaños del mes.
   const { data: empleados, error } = await sb
     .from('fno_empleados')
     .select('id, nombre, apellido, email, fecha_nacimiento')
-    .eq('estado', 'activo')
+    .neq('estado', 'inactivo')
 
   if (error || !empleados) {
     console.error('[cron/cumpleanos] Error al traer empleados:', error)
