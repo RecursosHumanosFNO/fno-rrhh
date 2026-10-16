@@ -43,6 +43,7 @@ export default function Sidebar({ collapsed, mobileOpen, onToggle }: SidebarProp
   const isAdmin = user?.role === 'admin'
   const isRRHH = user?.role === 'rrhh'
   const isComunicaciones = user?.role === 'comunicaciones'
+  const isNovedades = user?.role === 'novedades'
 
   const perfilIncompleto = !!empleado && [
     empleado.fechaNacimiento, empleado.cuil, empleado.telefono, empleado.direccion,
@@ -78,6 +79,19 @@ export default function Sidebar({ collapsed, mobileOpen, onToggle }: SidebarProp
     { href: '/dashboard/instructivo', label: 'Instructivo', icon: BookOpen },
   ]
 
+  const novedadesLinks: NavLink[] = [
+    { href: '/dashboard', label: 'Inicio', icon: LayoutDashboard },
+    LINK_ART,
+    { href: '/dashboard/novedades-internas', label: 'Novedades Internas', icon: ClipboardCheck },
+    { href: '/dashboard/recibos', label: 'Mis Recibos', icon: FileText },
+    { href: '/dashboard/solicitudes', label: 'Solicitudes y Pedidos', icon: ClipboardList },
+    { href: '/dashboard/comunicaciones', label: 'Comunicaciones', icon: Megaphone },
+    { href: '/dashboard/eventos', label: 'Calendario', icon: CalendarDays },
+    { href: '/dashboard/fundacion', label: 'La Fundación', icon: Info },
+    { href: '/dashboard/perfil', label: 'Mi Perfil', icon: User, warn: perfilIncompleto },
+    { href: '/dashboard/instructivo', label: 'Instructivo', icon: BookOpen },
+  ]
+
   const comunicacionesLinks: NavLink[] = [
     { href: '/dashboard', label: 'Inicio', icon: LayoutDashboard },
     LINK_ART,
@@ -103,7 +117,7 @@ export default function Sidebar({ collapsed, mobileOpen, onToggle }: SidebarProp
     { href: '/dashboard/instructivo', label: 'Instructivo', icon: BookOpen },
   ]
 
-  const links = isAdmin ? adminLinks : isRRHH ? rrhhLinks : isComunicaciones ? comunicacionesLinks : employeeLinks
+  const links = isAdmin ? adminLinks : isRRHH ? rrhhLinks : isComunicaciones ? comunicacionesLinks : isNovedades ? novedadesLinks : employeeLinks
 
   return (
     <>
@@ -144,7 +158,7 @@ export default function Sidebar({ collapsed, mobileOpen, onToggle }: SidebarProp
         {/* Role badge */}
         <div className="sidebar-badge mx-3 mt-3 px-3 py-1.5 bg-white/10 dark:bg-teal-900/30 rounded-lg border border-transparent dark:border-teal-700/30">
           <p className="text-blue-100 dark:text-teal-300 text-xs font-medium whitespace-nowrap">
-            {isAdmin ? '🔑 Administrador RRHH' : isRRHH ? '👥 Gestión de Personal' : isComunicaciones ? '📢 Comunicaciones' : '👤 Portal del Empleado'}
+            {isAdmin ? '🔑 Administrador RRHH' : isRRHH ? '👥 Gestión de Personal' : isComunicaciones ? '📢 Comunicaciones' : isNovedades ? '📋 Novedades Internas' : '👤 Portal del Empleado'}
           </p>
         </div>
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import nodemailer from 'nodemailer'
-import { serviceClient, getRequester, esGestionPersonal } from '@/lib/serverAuth'
+import { serviceClient, getRequester, esGestionPersonal, puedeNovedadesInternas } from '@/lib/serverAuth'
 import { esc, escaparValores, imagenSegura } from '@/lib/htmlMail'
 
 export const runtime = 'nodejs'
@@ -22,6 +22,9 @@ const TIPOS_CUALQUIER_USUARIO = new Set(['new_solicitud', 'password_changed'])
 const TIPOS_COMUNICACIONES = new Set(['evento_notificacion', 'novedad_publicada'])
 // Los recibos de sueldo son la excepción: Gestión de Personal no los maneja.
 const TIPOS_SOLO_ADMIN = new Set(['recibo_disponible'])
+// El aviso de un registro de la bitácora interna lo dispara quien la lleva, que
+// incluye al rol 'novedades' — que no es gestión de personal.
+const TIPOS_NOVEDADES_INTERNAS = new Set(['nuevo_registro_novedad'])
 
 const ADMIN_EMAIL = 'rrhhfundacionnqnoeste@gmail.com'
 const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL ?? 'https://portalfno.com'
@@ -100,7 +103,9 @@ export async function POST(req: NextRequest) {
         ? puedeComunicar
         : TIPOS_SOLO_ADMIN.has(type)
           ? esAdmin
-          : gestionPersonal
+          : TIPOS_NOVEDADES_INTERNAS.has(type)
+            ? puedeNovedadesInternas(requester)
+            : gestionPersonal
     if (!permitido) {
       return NextResponse.json({ ok: false, reason: 'Permisos insuficientes' }, { status: 403 })
     }

@@ -1,4 +1,7 @@
-export type UserRole = 'admin' | 'employee' | 'comunicaciones' | 'rrhh'
+// 'novedades' es un empleado común que además lleva la bitácora interna
+// (llegadas tarde, licencias, ausencias). No es un escalón intermedio de RRHH:
+// no ve legajos, ni recibos, ni solicitudes. Sólo esa sección.
+export type UserRole = 'admin' | 'employee' | 'comunicaciones' | 'rrhh' | 'novedades'
 
 export type EmpleadoEstado = 'activo' | 'inactivo' | 'licencia' | 'vacaciones'
 

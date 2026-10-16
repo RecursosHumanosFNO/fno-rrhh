@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { serviceClient, getRequester, esGestionPersonal } from '@/lib/serverAuth'
+import { serviceClient, getRequester, puedeNovedadesInternas } from '@/lib/serverAuth'
 
 export const runtime = 'nodejs'
 
@@ -21,8 +21,9 @@ async function autorizar(req: NextRequest) {
 
   const requester = await getRequester(req, sb)
   if (!requester) return { error: NextResponse.json({ error: 'No autenticado' }, { status: 401 }) }
-  // La bitácora interna es de Gestión de Personal; un empleado no la ve.
-  if (!esGestionPersonal(requester)) {
+  // La bitácora interna la llevan admin, RRHH y el rol 'novedades'; un empleado
+  // común no la ve.
+  if (!puedeNovedadesInternas(requester)) {
     return { error: NextResponse.json({ error: 'Acceso denegado' }, { status: 403 }) }
   }
   return { sb }
