@@ -66,14 +66,36 @@
 
 
 @layer components {
+  /* Márgenes más chicos en pantallas angostas: en una notebook con el zoom
+     de Windows al 125% el portal tiene bastante menos lugar del que parece. */
   .page-container {
-    @apply p-6 space-y-6 animate-fade-in;
+    @apply p-4 space-y-5 sm:p-6 sm:space-y-6 animate-fade-in;
   }
 
   /* ── Card: celeste cristalino en light, teal sutil en dark ─ */
   .card {
     @apply bg-[#eef8fc] rounded-xl shadow-card border border-sky-200/60;
     @apply dark:bg-slate-900/80 dark:border-teal-900/50 dark:shadow-[0_1px_3px_rgba(0,0,0,0.4),0_0_0_1px_rgba(20,184,166,0.08)];
+    /* Un email o un link no tienen espacios donde cortar, y se salían de la
+       tarjeta. Con esto cortan donde haga falta; el texto normal no cambia,
+       porque sólo se corta una palabra cuando no entra entera. */
+    overflow-wrap: anywhere;
+  }
+  /* Las tablas no: ahí se prefiere el desplazamiento lateral a una columna
+     aplastada con las palabras partidas letra por letra. */
+  .card table {
+    overflow-wrap: normal;
+  }
+
+  /* Fila que se desliza de costado cuando no entra (pestañas, chips):
+     con el dedo, con el trackpad, o arrastrando con el mouse
+     (ver src/lib/useArrastrarParaDesplazar.ts). */
+  .desliza {
+    @apply flex flex-nowrap overflow-x-auto;
+    scrollbar-width: thin;
+  }
+  .desliza > * {
+    @apply shrink-0 whitespace-nowrap;
   }
 
   .card-hover {
@@ -206,6 +228,16 @@
   /* ── Nav sidebar ─────────────────────────────────────── */
   .nav-link {
     @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150;
+  }
+
+  /* Pantallas bajas (notebook, sobre todo con zoom de Windows): el menú de
+     administración no entraba y había que desplazarlo, cosa que no se notaba —
+     parecía que el cartel del rol tapaba el primer ítem. Se compacta para que
+     entre entero, y la tarjeta con tu nombre del pie se oculta porque ya está
+     arriba a la derecha. */
+  @media (max-height: 820px) {
+    .nav-link { @apply py-1.5; }
+    .sidebar-pie-usuario { display: none; }
   }
 
   .nav-link-active {

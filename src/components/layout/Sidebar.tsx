@@ -163,7 +163,9 @@ export default function Sidebar({ collapsed, mobileOpen, onToggle }: SidebarProp
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-0.5">
+        {/* El borde de arriba marca dónde empieza la lista: sin él, al
+            desplazarla, los ítems parecían meterse abajo del cartel del rol. */}
+        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5 mt-3 border-t border-white/10">
           {links.map(({ href, label, icon: Icon, badge, warn, destacado }) => {
             const isActive = href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(href)
             return (
@@ -206,7 +208,7 @@ export default function Sidebar({ collapsed, mobileOpen, onToggle }: SidebarProp
         {/* Footer */}
         <div className="border-t border-white/10 p-3 space-y-1">
           {empleado && (
-            <div className="flex items-center gap-2.5 px-2 py-2 mb-1">
+            <div className="sidebar-pie-usuario flex items-center gap-2.5 px-2 py-2 mb-1">
               <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white text-xs font-bold shrink-0">
                 {empleado.foto ? (
                   <img width={32} height={32} src={empleado.foto} alt="" className="w-8 h-8 rounded-full object-cover" />
