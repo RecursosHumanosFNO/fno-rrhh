@@ -58,6 +58,29 @@ export function useEmpleadosCrud({ setEmpleados, setUsers, empleadosRef, addNoti
       .then(revertirSiFalla(id, anterior, 'No se pudo desactivar al empleado en el servidor. Intentá de nuevo.'))
   }, [setEmpleados, empleadosRef, revertirSiFalla])
 
+  /**
+   * Corrige la baja vigente después de cargada: la liquidación que se entregó,
+   * el telegrama que llegó, un dato que se cargó mal.
+   *
+   * Antes no había forma: la desvinculación se escribía una sola vez al
+   * desactivar y quedaba congelada, así que una liquidación cargada como
+   * "pendiente" decía pendiente para siempre.
+   *
+   * Va por /api/perfil (service role) y no por updateEmpleado: ese hace el
+   * upsert desde el navegador, y RLS lo bloquea en silencio. Devuelve si se
+   * guardó, para que la pantalla avise en vez de mostrar un cambio que la base
+   * nunca recibió; si falló, la vuelve a como estaba.
+   */
+  const actualizarDesvinculacion = useCallback(async (id: string, cambios: Partial<DesvinculacionInfo>): Promise<boolean> => {
+    const anterior = empleadosRef.current.find(e => e.id === id)
+    if (!anterior?.desvinculacion) return false
+    const nueva: DesvinculacionInfo = { ...anterior.desvinculacion, ...cambios }
+    setEmpleados(prev => prev.map(e => e.id === id ? { ...e, desvinculacion: nueva } : e))
+    const ok = await persistEmpleadoViaApi(id, { desvinculacion: nueva })
+    if (!ok) setEmpleados(prev => prev.map(e => e.id === id ? anterior : e))
+    return ok
+  }, [setEmpleados, empleadosRef])
+
   // Reactiva al empleado: la baja actual pasa al historial, no se borra.
   const reactivarEmpleado = useCallback((id: string) => {
     const anterior = empleadosRef.current.find(e => e.id === id)
@@ -93,5 +116,5 @@ export function useEmpleadosCrud({ setEmpleados, setUsers, empleadosRef, addNoti
     setUsers(prev => prev.filter(u => u.empleadoId !== id))
   }, [setEmpleados, setUsers])
 
-  return { addEmpleado, updateEmpleado, desactivarEmpleado, reactivarEmpleado, deleteEmpleado }
+  return { addEmpleado, updateEmpleado, desactivarEmpleado, actualizarDesvinculacion, reactivarEmpleado, deleteEmpleado }
 }

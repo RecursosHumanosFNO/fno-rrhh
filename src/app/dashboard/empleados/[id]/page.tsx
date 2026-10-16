@@ -35,7 +35,7 @@ export default function EmpleadoDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { user } = useAuth()
   const router = useRouter()
-  const { empleados, solicitudes, recibos, users, updateEmpleado, deleteEmpleado, setUserRole, desactivarEmpleado, reactivarEmpleado, forceSync } = useData()
+  const { empleados, solicitudes, recibos, users, updateEmpleado, deleteEmpleado, setUserRole, desactivarEmpleado, actualizarDesvinculacion, reactivarEmpleado, forceSync } = useData()
   const { avisar, confirmar } = useDialogos()
 
   const [tab, setTab] = useState(0)
@@ -1045,6 +1045,8 @@ export default function EmpleadoDetailPage() {
           isAdmin={isAdmin}
           misSolicitudes={misSolicitudes}
           misRecibos={misRecibos}
+          onGuardarDesvinculacion={cambios => actualizarDesvinculacion(emp.id, cambios)}
+          avisar={avisar}
         />
       )}
 

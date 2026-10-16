@@ -40,6 +40,7 @@ interface DataContextType {
   updateEmpleado: (id: string, data: Partial<Empleado>) => void
   deleteEmpleado: (id: string) => void
   desactivarEmpleado: (id: string, info: DesvinculacionInfo) => void
+  actualizarDesvinculacion: (id: string, cambios: Partial<DesvinculacionInfo>) => Promise<boolean>
   reactivarEmpleado: (id: string) => void
   // Solicitudes
   addSolicitud: (s: Omit<Solicitud, 'id' | 'fechaCreacion' | 'estado'>) => void
@@ -150,7 +151,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   // ── Empleados ──────────────────────────────────────────────────────────────
   const {
-    addEmpleado, updateEmpleado, desactivarEmpleado, reactivarEmpleado, deleteEmpleado,
+    addEmpleado, updateEmpleado, desactivarEmpleado, actualizarDesvinculacion, reactivarEmpleado, deleteEmpleado,
   } = useEmpleadosCrud({ setEmpleados, setUsers, empleadosRef, addNotification })
 
 
@@ -237,7 +238,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     <DataContext.Provider value={{
       empleados, solicitudes, recibos, novedades, eventos, tickets, users,
       pendingRegistrations, notifications, registrosNovedad,
-      addEmpleado, updateEmpleado, deleteEmpleado, desactivarEmpleado, reactivarEmpleado,
+      addEmpleado, updateEmpleado, deleteEmpleado, desactivarEmpleado, actualizarDesvinculacion, reactivarEmpleado,
       addSolicitud, approveSolicitud, rejectSolicitud, editSolicitud, cancelSolicitud,
       responderSolicitud,
       addNovedad, updateNovedad, deleteNovedad,
