@@ -638,7 +638,7 @@ export default function EmpleadoDetailPage() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-slate-200 dark:border-slate-800 overflow-x-auto">
+      <div className="desliza gap-1 border-b border-slate-200 dark:border-slate-800">
         {TABS.map((t, i) => (
           <button
             key={t}
@@ -670,7 +670,7 @@ export default function EmpleadoDetailPage() {
                   <span className="text-xs font-medium text-slate-500 dark:text-slate-400 sm:w-40 shrink-0">{label}</span>
                   {isAdmin && editMode
                     ? <input className="form-input text-sm flex-1" value={value} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} />
-                    : <span className="text-sm text-slate-700 dark:text-slate-300">{value || '—'}</span>
+                    : <span className="text-sm text-slate-700 dark:text-slate-300 min-w-0">{value || '—'}</span>
                   }
                 </div>
               ))}
@@ -678,7 +678,7 @@ export default function EmpleadoDetailPage() {
                 <span className="text-xs font-medium text-slate-500 dark:text-slate-400 sm:w-40 shrink-0">Fecha de nacimiento</span>
                 {isAdmin && editMode
                   ? <input className="form-input text-sm flex-1" type="date" value={form.fechaNacimiento} onChange={e => setForm(f => ({ ...f, fechaNacimiento: e.target.value }))} />
-                  : <span className="text-sm text-slate-700 dark:text-slate-300">{emp.fechaNacimiento ? `${formatFecha(emp.fechaNacimiento)}${edad ? ` (${edad} años)` : ''}` : '—'}</span>
+                  : <span className="text-sm text-slate-700 dark:text-slate-300 min-w-0">{emp.fechaNacimiento ? `${formatFecha(emp.fechaNacimiento)}${edad ? ` (${edad} años)` : ''}` : '—'}</span>
                 }
               </div>
               <div className="flex flex-col sm:flex-row sm:items-start gap-1 py-2 border-b border-slate-100 dark:border-slate-800">
@@ -696,7 +696,7 @@ export default function EmpleadoDetailPage() {
                     </p>
                   </div>
                 ) : (
-                  <span className="text-sm text-slate-700 dark:text-slate-300">{emp.email}</span>
+                  <span className="text-sm text-slate-700 dark:text-slate-300 min-w-0">{emp.email}</span>
                 )}
               </div>
               {[
@@ -709,7 +709,7 @@ export default function EmpleadoDetailPage() {
                   <span className="text-xs font-medium text-slate-500 dark:text-slate-400 sm:w-40 shrink-0">{label}</span>
                   {isAdmin && editMode
                     ? <input className="form-input text-sm flex-1" value={value} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} />
-                    : <span className="text-sm text-slate-700 dark:text-slate-300">{value || '—'}</span>
+                    : <span className="text-sm text-slate-700 dark:text-slate-300 min-w-0">{value || '—'}</span>
                   }
                 </div>
               ))}
@@ -729,7 +729,7 @@ export default function EmpleadoDetailPage() {
                     <span className="text-xs font-medium text-slate-500 dark:text-slate-400 sm:w-28 shrink-0">{label}</span>
                     {isAdmin && editMode
                       ? <input className="form-input text-sm flex-1" value={value} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} />
-                      : <span className="text-sm text-slate-700 dark:text-slate-300">{value || '—'}</span>
+                      : <span className="text-sm text-slate-700 dark:text-slate-300 min-w-0">{value || '—'}</span>
                     }
                   </div>
                 ))}

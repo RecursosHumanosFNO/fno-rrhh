@@ -391,7 +391,7 @@ export default function SolicitudesPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-slate-200 dark:border-slate-800">
+      <div className="desliza gap-1 border-b border-slate-200 dark:border-slate-800">
         <button
           onClick={() => setActiveTab('solicitudes')}
           className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEscape } from '@/lib/useEscape'
+import { useArrastrarParaDesplazar } from '@/lib/useArrastrarParaDesplazar'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
@@ -36,6 +37,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [mobileOpen])
 
   useEscape(mobileOpen, () => setMobileOpen(false))
+  useArrastrarParaDesplazar()
 
   const esperandoEmpleado = isAuthenticated && user?.role !== 'admin' && !empleado
   if (isLoading || !isAuthenticated || !synced || esperandoEmpleado) {

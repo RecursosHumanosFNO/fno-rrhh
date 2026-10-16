@@ -362,7 +362,7 @@ function EmpleadosContent() {
       </div>
 
       {/* Tabs: Activos / Historial */}
-      <div className="flex gap-1 border-b border-slate-200 dark:border-slate-700">
+      <div className="desliza gap-1 border-b border-slate-200 dark:border-slate-700">
         {([
           { key: 'activos', label: 'Empleados activos', icon: Users },
           { key: 'historial', label: `Historial de bajas${inactivos.length > 0 ? ` (${inactivos.length})` : ''}`, icon: History },
