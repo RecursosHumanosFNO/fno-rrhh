@@ -11,10 +11,10 @@ import { supabase } from '@/lib/supabase'
 import { authFetch } from '@/lib/authFetch'
 import * as XLSX from 'xlsx'
 import {
-  FileText, Download, Upload, Search, X, CheckCircle2,
-  Loader2, AlertCircle, Eye, Cloud, HardDrive, Lock,
-  Layers, ChevronRight, AlertTriangle, CheckCheck, User, Trash2,
-  PenLine, ShieldCheck, ClipboardList, Plus, ArrowUpDown, ArrowUp, ArrowDown,
+  FileText, Download, Upload, Search, X,
+  Loader2, Eye, Cloud, HardDrive, Lock,
+  Layers, AlertTriangle, Trash2,
+  PenLine, ShieldCheck, ClipboardList, ArrowUp, ArrowDown,
 } from 'lucide-react'
 import { MESES, normDni, extractDniFromFilename, type BulkRow, type BulkStep } from './lib'
 import { UploadReciboModal } from './components/UploadReciboModal'
@@ -28,7 +28,7 @@ import { PdfViewerOverlay } from '@/components/PdfViewerOverlay'
 export default function RecibosPage() {
   const { user } = useAuth()
   const { empleados, recibos, addRecibo, deleteRecibo, addNotification, firmas, firmarRecibo } = useData()
-  const { avisar, confirmar } = useDialogos()
+  const { avisar } = useDialogos()
   const isAdmin = user?.role === 'admin'
   const [adminTab, setAdminTab] = useState<'todos' | 'mis'>('todos')
   // viewAsAdmin: controla el modo de visualización (admin con tab "mis" ve la vista de empleado)
@@ -229,6 +229,18 @@ export default function RecibosPage() {
 
   // ── Listado filtrado ───────────────────────────────────────────────────
   const misRecibos = viewAsAdmin ? recibos : recibos.filter(r => r.empleadoId === user?.empleadoId)
+
+  // El recibo del período más nuevo, que no es lo mismo que el último cargado:
+  // la lista viene ordenada por fecha de subida, así que si RRHH sube un mes
+  // atrasado después, ese queda primero y la tarjeta "Último recibo" mostraba
+  // un mes viejo. Acá se compara el período en sí.
+  const ultimoRecibo = useMemo(
+    () => misRecibos.reduce<typeof misRecibos[number] | null>(
+      (mejor, r) => !mejor || r.anio * 12 + r.mes > mejor.anio * 12 + mejor.mes ? r : mejor,
+      null,
+    ),
+    [misRecibos],
+  )
 
   const filtered = useMemo(() => misRecibos.filter(r => {
     const emp = empleados.find(e => e.id === r.empleadoId)
@@ -723,11 +735,13 @@ export default function RecibosPage() {
                           🎁 Aguinaldo (SAC)
                         </span>
                       )}
-                      {firma && (
+                      {firma ? (
                         <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400">
                           <ShieldCheck className="w-3 h-3" /> Firmado
                         </span>
-                      )}
+                      ) : viewAsAdmin ? (
+                        <span className="text-[11px] text-slate-400">Sin firmar</span>
+                      ) : null}
                       {!tieneArchivo && (
                         <span className="inline-flex items-center gap-1 text-[11px] text-slate-400">
                           <HardDrive className="w-3 h-3" /> Sin archivo
@@ -735,6 +749,19 @@ export default function RecibosPage() {
                       )}
                     </div>
                   </div>
+                  {/* Eliminar: en la tabla de escritorio estaba y acá no, así
+                      que desde el celular no había forma de borrar un recibo
+                      mal cargado. */}
+                  {viewAsAdmin && (
+                    <button
+                      onClick={() => setConfirmDelete({ id: r.id, archivoUrl: r.archivoUrl, label: `${emp ? `${emp.nombre} ${emp.apellido}` : 'empleado'} — ${formatMes(r.mes, r.anio)}` })}
+                      className="p-2 -m-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0"
+                      title="Eliminar recibo"
+                      aria-label={`Eliminar recibo de ${formatMes(r.mes, r.anio)}`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
 
                 <div className="flex gap-2 mt-3">
@@ -1019,7 +1046,7 @@ export default function RecibosPage() {
           </div>
           <div className="card p-4 text-center">
             <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-              {misRecibos[0] ? formatMes(misRecibos[0].mes, misRecibos[0].anio) : 'N/A'}
+              {ultimoRecibo ? formatMes(ultimoRecibo.mes, ultimoRecibo.anio) : 'N/A'}
             </p>
             <p className="text-sm text-slate-500 mt-1">Último recibo</p>
           </div>

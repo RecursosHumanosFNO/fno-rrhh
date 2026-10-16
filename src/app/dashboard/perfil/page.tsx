@@ -8,8 +8,8 @@ import { formatFecha, calcularAntiguedad, calcularEdad } from '@/lib/utils'
 import type { Empleado } from '@/types'
 import {
   User, Edit2, Save, X, Lock, Building2, Phone, Mail,
-  Clock, CheckCircle2, Eye, EyeOff, Camera, Image as ImageIcon,
-  Shield, AlertCircle, Loader2, AlertTriangle, Bell,
+  Clock, CheckCircle2, Camera, Image as ImageIcon,
+  Shield, AlertCircle, AlertTriangle, Bell,
 } from 'lucide-react'
 import { PushToggle } from '@/components/PushToggle'
 import { CredencialArt } from '@/components/CredencialArt'
@@ -17,10 +17,6 @@ import { CredencialArt } from '@/components/CredencialArt'
 export default function PerfilPage() {
   const { empleado, user, updateEmpleado } = useAuth()
   const [editMode, setEditMode] = useState(false)
-  const [editPass, setEditPass] = useState(false)
-  const [showNew, setShowNew] = useState(false)
-  const [savingPass, setSavingPass] = useState(false)
-  const [passMsg, setPassMsg] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null)
 
   const [form, setForm] = useState({
     nombre: empleado?.nombre ?? '',
@@ -42,7 +38,6 @@ export default function PerfilPage() {
     fechaIngreso: empleado?.fechaIngreso ?? '',
   })
 
-  const [passForm, setPassForm] = useState({ nueva: '', confirm: '' })
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saveOk, setSaveOk] = useState(false)
@@ -245,62 +240,6 @@ export default function PerfilPage() {
       }).catch(() => {})
     } catch { /* no crítico */ }
   }
-
-  async function handlePasswordChange() {
-    if (passForm.nueva.length < 10) {
-      setPassMsg({ type: 'err', msg: 'La nueva contraseña debe tener al menos 10 caracteres.' })
-      return
-    }
-    if (passForm.nueva !== passForm.confirm) {
-      setPassMsg({ type: 'err', msg: 'La confirmación no coincide con la nueva contraseña.' })
-      return
-    }
-    if (!supabase || !empleado?.email) {
-      setPassMsg({ type: 'err', msg: 'Error de conexión. Intentá de nuevo.' })
-      return
-    }
-
-    // Timeout para que nunca quede girando si el servidor no responde
-    const timeout = <T,>(p: PromiseLike<T>) =>
-      Promise.race([p, new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout')), 10000))])
-
-    setSavingPass(true)
-    setPassMsg(null)
-    try {
-      // Como el empleado ya tiene sesión activa, esa es la prueba de identidad
-      // (igual que el reset por email). Una sola llamada, rápida.
-      const { error: updErr } = await timeout(supabase.auth.updateUser({ password: passForm.nueva }))
-      setSavingPass(false)
-      if (updErr) {
-        setPassMsg({ type: 'err', msg: 'No se pudo actualizar la contraseña. Intentá de nuevo.' })
-        return
-      }
-
-      // 3. Avisar por email (sin incluir la contraseña)
-      authFetch('/api/notify', {
-        method: 'POST',
-        body: JSON.stringify({ type: 'password_changed', data: { nombre: empleado.nombre, email: empleado.email } }),
-      }).catch(() => { /* el email es no crítico */ })
-
-      setPassMsg({ type: 'ok', msg: 'Contraseña actualizada. Por seguridad, vas a iniciar sesión de nuevo...' })
-      setPassForm({ nueva: '', confirm: '' })
-      // Por seguridad: cerrar sesión local y forzar recarga completa al login.
-      // (scope 'local' es instantáneo y no se cuelga; el reload garantiza
-      //  que no haya carrera con el evento USER_UPDATED que re-autentica)
-      setTimeout(async () => {
-        await supabase!.auth.signOut({ scope: 'local' }).catch(() => {})
-        window.location.href = '/login'
-      }, 2500)
-    } catch {
-      setSavingPass(false)
-      setPassMsg({ type: 'err', msg: 'El servidor tardó en responder. Intentá de nuevo en un momento.' })
-    }
-  }
-
-  // Validaciones en vivo del formulario de contraseña
-  const nuevaCorta = passForm.nueva.length > 0 && passForm.nueva.length < 10
-  const confirmNoCoincide = passForm.confirm.length > 0 && passForm.nueva !== passForm.confirm
-  const passFormValido = passForm.nueva.length >= 6 && passForm.nueva === passForm.confirm
 
   return (
     <div className="page-container">
@@ -520,6 +459,9 @@ export default function PerfilPage() {
                 <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.sector}</span>
               </div>
               <div className="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-800">
+                {/* Esta fila se había quedado sin su etiqueta: mostraba el cargo
+                    suelto, pegado abajo de "Sector", sin decir qué era. */}
+                <span className="text-xs text-slate-500 dark:text-slate-400">Cargo</span>
                 <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{empleado.cargo}</span>
               </div>
               <div className="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-800">
@@ -586,76 +528,12 @@ export default function PerfilPage() {
         </div>
       </div>
 
-      {/* Cambiar contraseña */}
-      <div className="card p-5">
-        <div className="flex items-center justify-between mb-4">
-          <p className="section-title flex items-center gap-2"><Lock className="w-4 h-4" /> Cambiar Contraseña</p>
-          {!editPass && (
-            <button onClick={() => setEditPass(true)} className="btn-secondary text-sm">Cambiar</button>
-          )}
-        </div>
-        {editPass ? (
-          <div className="max-w-sm space-y-4">
-            {passMsg && (
-              <div className={`rounded-lg px-4 py-2.5 text-sm flex items-center gap-2 ${
-                passMsg.type === 'ok'
-                  ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
-                  : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'
-              }`}>
-                {passMsg.type === 'ok'
-                  ? <CheckCircle2 className="w-4 h-4 shrink-0" />
-                  : <AlertCircle className="w-4 h-4 shrink-0" />
-                }
-                {passMsg.msg}
-              </div>
-            )}
-            <div>
-              <label className="form-label">Nueva contraseña</label>
-              <div className="relative">
-                <input
-                  type={showNew ? 'text' : 'password'}
-                  className={`form-input pr-10 ${nuevaCorta ? 'border-red-400 focus:ring-red-400/30 focus:border-red-400' : ''}`}
-                  placeholder="Mínimo 6 caracteres"
-                  value={passForm.nueva}
-                  onChange={e => setPassForm(p => ({ ...p, nueva: e.target.value }))}
-                />
-                <button type="button" onClick={() => setShowNew(!showNew)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
-                  {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-              {nuevaCorta && <p className="text-xs text-red-500 mt-1">Debe tener al menos 10 caracteres.</p>}
-            </div>
-            <div>
-              <label className="form-label">Confirmar nueva contraseña</label>
-              <input
-                type="password"
-                className={`form-input ${confirmNoCoincide ? 'border-red-400 focus:ring-red-400/30 focus:border-red-400' : ''}`}
-                placeholder="••••••••"
-                value={passForm.confirm}
-                onChange={e => setPassForm(p => ({ ...p, confirm: e.target.value }))}
-              />
-              {confirmNoCoincide && <p className="text-xs text-red-500 mt-1">No coincide con la nueva contraseña.</p>}
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => { setEditPass(false); setPassMsg(null); setPassForm({ nueva: '', confirm: '' }) }}
-                className="btn-secondary"
-              >
-                Cancelar
-              </button>
-              <button onClick={handlePasswordChange} disabled={savingPass || !passFormValido} className="btn-primary disabled:opacity-50">
-                {savingPass
-                  ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Guardando...</>
-                  : <><CheckCircle2 className="w-4 h-4" /> Actualizar contraseña</>}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Tu contraseña fue configurada al registrarte. Recomendamos cambiarla regularmente.
-          </p>
-        )}
-      </div>
+      {/* Acá había una sección "Cambiar contraseña".
+          La saqué porque ya no cambia nada: al portal se entra con la cuenta
+          de Google, así que la contraseña de Supabase no se usa para entrar.
+          Peor todavía, al guardarla cerraba la sesión y mandaba al login, donde
+          no hay dónde escribirla. Quien quiera cambiar su clave lo hace en su
+          cuenta de Google. */}
 
       {/* Credencial de ART (sólo lectura: la carga RRHH) */}
       <CredencialArt empleadoId={empleado.id} credencial={empleado} puedeEditar={false} />
