@@ -9,7 +9,7 @@ export const runtime = 'nodejs'
 // Body: { empleado: <campos camelCase> }
 export async function POST(req: NextRequest) {
   try {
-    const { empleado } = await req.json().catch(() => ({}))
+    const { empleado, reusarSiExiste } = await req.json().catch(() => ({}))
     if (!empleado?.id) {
       return NextResponse.json({ ok: false, error: 'Faltan parámetros' }, { status: 400 })
     }
@@ -43,6 +43,27 @@ export async function POST(req: NextRequest) {
       estado: empleado.estado ?? 'activo',
       cbu: empleado.cbu ?? '',
       banco: empleado.banco ?? '',
+    }
+
+    // Aprobar una solicitud se hace en dos pasos (este legajo, y después la
+    // cuenta). Si el segundo fallaba, el legajo quedaba creado, y volver a
+    // aprobar chocaba acá con "ya existe un empleado con ese email": la
+    // aprobación se cortaba antes de llegar a crear la cuenta, así que por más
+    // veces que se aprobara, la persona nunca tenía acceso.
+    //
+    // Con reusarSiExiste (lo manda sólo la aprobación) se devuelve el legajo
+    // que ya está y se sigue con la cuenta. Va por email y no por DNI a
+    // propósito: el email es lo que Google verificó; un DNI repetido puede ser
+    // de otra persona y ahí sí tiene que fallar. Al cargar un empleado a mano
+    // ("Nuevo empleado") no viene el flag: avisar del duplicado es lo correcto.
+    if (reusarSiExiste === true && row.email) {
+      const patron = String(row.email).replace(/[\\%_]/g, (c: string) => `\\${c}`)
+      const { data: existente } = await sb
+        .from('fno_empleados')
+        .select('id')
+        .ilike('email', patron)
+        .maybeSingle()
+      if (existente) return NextResponse.json({ ok: true, id: existente.id, existente: true })
     }
 
     const { error } = await sb.from('fno_empleados').insert(row)

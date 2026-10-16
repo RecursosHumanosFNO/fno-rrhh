@@ -62,7 +62,7 @@ function StatCard({ icon: Icon, label, value, sub, color }: {
 }
 
 function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string }) {
-  const { confirmar } = useDialogos()
+  const { confirmar, avisar } = useDialogos()
   const { empleado } = useAuth()
   const { empleados, solicitudes, novedades, eventos, pendingRegistrations, approvePendingRegistration, rejectPendingRegistration, registrosNovedad, forceSync } = useData()
 
@@ -212,7 +212,10 @@ function AdminDashboard({ saludo, fechaStr }: { saludo: string, fechaStr: string
                     {reg.nombre} {reg.apellido}
                   </span>
                   <button
-                    onClick={() => approvePendingRegistration(reg.id)}
+                    onClick={async () => {
+                      const err = await approvePendingRegistration(reg.id)
+                      if (err) avisar(err, 'error')
+                    }}
                     className="text-emerald-600 hover:text-emerald-700 p-0.5 shrink-0" title="Aprobar"
                   >
                     <CheckCircle2 className="w-4 h-4" />
