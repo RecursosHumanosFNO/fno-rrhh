@@ -33,6 +33,22 @@ export function esGestionPersonal(r: Requester | null): boolean {
   return r?.role === 'admin' || r?.role === 'rrhh'
 }
 
+/**
+ * Quién puede trabajar con la bitácora interna (fno_registros_novedad).
+ *
+ * Va aparte de esGestionPersonal a propósito: el rol 'novedades' NO es gestión
+ * de personal. Si se lo agregara allá, con una línea se le abrirían de una vez
+ * legajos, solicitudes, tickets y accesos pendientes, que es exactamente lo que
+ * no tiene que ver. Son dos permisos distintos porque son dos cosas distintas.
+ *
+ * Esta sección guarda licencias médicas y sanciones con nombre y apellido, así
+ * que la lista corta y explícita es la forma de que agrandarla sea una decisión
+ * y no un descuido.
+ */
+export function puedeNovedadesInternas(r: Requester | null): boolean {
+  return r?.role === 'admin' || r?.role === 'rrhh' || r?.role === 'novedades'
+}
+
 // Identifica al que hace el request validando su JWT de Supabase (NO un id que
 // manda el cliente, que sería falsificable). Devuelve su fila de fno_users o null.
 export async function getRequester(req: NextRequest, sb: SupabaseClient): Promise<Requester | null> {

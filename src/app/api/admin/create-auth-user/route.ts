@@ -13,8 +13,8 @@ export const runtime = 'nodejs'
 // 'rrhh' no puede hacer (set-role, recibos de sueldo, borrado de cuentas).
 //
 // Otorgar 'admin' o 'rrhh' queda sólo para un admin, igual que en set-role.
-const ROLES_VALIDOS = ['admin', 'employee', 'comunicaciones', 'rrhh'] as const
-const ROLES_QUE_PUEDE_DAR_RRHH = ['employee', 'comunicaciones']
+const ROLES_VALIDOS = ['admin', 'employee', 'comunicaciones', 'rrhh', 'novedades'] as const
+const ROLES_QUE_PUEDE_DAR_RRHH = ['employee', 'comunicaciones', 'novedades']
 
 // POST /api/admin/create-auth-user
 // Crea un usuario en Supabase Auth y su registro en fno_users.

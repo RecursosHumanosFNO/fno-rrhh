@@ -1,7 +1,7 @@
 import { useEscape } from '@/lib/useEscape'
 import { UserCheck, Trash2, Loader2, Shield } from 'lucide-react'
 
-type Rol = 'admin' | 'employee' | 'comunicaciones' | 'rrhh'
+type Rol = 'admin' | 'employee' | 'comunicaciones' | 'rrhh' | 'novedades'
 
 export function ReactivarModal({ nombreCompleto, onClose, onConfirm }: {
   nombreCompleto: string
@@ -85,16 +85,19 @@ export function ConfirmarRolModal({ rol, nombre, onClose, onConfirm }: {
   const fondo = rol === 'admin' ? 'bg-amber-100 dark:bg-amber-900/30'
     : rol === 'comunicaciones' ? 'bg-blue-100 dark:bg-blue-900/30'
     : rol === 'rrhh' ? 'bg-emerald-100 dark:bg-emerald-900/30'
+    : rol === 'novedades' ? 'bg-violet-100 dark:bg-violet-900/30'
     : 'bg-slate-100 dark:bg-slate-800'
 
   const iconoColor = rol === 'admin' ? 'text-amber-500'
     : rol === 'comunicaciones' ? 'text-blue-500'
     : rol === 'rrhh' ? 'text-emerald-500'
+    : rol === 'novedades' ? 'text-violet-500'
     : 'text-slate-400'
 
   const titulo = rol === 'admin' ? '¿Hacer administrador?'
     : rol === 'comunicaciones' ? '¿Asignar rol Comunicaciones?'
     : rol === 'rrhh' ? '¿Asignar rol Gestión de Personal?'
+    : rol === 'novedades' ? '¿Asignar rol Novedades Internas?'
     : '¿Volver a empleado?'
 
   const detalle = rol === 'admin'
@@ -103,6 +106,8 @@ export function ConfirmarRolModal({ rol, nombre, onClose, onConfirm }: {
     ? `${nombre} podrá crear y editar comunicados y eventos, pero no verá empleados, recibos ni datos administrativos.`
     : rol === 'rrhh'
     ? `${nombre} tendrá acceso a empleados, solicitudes, novedades internas y estadísticas, pero no a recibos de sueldo.`
+    : rol === 'novedades'
+    ? `${nombre} va a poder ver y cargar la bitácora interna —llegadas tarde, licencias, ausencias— de todos los empleados, con los certificados adjuntos. No verá legajos, recibos ni solicitudes. Es información sensible: dásela sólo a quien la necesite para trabajar.`
     : `${nombre} pasará a ser empleado regular y solo verá sus propios datos.`
 
   const boton = rol === 'admin' ? 'bg-amber-500 hover:bg-amber-600'

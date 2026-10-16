@@ -103,7 +103,10 @@ export default function NovedadesInternasPage() {
   const { user } = useAuth()
   const router = useRouter()
 
-  if (user && user.role !== 'admin' && user.role !== 'rrhh') {
+  // Mismos roles que acepta el servidor (puedeNovedadesInternas). Esto sólo
+  // evita que la pantalla se dibuje: quien la pide igual necesita el permiso
+  // del lado del servidor y de la base.
+  if (user && user.role !== 'admin' && user.role !== 'rrhh' && user.role !== 'novedades') {
     router.replace('/dashboard')
     return null
   }

@@ -4,7 +4,7 @@ import { serviceClient, getRequester } from '@/lib/serverAuth'
 export const runtime = 'nodejs'
 
 // POST /api/admin/set-role
-// Body: { empleadoId: string, role: 'admin' | 'employee' | 'comunicaciones' | 'rrhh' }
+// Body: { empleadoId: string, role: 'admin' | 'employee' | 'comunicaciones' | 'rrhh' | 'novedades' }
 // El que hace el request se identifica por su JWT (Authorization: Bearer …), no
 // por un id del body. Solo un admin puede cambiar roles.
 export async function POST(req: NextRequest) {
@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     if (!empleadoId || !role) {
       return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 })
     }
-    if (role !== 'admin' && role !== 'employee' && role !== 'comunicaciones' && role !== 'rrhh') {
+    if (role !== 'admin' && role !== 'employee' && role !== 'comunicaciones' && role !== 'rrhh' && role !== 'novedades') {
       return NextResponse.json({ error: 'Rol inválido' }, { status: 400 })
     }
 

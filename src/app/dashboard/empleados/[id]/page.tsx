@@ -47,7 +47,7 @@ export default function EmpleadoDetailPage() {
   const [createAcctStatus, setCreateAcctStatus] = useState<'idle' | 'creating' | 'done' | 'error'>('idle')
   const [createAcctErr, setCreateAcctErr] = useState('')
   const [roleStatus, setRoleStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
-  const [confirmRole, setConfirmRole] = useState<'admin' | 'employee' | 'comunicaciones' | 'rrhh' | null>(null)
+  const [confirmRole, setConfirmRole] = useState<'admin' | 'employee' | 'comunicaciones' | 'rrhh' | 'novedades' | null>(null)
   const [showDelete, setShowDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteErr, setDeleteErr] = useState('')
@@ -396,7 +396,7 @@ export default function EmpleadoDetailPage() {
     }
   }
 
-  async function handleSetRole(newRole: 'admin' | 'employee' | 'comunicaciones' | 'rrhh') {
+  async function handleSetRole(newRole: 'admin' | 'employee' | 'comunicaciones' | 'rrhh' | 'novedades') {
     if (!user?.empleadoId) return
     setConfirmRole(null)
     setRoleStatus('loading')
@@ -756,11 +756,14 @@ export default function EmpleadoDetailPage() {
                               ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
                               : empUser.role === 'rrhh'
                                 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
-                                : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                                : empUser.role === 'novedades'
+                                  ? 'bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300'
+                                  : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
                         }`}>
                           {empUser.role === 'admin' ? '⭐ Administrador'
                             : empUser.role === 'comunicaciones' ? '📢 Comunicaciones'
                             : empUser.role === 'rrhh' ? '👥 Gestión de Personal'
+                            : empUser.role === 'novedades' ? '📋 Novedades Internas'
                             : '👤 Empleado'}
                         </span>
 
@@ -773,7 +776,7 @@ export default function EmpleadoDetailPage() {
                             <select
                               value={empUser.role}
                               onChange={e => {
-                                const nuevo = e.target.value as 'admin' | 'employee' | 'comunicaciones' | 'rrhh'
+                                const nuevo = e.target.value as 'admin' | 'employee' | 'comunicaciones' | 'rrhh' | 'novedades'
                                 if (nuevo !== empUser.role) setConfirmRole(nuevo)
                               }}
                               className="form-select text-xs py-1 w-auto"
@@ -781,6 +784,7 @@ export default function EmpleadoDetailPage() {
                               <option value="employee">👤 Empleado</option>
                               <option value="rrhh">👥 Gestión de Personal</option>
                               <option value="comunicaciones">📢 Comunicaciones</option>
+                              <option value="novedades">📋 Novedades Internas</option>
                               <option value="admin">⭐ Administrador</option>
                             </select>
                           )

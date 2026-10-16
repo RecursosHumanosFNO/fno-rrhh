@@ -38,7 +38,15 @@ Order matters: DataContext must exist before AuthContext (auth reads/writes empl
 3. `onAuthStateChange` watches for session changes and keeps state in sync
 4. Inactive employees (`estado === 'inactivo'`) are signed out immediately after login check
 
-Four roles: `'admin' | 'employee' | 'comunicaciones' | 'rrhh'`
+Five roles: `'admin' | 'employee' | 'comunicaciones' | 'rrhh' | 'novedades'`
+
+`novedades` es un empleado común que además lleva la bitácora interna
+(`fno_registros_novedad`). No es un escalón de RRHH: no ve legajos, recibos ni
+solicitudes. Del lado del server el criterio es `puedeNovedadesInternas()`
+(`src/lib/serverAuth.ts`) y en la base `fno_puede_novedades_internas()` — los dos
+aparte de los de gestión de personal a propósito: sumarlo allá le abriría de una
+vez todo lo que cuelgue de ese permiso. Esa tabla se lee y escribe desde el
+navegador con la anon key, así que RLS es la barrera real, no la pantalla.
 
 `rrhh` ("Gestión de Personal") comparte con `admin` las tareas de RRHH del día a día
 —empleados, solicitudes, tickets, registros internos, estadísticas— pero **no** accede
