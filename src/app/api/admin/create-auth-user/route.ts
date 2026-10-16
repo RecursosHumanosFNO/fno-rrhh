@@ -24,6 +24,28 @@ const ROLES_QUE_PUEDE_DAR_RRHH = ['employee', 'comunicaciones', 'novedades']
 // personales de terceros.
 const LARGO_MINIMO_PASSWORD = 10
 
+/**
+ * Busca un usuario de Supabase Auth por email.
+ *
+ * La API de admin no tiene un "traeme el de este email", así que hay que
+ * recorrer la lista. Con ~160 cuentas entra en la primera página; el tope de
+ * páginas está por si alguna vez crece, para no quedarse recorriendo de más.
+ */
+async function buscarAuthUserPorEmail(
+  sb: NonNullable<ReturnType<typeof serviceClient>>,
+  email: string,
+): Promise<{ id: string } | null> {
+  const PAGINAS_MAX = 10
+  for (let page = 1; page <= PAGINAS_MAX; page++) {
+    const { data, error } = await sb.auth.admin.listUsers({ page, perPage: 200 })
+    if (error || !data?.users?.length) return null
+    const encontrado = data.users.find(u => (u.email ?? '').toLowerCase() === email)
+    if (encontrado) return encontrado
+    if (data.users.length < 200) return null
+  }
+  return null
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { email, password, userId, empleadoId, role } = await req.json().catch(() => ({}))
@@ -61,35 +83,81 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Solo un administrador puede otorgar ese rol' }, { status: 403 })
     }
 
-    // 1. Crear usuario en Supabase Auth (contraseña encriptada automáticamente)
+    const emailNorm = email.toLowerCase().trim()
+
+    // 1. El usuario de Supabase Auth.
+    //
+    // OJO con el orden de las cosas desde que se entra con Google: la persona
+    // ya inició sesión con Google ANTES de que RRHH la apruebe —es el paso en
+    // el que carga sus datos—, y ese primer inicio de sesión ya le creó el
+    // usuario de Auth. Así que acá createUser falla casi siempre con "ya existe
+    // un usuario con ese email", y antes eso cortaba todo: quedaba el empleado
+    // creado pero sin fila en fno_users, o sea sin cuenta. Después /vincular no
+    // la encontraba, la daba por "sin cuenta" y la devolvía al formulario de
+    // datos. Eso es el bucle de "la aprobé y no puede entrar".
+    //
+    // Entonces: si ya existe, se reusa. Entrar con Google no crea el acceso
+    // —eso lo sigue decidiendo RRHH acá—, pero sí crea el usuario de Auth, y
+    // ese es el mismo que hay que vincular.
+    let authUser = null as { id: string } | null
+    let loCreamosNosotros = false
+
     const { data: authData, error: authErr } = await sb.auth.admin.createUser({
-      email: email.toLowerCase().trim(),
+      email: emailNorm,
       password: effectivePassword,
       email_confirm: true, // No requiere confirmación por email — el admin ya aprobó
     })
 
-    if (authErr || !authData.user) {
-      console.error('[create-auth-user] auth error:', authErr?.message)
-      return NextResponse.json({ error: authErr?.message ?? 'Error al crear usuario' }, { status: 400 })
+    if (authData?.user) {
+      authUser = authData.user
+      loCreamosNosotros = true
+    } else {
+      const existente = await buscarAuthUserPorEmail(sb, emailNorm)
+      if (!existente) {
+        console.error('[create-auth-user] auth error:', authErr?.message)
+        return NextResponse.json({ error: authErr?.message ?? 'Error al crear usuario' }, { status: 400 })
+      }
+      authUser = existente
     }
 
-    // 2. Insertar en fno_users vinculando el auth_id
-    const { error: dbErr } = await sb.from('fno_users').insert({
-      id: userId,
-      email: email.toLowerCase().trim(),
-      role,
-      empleado_id: empleadoId,
-      auth_id: authData.user.id,
-      // password queda vacío: Supabase Auth lo maneja de forma segura
-      password: '',
-    })
+    // 2. La fila de fno_users, que es la que el portal mira para saber quién es
+    //    cada uno. Si ya hay una para ese email se actualiza en vez de insertar:
+    //    así reintentar ("Crear cuenta de acceso" en la ficha) arregla en lugar
+    //    de chocar con un duplicado.
+    const patron = emailNorm.replace(/[\\%_]/g, (c: string) => `\\${c}`)
+    const { data: cuentaExistente } = await sb
+      .from('fno_users')
+      .select('id')
+      .ilike('email', patron)
+      .maybeSingle()
+
+    const dbErr = cuentaExistente
+      ? (await sb.from('fno_users')
+          .update({ email: emailNorm, role, empleado_id: empleadoId, auth_id: authUser.id })
+          .eq('id', cuentaExistente.id)).error
+      : (await sb.from('fno_users').insert({
+          id: userId,
+          email: emailNorm,
+          role,
+          empleado_id: empleadoId,
+          auth_id: authUser.id,
+          // password queda vacío: Supabase Auth lo maneja de forma segura
+          password: '',
+        })).error
 
     if (dbErr) {
       console.error('[create-auth-user] db error:', dbErr.message)
-      // Revertir: eliminar el auth user creado
-      await sb.auth.admin.deleteUser(authData.user.id)
+      // Revertir sólo si el usuario de Auth lo creamos en este pedido. Borrar
+      // uno que ya existía dejaría a la persona sin la cuenta con la que venía
+      // entrando por un error nuestro al guardar la fila.
+      if (loCreamosNosotros) await sb.auth.admin.deleteUser(authUser.id)
       return NextResponse.json({ error: 'Error al crear perfil de usuario' }, { status: 500 })
     }
+
+    // Ya aprobada, la solicitud pendiente no tiene por qué seguir ahí. Si
+    // quedara, /vincular la lee y contesta "pendiente": la persona vuelve a ver
+    // la pantalla de "esperá la aprobación" con el acceso ya dado.
+    await sb.from('fno_pending').delete().ilike('email', patron)
 
     // 3. Invitación para que defina su contraseña.
     //
@@ -113,7 +181,7 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    return NextResponse.json({ ok: true, authId: authData.user.id, invitacionEnviada })
+    return NextResponse.json({ ok: true, authId: authUser.id, invitacionEnviada })
   } catch (err) {
     console.error('[create-auth-user] error:', err)
     return NextResponse.json({ error: 'Error interno' }, { status: 500 })
