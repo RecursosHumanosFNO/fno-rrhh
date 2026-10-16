@@ -129,6 +129,9 @@ export async function POST(req: NextRequest) {
       .from('fno_users')
       .select('id')
       .ilike('email', patron)
+      // limit(1): con dos filas para el mismo email, maybeSingle devuelve
+      // error en vez de fila, y acá se leía como "no hay cuenta".
+      .limit(1)
       .maybeSingle()
 
     const dbErr = cuentaExistente
@@ -141,8 +144,10 @@ export async function POST(req: NextRequest) {
           role,
           empleado_id: empleadoId,
           auth_id: authUser.id,
-          // password queda vacío: Supabase Auth lo maneja de forma segura
-          password: '',
+          // Acá antes iba `password: ''`. La columna se borró de fno_users
+          // (las contraseñas viven en Supabase Auth, nunca acá), y desde ese
+          // día este insert fallaba siempre: ninguna cuenta nueva se podía
+          // crear, ni aprobando una solicitud ni desde la ficha.
         })).error
 
     if (dbErr) {
@@ -151,7 +156,10 @@ export async function POST(req: NextRequest) {
       // uno que ya existía dejaría a la persona sin la cuenta con la que venía
       // entrando por un error nuestro al guardar la fila.
       if (loCreamosNosotros) await sb.auth.admin.deleteUser(authUser.id)
-      return NextResponse.json({ error: 'Error al crear perfil de usuario' }, { status: 500 })
+      // El motivo real va en la respuesta. Con el texto genérico de antes
+      // ("Error al crear perfil de usuario") no había forma de saber desde la
+      // pantalla qué pasaba, y este bug estuvo escondido detrás de eso.
+      return NextResponse.json({ error: `No se pudo guardar la cuenta: ${dbErr.message}` }, { status: 500 })
     }
 
     // Ya aprobada, la solicitud pendiente no tiene por qué seguir ahí. Si
