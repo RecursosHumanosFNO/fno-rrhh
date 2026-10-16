@@ -60,6 +60,11 @@ export async function POST(req: NextRequest) {
       .from('fno_users')
       .select('id, auth_id, empleado_id')
       .ilike('email', patron)
+      // Si quedaron filas repetidas para el mismo email, se toma una sola (y
+      // primero una que ya tenga auth_id). Sin el limit, maybeSingle devuelve
+      // error con más de una fila y eso se leía como "no tiene cuenta".
+      .order('auth_id', { ascending: true, nullsFirst: false })
+      .limit(1)
       .maybeSingle()
 
     if (!cuenta) {
@@ -71,6 +76,10 @@ export async function POST(req: NextRequest) {
         .from('fno_pending')
         .select('id')
         .ilike('email', patron)
+        // Mandar el formulario dos veces deja dos solicitudes; con maybeSingle
+        // eso daba error y la persona volvía al formulario en vez de ver
+        // "en revisión".
+        .limit(1)
         .maybeSingle()
 
       const meta = (user.user_metadata ?? {}) as Record<string, unknown>
