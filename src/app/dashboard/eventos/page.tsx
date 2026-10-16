@@ -106,7 +106,7 @@ function emptyForm(): EventoForm {
 export default function EventosPage() {
   const { user, empleado } = useAuth()
   const { empleados, eventos, addEvento, updateEvento, deleteEvento, addNovedad } = useData()
-  const { avisar, confirmar } = useDialogos()
+  const { avisar } = useDialogos()
   const isAdmin = user?.role === 'admin' || user?.role === 'comunicaciones'
 
   const hoy = new Date()
@@ -189,6 +189,9 @@ export default function EventosPage() {
 
   // ── Cumpleaños del mes actual ─────────────────────────────────────────────
   const cumpleaniosMes = useMemo(() => empleados.filter(e => {
+    // Un empleado desvinculado seguía cumpliendo años en el calendario, con
+    // foto y todo, aunque el aviso automático de cumpleaños ya no lo saluda.
+    if (e.estado === 'inactivo') return false
     if (!e.fechaNacimiento) return false
     const nac = parseLocalDate(e.fechaNacimiento)
     return nac.getMonth() === viewMes
@@ -287,6 +290,10 @@ export default function EventosPage() {
       destinatarios: ev.destinatarios ?? [],
       repeticion: ev.repeticion, repeticionCada: ev.repeticionCada,
       repeticionHasta: ev.repeticionHasta,
+      // Faltaba, y el formulario manda todo lo que tiene: abrir un "todos los
+      // martes y jueves" y guardar sin tocar nada le borraba los días y lo
+      // dejaba cayendo sólo el día de su fecha.
+      repeticionDias: ev.repeticionDias,
       notifyChannels: [], addToComunicaciones: false,
       publicarEnLocal: isoAInputLocal(ev.publicarEn),
     })
@@ -330,6 +337,14 @@ export default function EventosPage() {
         autor: 'RRHH',
         importante: form.importante ?? false,
         fijado: form.fijado ?? false,
+        // Lo mismo que el evento, y no menos: antes la copia en Comunicaciones
+        // salía sin el flyer ni el adjunto, y sobre todo se publicaba al
+        // instante aunque el evento estuviera programado para el martes.
+        imagen: form.imagen,
+        adjuntoUrl: form.adjuntoUrl,
+        adjuntoNombre: form.adjuntoNombre,
+        destinatarios: form.destinatarios ?? [],
+        publicarEn: publicarEnISO(publicarEnLocal),
       }, notifyChannels)
     }
     setModal(null)
@@ -723,14 +738,6 @@ export default function EventosPage() {
                           title="Ver imagen completa"
                         />
                       )}
-                      {isAdmin && (
-                        <div className="mt-3">
-                          <BotonCopiar
-                            texto={textoEventoWhatsapp(ev)}
-                            imagenUrl={ev.imagen || undefined}
-                          />
-                        </div>
-                      )}
                       {ev.adjuntoUrl && (
                         <a href={ev.adjuntoUrl} target="_blank" rel="noopener noreferrer" download={ev.adjuntoNombre}
                           className="inline-flex items-center gap-1.5 mt-3 text-xs font-medium text-brand-700 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/20 hover:bg-brand-100 dark:hover:bg-brand-900/40 rounded-lg px-2.5 py-1.5 transition-colors w-fit">
@@ -738,7 +745,9 @@ export default function EventosPage() {
                         </a>
                       )}
                       {/* Último y a lo ancho: es la acción de la ficha, no un
-                          detalle más metido entre la foto y el adjunto. */}
+                          detalle más metido entre la foto y el adjunto. (Arriba
+                          había quedado un segundo par de botones igual, así que
+                          se veían los de copiar dos veces.) */}
                       {isAdmin && (
                         <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700">
                           <BotonCopiar
@@ -757,6 +766,7 @@ export default function EventosPage() {
               {(() => {
                 const [, , d] = selectedDay.split('-').map(Number)
                 const cumples = empleados.filter(e => {
+                  if (e.estado === 'inactivo') return false
                   if (!e.fechaNacimiento) return false
                   const nac = parseLocalDate(e.fechaNacimiento)
                   return nac.getMonth() === viewMes && nac.getDate() === d
@@ -1170,7 +1180,12 @@ export default function EventosPage() {
       )}
 
       {/* ── Confirmar eliminación ─────────────────────────────────────────── */}
-      {confirmDelete && (
+      {confirmDelete && (() => {
+        // El cartel decía sólo "¿Eliminar evento?": no nombraba cuál, y en una
+        // serie no avisaba que se van todas las repeticiones de una vez.
+        const evBorrar = eventos.find(e => e.id === confirmDelete)
+        const repite = evBorrar ? textoRepeticion(evBorrar) : ''
+        return (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setConfirmDelete(null)}>
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-6 max-w-sm w-full" onClick={e => e.stopPropagation()}>
             <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-4">
@@ -1178,6 +1193,8 @@ export default function EventosPage() {
             </div>
             <h3 className="text-center font-semibold text-slate-800 dark:text-white text-lg mb-2">¿Eliminar evento?</h3>
             <p className="text-center text-sm text-slate-500 dark:text-slate-400 mb-6">
+              {evBorrar && <strong className="block text-slate-700 dark:text-slate-200 mb-1">{evBorrar.titulo}</strong>}
+              {repite && <span className="block text-amber-600 dark:text-amber-400 mb-1">Se repite ({repite.toLowerCase()}): se borran todas las repeticiones.</span>}
               Esta acción no se puede deshacer.
             </p>
             <div className="flex gap-3">
@@ -1188,7 +1205,8 @@ export default function EventosPage() {
             </div>
           </div>
         </div>
-      )}
+        )
+      })()}
 
       {/* Visor de imagen */}
       {lightbox && <ImageLightbox src={lightbox} onClose={() => setLightbox(null)} />}
