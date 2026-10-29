@@ -1,0 +1,95 @@
+<!doctype html>
+<!--
+  Pantalla "sin conexión".
+
+  No se visita a propósito: el service worker la guarda al instalarse y la
+  muestra en lugar de cualquier pantalla del portal que no se pueda cargar
+  porque se cortó la red (ver `fallbacks` en src/app/sw.ts). Antes, en ese caso
+  aparecía la página genérica de Chrome —el dinosaurio— sin ninguna pista.
+
+  Es HTML suelto y no una página de Next a propósito. Como se muestra bajo la
+  dirección de la pantalla que se quiso abrir (/dashboard/empleados, por
+  ejemplo), una página de Next arrancaba su router, veía que la dirección no
+  coincidía, rearmaba esa otra pantalla —que sin red no puede cargar la
+  sesión— y terminaba mandando al login. Acá no hay router que la pise.
+
+  Por eso también todo va adentro: estilos, ícono y script. Sin red no se
+  puede ir a buscar nada más.
+
+  OJO: está en public/, así que entra sola al precache del worker. Si alguna
+  vez dejara de servirse, la instalación entera del worker fallaría y con ella
+  las notificaciones push (ver el comentario de `exclude` en next.config.js).
+-->
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sin conexión · Portal RRHH</title>
+  <style>
+    :root { color-scheme: light dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      padding: 24px; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: #f8fafc; color: #1e293b;
+    }
+    .caja { text-align: center; max-width: 360px; }
+    .icono {
+      width: 64px; height: 64px; margin: 0 auto; border-radius: 9999px;
+      background: #fef3c7; color: #d97706; display: flex; align-items: center; justify-content: center;
+    }
+    h1 { margin: 16px 0 0; font-size: 20px; font-weight: 600; }
+    p { margin: 8px 0 0; font-size: 14px; line-height: 1.5; color: #64748b; }
+    button {
+      margin-top: 24px; display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 16px; border: 0; border-radius: 8px; cursor: pointer;
+      background: #23597e; color: #fff; font: inherit; font-size: 14px; font-weight: 500;
+    }
+    button:hover { background: #2d6e99; }
+    button:disabled { opacity: .6; cursor: default; }
+    .gira { animation: gira 1s linear infinite; }
+    @keyframes gira { to { transform: rotate(360deg); } }
+    @media (prefers-color-scheme: dark) {
+      body { background: #0f172a; color: #f1f5f9; }
+      .icono { background: rgba(120, 53, 15, .3); color: #fbbf24; }
+      p { color: #94a3b8; }
+      button { background: #0d9488; }
+      button:hover { background: #14b8a6; }
+    }
+  </style>
+</head>
+<body>
+  <div class="caja">
+    <div class="icono" aria-hidden="true">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 20h.01"/><path d="M8.5 16.43a5 5 0 0 1 7 0"/><path d="M5 12.86a10 10 0 0 1 5.17-2.69"/>
+        <path d="M19 12.86a10 10 0 0 0-2-1.5"/><path d="M2 8.82a15 15 0 0 1 4.17-2.65"/>
+        <path d="M10.66 5c4.01-.36 8.14.9 11.34 3.76"/><path d="m2 2 20 20"/>
+      </svg>
+    </div>
+    <h1>Sin conexión</h1>
+    <p>No pudimos cargar esta pantalla porque se cortó internet. Revisá el wifi o los datos del celular. Apenas vuelva la conexión, se carga sola.</p>
+    <button id="reintentar" type="button">
+      <svg id="giro" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>
+        <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>
+      </svg>
+      Reintentar
+    </button>
+  </div>
+  <script>
+    // La dirección de la barra sigue siendo la de la pantalla que se quiso
+    // abrir, así que reintentar es recargar: vuelve a pedir esa misma.
+    var boton = document.getElementById('reintentar')
+    boton.addEventListener('click', function () {
+      boton.disabled = true
+      document.getElementById('giro').setAttribute('class', 'gira')
+      location.reload()
+    })
+    // Cuando vuelve la red se reintenta solo. Acá no hay ningún formulario a
+    // medio llenar que se pueda perder, que es lo que en el resto del portal
+    // hace preferible no recargar sin aviso (reloadOnOnline: false).
+    window.addEventListener('online', function () { location.reload() })
+  </script>
+</body>
+</html>
