@@ -26,6 +26,21 @@ const serwist = new Serwist({
   clientsClaim: true,
   navigationPreload: true,
   runtimeCaching: defaultCache,
+  // Si una pantalla del portal no se puede cargar porque se cortó la red, en
+  // vez de la página genérica de Chrome se muestra public/offline.html, que el
+  // worker ya tiene guardada (todo lo de public/ entra al precache). Por qué es
+  // HTML suelto y no una página de Next: ver el comentario en ese archivo.
+  //
+  // Sólo para documentos, o sea pantallas enteras. Un pedido de datos o una
+  // imagen que falla no tiene que convertirse en una página HTML.
+  fallbacks: {
+    entries: [
+      {
+        url: '/offline.html',
+        matcher: ({ request }) => request.destination === 'document',
+      },
+    ],
+  },
 })
 
 serwist.addEventListeners()
